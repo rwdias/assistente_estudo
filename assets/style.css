@@ -1,0 +1,319 @@
+/* =========================
+   Fundo geral da aplicação
+   ========================= */
+.stApp {
+    background-color: #FFFFFF;
+    color: #000000;
+}
+
+/* =========================
+   Barra superior nativa
+   ========================= */
+header[data-testid="stHeader"] {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    border-bottom: 0px solid transparent !important;
+}
+
+header[data-testid="stHeader"] * {
+    color: #000000 !important;
+}
+
+/* =========================
+   Sidebar
+   ========================= */
+section[data-testid="stSidebar"] {
+    background-color: #F1F5F9 !important;
+    border-right: 1px solid #CBD5E1 !important;
+}
+
+section[data-testid="stSidebar"] > div {
+    background-color: #F1F5F9 !important;
+}
+
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3,
+section[data-testid="stSidebar"] h4 {
+    color: #3d4e72 !important;
+    font-weight: 700 !important;
+}
+
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] div {
+    color: #334155 !important;
+}
+
+/* Inputs da sidebar */
+section[data-testid="stSidebar"] input,
+section[data-testid="stSidebar"] textarea {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+}
+
+section[data-testid="stSidebar"] input::placeholder,
+section[data-testid="stSidebar"] textarea::placeholder {
+    color: #64748B !important;
+    opacity: 1 !important;
+}
+
+/* =========================
+   Área principal
+   ========================= */
+.block-container {
+    background-color: #FFFFFF !important;
+    padding-top: 2rem !important;
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
+    color: #000000 !important;
+}
+
+.block-container h1,
+.block-container h2,
+.block-container h3,
+.block-container h4,
+.block-container h5,
+.block-container h6 {
+    color: #000000 !important;
+    font-weight: 700 !important;
+}
+
+.block-container p,
+.block-container span,
+.block-container label {
+    color: #000000 !important;
+}
+
+/* =========================
+   Formulários da área principal
+   ========================= */
+
+/* Labels: Enunciado da pergunta, Quantidade de opções, Opção 1 etc. */
+.block-container div[data-testid="stTextArea"] label,
+.block-container div[data-testid="stTextInput"] label,
+.block-container div[data-testid="stSelectbox"] label,
+.block-container div[data-testid="stRadio"] label,
+.block-container div[data-testid="stSlider"] label,
+.block-container div[data-testid="stCheckbox"] label {
+    color: #000000 !important;
+}
+
+/* Texto digitado nos campos */
+.block-container div[data-testid="stTextArea"] textarea,
+.block-container div[data-testid="stTextInput"] input {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+}
+
+/* Placeholder */
+.block-container div[data-testid="stTextArea"] textarea::placeholder,
+.block-container div[data-testid="stTextInput"] input::placeholder {
+    color: #000000 !important;
+    opacity: 1 !important;
+}
+
+/* Selectbox */
+.block-container div[data-testid="stSelectbox"] div,
+.block-container div[data-testid="stSelectbox"] span {
+    color: #000000 !important;
+}
+
+/* Radio */
+.block-container div[data-testid="stRadio"] label,
+.block-container div[data-testid="stRadio"] label span,
+.block-container div[data-testid="stRadio"] p,
+.block-container div[data-testid="stRadio"] span {
+    color: #000000 !important;
+}
+
+/* Checkbox */
+.block-container div[data-testid="stCheckbox"] label,
+.block-container div[data-testid="stCheckbox"] label span,
+.block-container div[data-testid="stCheckbox"] span {
+    color: #000000 !important;
+}
+
+/* =========================
+   Bordas e aparência dos inputs
+   ========================= */
+.block-container input,
+.block-container textarea {
+    border-radius: 8px !important;
+    border: 1px solid #CBD5E1 !important;
+}
+
+.block-container input:focus,
+.block-container textarea:focus {
+    border: 1px solid #0F172A !important;
+    box-shadow: 0 0 0 1px #0F172A !important;
+}
+
+/* =========================
+   Botões
+   ========================= */
+div[data-testid="stButton"] button,
+div[data-testid="stFormSubmitButton"] button {
+    background-color: #0F172A !important;
+    color: #FFFFFF !important;
+    border-radius: 8px !important;
+    border: none !important;
+    font-weight: 600 !important;
+    padding: 0.5rem 1rem !important;
+}
+
+div[data-testid="stButton"] button:hover,
+div[data-testid="stFormSubmitButton"] button:hover {
+    background-color: #020617 !important;
+    color: #FFFFFF !important;
+    border: none !important;
+}
+
+div[data-testid="stButton"] button *,
+div[data-testid="stFormSubmitButton"] button * {
+    color: #FFFFFF !important;
+}
+
+/* =========================
+   Métricas
+   ========================= */
+div[data-testid="stMetric"] {
+    background-color: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 12px !important;
+    padding: 1rem !important;
+}
+
+div[data-testid="stMetric"] label,
+div[data-testid="stMetric"] div {
+    color: #000000 !important;
+}
+
+/* =========================
+   Cards de perguntas
+   ========================= */
+.question-card {
+    background-color: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.question-card p {
+    color: #000000 !important;
+}
+
+.question-title {
+    color: #000000 !important;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.correct-answer {
+    color: #166534 !important;
+    font-weight: 700;
+}
+
+/* =========================
+   Expanders
+   ========================= */
+details {
+    background-color: #FFFFFF !important;
+    border-radius: 8px !important;
+}
+
+details summary,
+details summary * {
+    color: #000000 !important;
+}
+
+/* =========================
+   Alertas Streamlit
+   ========================= */
+div[data-testid="stAlert"] {
+    border-radius: 8px !important;
+}
+
+div[data-testid="stAlert"] p,
+div[data-testid="stAlert"] div,
+div[data-testid="stAlert"] span {
+    color: #000000 !important;
+}
+
+/* =========================
+   Divisores
+   ========================= */
+hr {
+    border-color: #E2E8F0 !important;
+}
+
+/* Selectbox fechada: caixa principal */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+    background-color: #FFFFFF !important;
+    color: #000000 !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 8px !important;
+}
+
+/* Texto dentro da selectbox */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] span {
+    color: #000000 !important;
+}
+
+/* Ícone/seta da selectbox */
+div[data-testid="stSelectbox"] svg {
+    color: #000000 !important;
+    fill: #000000 !important;
+}
+
+/* Selectbox quando está focada/clicada */
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within {
+    border-color: #0F172A !important;
+    box-shadow: 0 0 0 1px #0F172A !important;
+}
+
+/* =========================
+   Criação de perguntas
+   ========================= */
+
+.answer-instruction {
+    background-color: #EFF6FF;
+    color: #1E3A8A !important;
+    border: 1px solid #BFDBFE;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.correct-option-label {
+    background-color: #DCFCE7;
+    color: #166534 !important;
+    border: 1px solid #BBF7D0;
+    border-radius: 8px;
+    padding: 0.45rem 0.75rem;
+    margin-top: 0.75rem;
+    margin-bottom: 0.35rem;
+    font-weight: 700;
+    width: fit-content;
+}
+
+.wrong-option-label {
+    background-color: #F8FAFC;
+    color: #475569 !important;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 0.45rem 0.75rem;
+    margin-top: 0.75rem;
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+    width: fit-content;
+}
+
+/* Campo da primeira opção com destaque leve */
+.correct-option-label + div input {
+    background-color: #F0FDF4 !important;
+    border: 1px solid #86EFAC !important;
+}
