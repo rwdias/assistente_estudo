@@ -1,0 +1,49 @@
+# Ambientes virtuais
+.venv/
+venv/
+env/
+assistente_estudo/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribuição/build
+build/
+dist/
+*.egg-info/
+
+# Banco local
+*.db
+*.sqlite
+*.sqlite3
+
+# Variáveis de ambiente e segredos
+.env
+.env.*
+*.key
+*.pem
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testes e coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ruff / linters
+.ruff_cache/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
