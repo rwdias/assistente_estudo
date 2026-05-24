@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: assistente-estudo
+Version: 0.1.0
+Summary: Aplicativo Streamlit para criação e execução de simulados de estudo.
+Requires-Python: <3.15,>=3.12
+Requires-Dist: streamlit>=1.35.0
+Requires-Dist: sqlalchemy>=2.0.0
+Provides-Extra: dev
+Requires-Dist: ipykernel>=6.29.0; extra == "dev"
+Requires-Dist: pytest>=8.0.0; extra == "dev"
+Requires-Dist: ruff>=0.6.0; extra == "dev"

@@ -1,0 +1,8 @@
+README.md
+pyproject.toml
+version.txt
+src/assistente_estudo.egg-info/PKG-INFO
+src/assistente_estudo.egg-info/SOURCES.txt
+src/assistente_estudo.egg-info/dependency_links.txt
+src/assistente_estudo.egg-info/requires.txt
+src/assistente_estudo.egg-info/top_level.txt

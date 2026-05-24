@@ -1,0 +1,36 @@
+[project]
+name = "assistente-estudo"
+description = "Aplicativo Streamlit para criação e execução de simulados de estudo."
+requires-python = ">=3.12, <3.15"
+
+dependencies = [
+    "streamlit>=1.35.0",
+    "sqlalchemy>=2.0.0",
+]
+
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = [
+    "ipykernel>=6.29.0",
+    "pytest>=8.0.0",
+    "ruff>=0.6.0",
+]
+
+[tool.setuptools.dynamic]
+version = {file = "version.txt"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

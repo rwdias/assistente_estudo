@@ -1,3 +1,7 @@
+from pathlib import Path
+import streamlit as st
+
+
 def carregar_css(caminho_css: str) -> None:
     css_path = Path(caminho_css)
 
