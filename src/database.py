@@ -62,6 +62,16 @@ class Materia(Base):
         cascade="all, delete-orphan",
     )
 
+    def __repr__(self) -> str:
+        return (
+            f"<Materia("
+            f"id={self.id}, "
+            f"nome='{self.nome}', "
+            f"descricao='{self.descricao}', "
+            f"created_at={self.created_at}, "
+            f"updated_at={self.updated_at}"
+            f")>"
+        )
 
 class Subdivisao(Base):
     __tablename__ = "subdivisoes"

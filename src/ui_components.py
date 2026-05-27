@@ -13,7 +13,7 @@ def render_sidebar() -> dict:
 
         pagina = st.radio(
             "Navegação",
-            ["Configurar Simulado", "Criar Perguntas"],
+            ["Configurar Simulado", "Criar Matéria", "Criar Perguntas"],
             index=0
         )
 
@@ -88,7 +88,7 @@ def render_question_form(assunto: str, dificuldade: str) -> dict | None:
 
         quantidade_opcoes = st.selectbox(
             "Quantidade de opções",
-            [2, 3, 4, 5, 6],
+            [1, 2, 3, 4, 5, 6],
             index=2
         )
 

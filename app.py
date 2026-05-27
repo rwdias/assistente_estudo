@@ -9,7 +9,7 @@ from src.ui_components import (
     render_sidebar,
 )
 
-from src.database import criar_tabelas
+from src.database import criar_tabelas, criar_materia
 
 criar_tabelas()
 
@@ -115,3 +115,38 @@ elif pagina == "Criar Perguntas":
         if st.button("Limpar todas as perguntas"):
             st.session_state.perguntas = []
             st.rerun()
+            
+            
+elif pagina == "Criar Matéria":
+    st.title("Criar Matérias e Assuntos")
+
+    st.write(
+        "Cadastre as matérias a serem utilizadas"
+    )
+
+    st.divider()
+    with st.form("form_criar_materias", clear_on_submit=True):
+        materia = st.text_input(
+                        "Matéria",
+                        key=f"materia",
+                        placeholder="Digite a matéria a ser inserida"
+                    )
+        
+
+        descricao = st.text_input(
+                        "Descrição",
+                        key=f"descricao",
+                        placeholder="Insira uma descrição"
+                    )
+        
+        
+        salvar = st.form_submit_button("Adicionar matéria")
+
+    
+    if salvar:
+        if not materia.strip() or not descricao.strip():
+            st.error("Nenhum campo pode estar vazio.")
+        else:
+            # Executa a lógica de salvar no banco de dados aqui
+            criar_materia(materia.strip(), descricao.strip())
+            st.success("Pergunta adicionada com sucesso!")

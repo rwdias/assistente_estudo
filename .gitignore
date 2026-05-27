@@ -19,7 +19,7 @@ dist/
 *.sqlite
 *.sqlite3
 
-# Variáveis de ambiente e segredos
+# Variáveis de ambiente e secrets
 .env
 .env.*
 *.key
