@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from pathlib import Path
-
+from typing import Any
 from sqlalchemy import (
     Boolean,
     Column,
@@ -10,7 +10,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    create_engine,
+    create_engine
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
@@ -79,7 +79,6 @@ class Subdivisao(Base):
     id = Column(Integer, primary_key=True, index=True)
     materia_id = Column(Integer, ForeignKey("materias.id"), nullable=False)
     nome = Column(String(150), nullable=False, index=True)
-    descricao = Column(Text, nullable=True)
     created_at = Column(DateTime, default=agora_utc, nullable=False)
     updated_at = Column(DateTime, default=agora_utc, onupdate=agora_utc, nullable=False)
 
@@ -101,6 +100,17 @@ class Subdivisao(Base):
             name="uq_subdivisao_por_materia",
         ),
     )
+    
+    def __repr__(self) -> str:
+        return (
+            f"<Materia("
+            f"id={self.id}, "
+            f"id_materia={self.materia_id}, "
+            f"nome='{self.nome}', "
+            f"created_at={self.created_at}, "
+            f"updated_at={self.updated_at}"
+            f")>"
+        )
 
 
 class Pergunta(Base):
@@ -219,20 +229,39 @@ def criar_materia(nome: str, descricao: str | None = None) -> Materia:
         session.close()
 
 
-def listar_materias() -> list[Materia]:
+def listar_materias(so_nome: bool = False, so_id: bool = False) -> list[Any]:
     session = get_session()
 
     try:
-        return session.query(Materia).order_by(Materia.nome.asc()).all()
+        # Busca sempre o objeto completo para evitar problemas de mapeamento com tuplas
+        consulta = session.query(Materia).order_by(Materia.nome.asc()).all()
+
+        # Trata o retorno com base nos argumentos passados
+        if so_nome:
+            return [materia.nome for materia in consulta]
+        if so_id:
+            return [materia.id for materia in consulta]
+        
+        return consulta
 
     finally:
         session.close()
 
-
-def buscar_materia_por_nome(nome: str) -> Materia | None:
+def buscar_materia_por_nome(nome: str, so_id: bool = False) -> Materia | int | None:
     session = get_session()
 
     try:
+        # Se precisar apenas do ID, otimiza a consulta para trazer só a coluna ID
+        if so_id:
+            resultado = (
+                session.query(Materia.id)
+                .filter(Materia.nome == nome.strip())
+                .first()
+            )
+            # O SQLAlchemy retorna uma tupla (id,) se encontrar, ou None
+            return resultado[0] if resultado else None
+
+        # Caso contrário, retorna o objeto completo
         return (
             session.query(Materia)
             .filter(Materia.nome == nome.strip())
@@ -258,7 +287,6 @@ def criar_subdivisao(
         subdivisao = Subdivisao(
             materia_id=materia_id,
             nome=nome.strip(),
-            descricao=descricao.strip() if descricao else None,
         )
 
         session.add(subdivisao)
