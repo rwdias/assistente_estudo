@@ -29,42 +29,42 @@ def render_sidebar() -> dict:
             type="password"
         )
 
-        titulo = st.text_input(
-            "Título do simulado",
-            "Simulado de Machine Learning"
-        )
+        # titulo = st.text_input(
+        #     "Título do simulado",
+        #     "Simulado de Machine Learning"
+        # )
 
-        assunto = st.selectbox(
-            "Assunto",
-            ["Machine Learning", "Python", "Estatística", "Databricks", "MLOps"]
-        )
+        # assunto = st.selectbox(
+        #     "Assunto",
+        #     ["Machine Learning", "Python", "Estatística", "Databricks", "MLOps"]
+        # )
 
-        dificuldade = st.selectbox(
-            "Dificuldade",
-            ["Fácil", "Média", "Difícil"]
-        )
+        # dificuldade = st.selectbox(
+        #     "Dificuldade",
+        #     ["Fácil", "Média", "Difícil"]
+        # )
 
-        quantidade = st.slider(
-            "Quantidade de questões",
-            min_value=1,
-            max_value=60,
-            value=5
-        )
+        # quantidade = st.slider(
+        #     "Quantidade de questões",
+        #     min_value=1,
+        #     max_value=60,
+        #     value=5
+        # )
 
-        embaralhar = st.checkbox(
-            "Embaralhar questões",
-            value=True
-        )
+        # embaralhar = st.checkbox(
+        #     "Embaralhar questões",
+        #     value=True
+        # )
 
     return {
         "pagina": pagina,
         "modelo": modelo,
         "token": token,
-        "titulo": titulo,
-        "assunto": assunto,
-        "dificuldade": dificuldade,
-        "quantidade": quantidade,
-        "embaralhar": embaralhar,
+        # "titulo": titulo,
+        # "assunto": assunto,
+        # "dificuldade": dificuldade,
+        # "quantidade": quantidade,
+        # "embaralhar": embaralhar,
     }
 
 
