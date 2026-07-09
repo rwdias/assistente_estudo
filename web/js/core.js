@@ -149,6 +149,44 @@ function esc(s) {
   ));
 }
 
+// --- tema claro/escuro ---
+// Sem escolha salva, o app segue o sistema; a partir do primeiro clique no
+// botão sol/lua a escolha fica em localStorage e passa a valer sempre.
+function temaEfetivo() {
+  const manual = document.documentElement.dataset.theme;
+  if (manual) return manual;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function atualizarIconesTema() {
+  const escuro = temaEfetivo() === 'dark';
+  document.querySelectorAll('.tema-toggle').forEach((btn) => {
+    btn.querySelector('.icone-lua').style.display = escuro ? 'none' : 'block';
+    btn.querySelector('.icone-sol').style.display = escuro ? 'block' : 'none';
+  });
+}
+
+function alternarTema() {
+  const novo = temaEfetivo() === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = novo;
+  localStorage.setItem('tema', novo);
+  atualizarIconesTema();
+}
+
+function aplicarTemaSalvo() {
+  const salvo = localStorage.getItem('tema');
+  if (salvo === 'light' || salvo === 'dark') {
+    document.documentElement.dataset.theme = salvo;
+  }
+  atualizarIconesTema();
+}
+
+document.querySelectorAll('.tema-toggle').forEach((btn) => {
+  btn.addEventListener('click', alternarTema);
+});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', atualizarIconesTema);
+aplicarTemaSalvo();
+
 function mostrarTelaAuth() {
   document.getElementById('auth-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';

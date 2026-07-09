@@ -39,8 +39,41 @@
   --sidebar-w: 252px;
 }
 
+/*
+  Tokens escuros aparecem duas vezes de propósito (CSS puro não permite
+  reaproveitar um bloco de custom properties em dois seletores):
+  1. escolha manual via botão sol/lua -> :root[data-theme="dark"]
+  2. seguir o sistema quando o usuário nunca escolheu -> media query,
+     que respeita a escolha manual "light" via :not([data-theme="light"]).
+  Ao editar um token escuro, altere NOS DOIS blocos.
+*/
+:root[data-theme="dark"] {
+  --brand: #14b8a6;
+  --brand-dark: #0d9488;
+  --brand-light: #0e3833;
+  --brand-ink: #46d6c4;
+
+  --fundo: #0e1315;
+  --superficie: #171e22;
+  --superficie-2: #1d262b;
+  --borda: #27333a;
+  --borda-forte: #3a4a54;
+
+  --texto: #e8eef1;
+  --texto-2: #a5b6bf;
+  --texto-3: #7b8d97;
+
+  --ok: #4ade80;       --ok-bg: #123626;
+  --erro: #f87171;     --erro-bg: #421717;
+  --destaque: #fbbf24; --destaque-bg: #3c2a0a;
+
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 2px 8px rgba(0,0,0,.25);
+  --shadow-md: 0 6px 24px rgba(0,0,0,.4);
+  --shadow-lg: 0 24px 70px rgba(0,0,0,.5);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --brand: #14b8a6;
     --brand-dark: #0d9488;
     --brand-light: #0e3833;
@@ -200,6 +233,23 @@ textarea { resize: vertical; }
 }
 .topbar-title { font-weight: 700; font-size: 1.06rem; }
 .topbar-sub { font-size: .78rem; color: var(--texto-3); margin-top: 1px; }
+
+/* botão sol/lua — o JS decide qual ícone fica visível */
+.tema-toggle {
+  margin-left: auto; width: 38px; height: 38px; border-radius: 10px;
+  border: 1.5px solid var(--borda); background: var(--superficie);
+  color: var(--texto-2); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s;
+}
+.tema-toggle:hover { border-color: var(--brand); color: var(--brand-ink); }
+.tema-toggle svg { width: 17px; height: 17px; }
+.tema-toggle .icone-sol { display: none; }
+.tema-toggle-flutuante {
+  position: absolute; top: 20px; right: 20px; margin-left: 0;
+  box-shadow: var(--shadow);
+}
+.auth-screen { position: relative; }
 .content { padding: 30px 32px 60px; max-width: 940px; }
 
 .panel { display: none; }
