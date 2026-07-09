@@ -1,4 +1,4 @@
-# Assistente de Estudo
+# Study Rats 🐭
 
 Plataforma multi-usuário de estudo para certificações (AWS, Databricks, etc.):
 simulados, repetição espaçada estilo Anki (SM-2) e ingestão de questões por IA

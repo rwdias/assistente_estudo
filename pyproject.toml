@@ -1,6 +1,6 @@
 [project]
-name = "assistente-estudo"
-description = "API + SPA para criação e execução de simulados de estudo com IA e repetição espaçada."
+name = "study-rats"
+description = "Study Rats — plataforma de simulados de estudo com IA e repetição espaçada."
 requires-python = ">=3.12, <3.15"
 
 dependencies = [

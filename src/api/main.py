@@ -10,7 +10,7 @@ from src.database import criar_tabelas
 load_dotenv()
 criar_tabelas()
 
-app = FastAPI(title="Assistente de Estudo")
+app = FastAPI(title="Study Rats")
 
 app.include_router(auth.router)
 app.include_router(materias.router)
