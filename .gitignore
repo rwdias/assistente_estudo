@@ -14,14 +14,19 @@ build/
 dist/
 *.egg-info/
 
-# Banco local
+# Banco local (inclui backups tipo assistente_estudo.db.backup-<timestamp>)
 *.db
+*.db.backup-*
 *.sqlite
 *.sqlite3
+
+# Rascunhos de editor/execução
+tempCodeRunnerFile.py
 
 # Variáveis de ambiente e segredos
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 
