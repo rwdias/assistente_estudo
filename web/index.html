@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assistente de Estudo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+
+<!-- TELAS PÚBLICAS (sem login) -->
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <span class="auth-logo-icone">🎓</span>
+      <div>
+        <div class="auth-logo-nome">Assistente de Estudo</div>
+        <div class="auth-logo-sub">Simulados, revisão espaçada e IA</div>
+      </div>
+    </div>
+
+    <div id="auth-panel-login">
+      <h2>Bem-vindo de volta</h2>
+      <form id="form-login">
+        <label>E-mail</label>
+        <input type="email" id="login-email" required autocomplete="username" placeholder="voce@exemplo.com" />
+        <label>Senha</label>
+        <input type="password" id="login-senha" required autocomplete="current-password" placeholder="••••••••" />
+        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+      </form>
+      <p class="auth-switch">Ainda não tem conta? <a id="ir-para-cadastro" href="#">Cadastre-se grátis</a></p>
+    </div>
+
+    <div id="auth-panel-cadastro" style="display:none">
+      <h2>Criar sua conta</h2>
+      <form id="form-cadastro">
+        <label>E-mail</label>
+        <input type="email" id="cadastro-email" required autocomplete="username" placeholder="voce@exemplo.com" />
+        <label>Senha (mínimo 8 caracteres)</label>
+        <input type="password" id="cadastro-senha" required minlength="8" maxlength="72" autocomplete="new-password" placeholder="••••••••" />
+        <button type="submit" class="btn btn-primary btn-block">Criar conta</button>
+      </form>
+      <p class="auth-switch">Já tem conta? <a id="ir-para-login" href="#">Entrar</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- APP (autenticado) -->
+<div id="app" style="display:none">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-logo">
+      <span class="sb-logo-icone">🎓</span>
+      <span class="sb-logo-texto">Assistente<br /><small>de Estudo</small></span>
+    </div>
+
+    <div class="sb-materia">
+      <label class="sb-materia-label">Matéria atual</label>
+      <div class="sb-materia-linha">
+        <select id="sidebar-materia"></select>
+        <button type="button" id="nova-materia-btn" class="btn-nova-materia" title="Nova matéria">+</button>
+      </div>
+    </div>
+
+    <nav class="sb-nav">
+      <span class="sb-nav-titulo">Menu</span>
+      <a class="sb-item active" data-panel="dashboard">
+        <svg class="sb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+        <span>Início</span>
+      </a>
+      <a class="sb-item" data-panel="simulado">
+        <svg class="sb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span>Simulado</span>
+      </a>
+      <a class="sb-item" data-panel="perguntas">
+        <svg class="sb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        <span>Perguntas</span>
+      </a>
+      <a class="sb-item" data-panel="revisao">
+        <svg class="sb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        <span>Revisão</span>
+      </a>
+      <a class="sb-item" data-panel="ia">
+        <svg class="sb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 1 6 6c0 2.2-1.2 3.7-2.4 5-.9 1-1.6 1.9-1.6 3h-4c0-1.1-.7-2-1.6-3C7.2 12.7 6 11.2 6 9a6 6 0 0 1 6-6Z"/><path d="M10 21h4"/></svg>
+        <span>Adicionar via IA</span>
+      </a>
+    </nav>
+
+    <div class="sb-footer">
+      <div class="sb-user">
+        <div class="sb-avatar" id="sb-avatar">?</div>
+        <div class="sb-user-info">
+          <div class="sb-user-name" id="sb-user-email">—</div>
+        </div>
+        <button class="sb-logout" id="logout-btn" title="Sair">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="topbar-title">Início</div>
+        <div class="topbar-sub" id="topbar-sub">Visão geral do seu estudo</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="panel active" id="panel-dashboard">
+        <div id="dashboard-resumo" class="stat-grid"></div>
+        <h2 class="secao-titulo">Suas matérias</h2>
+        <div id="dashboard-materias" class="card-grid"></div>
+      </div>
+
+      <!-- SIMULADO -->
+      <div class="panel" id="panel-simulado">
+        <div id="simulado-config" class="card">
+          <div class="card-header">
+            <div class="card-title">Configurar simulado</div>
+            <p class="card-sub">Escolha os filtros e comece a praticar.</p>
+          </div>
+          <div class="card-body">
+            <div class="form-grade">
+              <div>
+                <label>Dificuldade</label>
+                <select id="simulado-dificuldade">
+                  <option value="">Todas</option>
+                  <option>Fácil</option>
+                  <option>Média</option>
+                  <option>Difícil</option>
+                </select>
+              </div>
+              <div>
+                <label>Quantidade de questões</label>
+                <input type="number" id="simulado-quantidade" value="5" min="1" max="60" />
+              </div>
+            </div>
+            <label class="checkbox-label"><input type="checkbox" id="simulado-embaralhar" checked /> Embaralhar questões</label>
+            <button type="button" id="iniciar-simulado-btn" class="btn btn-primary">▶ Iniciar simulado</button>
+          </div>
+        </div>
+
+        <div id="simulado-quiz" style="display:none"></div>
+      </div>
+
+      <!-- PERGUNTAS -->
+      <div class="panel" id="panel-perguntas">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Nova pergunta</div>
+            <p class="card-sub">A primeira alternativa é a correta — as demais são distratores.</p>
+          </div>
+          <div class="card-body">
+            <form id="form-nova-pergunta">
+              <label>Enunciado</label>
+              <textarea id="pergunta-enunciado" rows="3" required placeholder="Digite a pergunta aqui..."></textarea>
+              <label>Dificuldade</label>
+              <select id="pergunta-dificuldade">
+                <option>Fácil</option>
+                <option selected>Média</option>
+                <option>Difícil</option>
+              </select>
+              <div id="pergunta-opcoes-container"></div>
+              <div class="form-acoes">
+                <button type="button" id="add-opcao-btn" class="btn btn-secondary btn-sm">+ Alternativa</button>
+                <button type="submit" class="btn btn-primary">Adicionar pergunta</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <h2 class="secao-titulo">Perguntas cadastradas</h2>
+        <div id="lista-perguntas"></div>
+      </div>
+
+      <!-- REVISÃO -->
+      <div class="panel" id="panel-revisao">
+        <div id="revisao-resumo" class="stat-grid stat-grid-3"></div>
+        <div id="revisao-atual"></div>
+      </div>
+
+      <!-- IA -->
+      <div class="panel" id="panel-ia">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Adicionar perguntas via IA</div>
+            <p class="card-sub">Cole questões em qualquer formato — a IA extrai enunciado, alternativas e resposta correta.</p>
+          </div>
+          <div class="card-body">
+            <label>Provedor</label>
+            <select id="ia-modelo">
+              <option>ChatGPT</option>
+              <option>Claude</option>
+              <option>Grok</option>
+            </select>
+            <label>Cole o texto com as perguntas</label>
+            <textarea id="ia-texto" rows="8" placeholder="Cole aqui um ou mais enunciados, com alternativas..."></textarea>
+            <button type="button" id="ia-extrair-btn" class="btn btn-primary">✨ Extrair perguntas</button>
+          </div>
+        </div>
+
+        <div id="ia-preview"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- MODAL nova matéria -->
+<div class="modal-overlay" id="modal-nova-materia">
+  <div class="modal">
+    <h3>Nova matéria</h3>
+    <label>Nome</label>
+    <input type="text" id="nova-materia-nome" placeholder="Ex.: AWS Certified Solutions Architect" />
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-nova-materia')">Cancelar</button>
+      <button class="btn btn-primary" id="confirmar-nova-materia-btn">Criar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL confirmação de exclusão -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal">
+    <h3>Remover pergunta</h3>
+    <p>Tem certeza? Esta ação não pode ser desfeita.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-delete')">Cancelar</button>
+      <button class="btn btn-danger" id="modal-delete-confirm">Remover</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="js/core.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/materias.js"></script>
+<script src="js/perguntas.js"></script>
+<script src="js/simulado.js"></script>
+<script src="js/revisao.js"></script>
+<script src="js/ia.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
