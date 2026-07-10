@@ -116,6 +116,13 @@ user `postgres.scafgcpxjsimzaaviean`, senha no `.env`. (O host direto
 
 - Free tier do Supabase **pausa o projeto após ~1 semana sem uso** —
   reativar no painel se o app parar de responder.
+- **O repositório precisa ser PÚBLICO**: GitHub Pages gratuito não serve
+  repo privado — torná-lo privado apaga o site na hora (aconteceu em
+  2026-07-10; recriar via `gh api -X POST repos/.../pages -f build_type=workflow`).
+- Login social: Google OAuth via Supabase Auth (`signInWithOAuth` em
+  `web/js/auth.js`); credenciais no Google Cloud Console do dono e no
+  config do Auth (Management API); `site_url` e `uri_allow_list` apontam
+  para o Pages + localhost:8001.
 - Confirmação de e-mail no signup está DESLIGADA (sem SMTP próprio);
   senha mínima 8. HIBP (senha vazada) exige plano Pro — pendente.
 - Gerenciamento via Management API (`api.supabase.com`) requer header
