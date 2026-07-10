@@ -9,7 +9,6 @@ async function iniciarSimulado() {
     return;
   }
 
-  const dificuldade = document.getElementById('simulado-dificuldade').value;
   const quantidade = Number(document.getElementById('simulado-quantidade').value) || 5;
   const embaralhar = document.getElementById('simulado-embaralhar').checked;
 
@@ -23,7 +22,6 @@ async function iniciarSimulado() {
 
   // simulado é só múltipla escolha — flashcards vivem na Revisão
   perguntas = perguntas.filter((p) => p.tipo !== 'flashcard');
-  if (dificuldade) perguntas = perguntas.filter((p) => p.dificuldade === dificuldade);
 
   if (embaralhar) {
     for (let i = perguntas.length - 1; i > 0; i--) {

@@ -2,6 +2,16 @@ let revisaoFila = [];
 let revisaoIndice = 0;
 let revisaoAcertos = 0;
 let revisaoErros = 0;
+let filtroRevisao = 'tudo'; // 'tudo' | 'pergunta' | 'flashcard'
+
+document.querySelectorAll('#tipo-toggle-revisao button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#tipo-toggle-revisao button').forEach((b) => b.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    filtroRevisao = btn.dataset.filtro;
+    carregarRevisao();
+  });
+});
 
 // Cache por dia da versão reformulada (mesma semântica do backend antigo):
 // evita gastar quota re-reformulando a mesma pergunta em reloads.
@@ -29,6 +39,7 @@ async function carregarRevisao() {
 
   const agora = new Date();
   revisaoFila = perguntas
+    .filter((p) => filtroRevisao === 'tudo' || p.tipo === filtroRevisao)
     .filter((p) => p.proxima_revisao_em === null || new Date(p.proxima_revisao_em) <= agora)
     .sort((a, b) => {
       if (a.proxima_revisao_em === null) return -1;

@@ -169,13 +169,7 @@ function renderIaFlashcardHTML(card, indice) {
 
       <label>Verso</label>
       <textarea class="ia-verso" rows="3">${esc(card.verso)}</textarea>
-
-      <label>Dificuldade</label>
-      <select class="ia-dificuldade">
-        ${['Fácil', 'Média', 'Difícil']
-          .map((d) => `<option ${d === card.dificuldade ? 'selected' : ''}>${d}</option>`)
-          .join('')}
-      </select>
+      <input type="hidden" class="ia-dificuldade" value="${esc(card.dificuldade || 'Média')}" />
 
       <label>Tópico (opcional)</label>
       <input type="text" class="ia-topico" value="${esc(card.topico || '')}" />
@@ -192,13 +186,7 @@ function renderIaItemHTML(pergunta, indice) {
 
       <label>Enunciado</label>
       <textarea class="ia-enunciado" rows="2">${esc(pergunta.enunciado)}</textarea>
-
-      <label>Dificuldade</label>
-      <select class="ia-dificuldade">
-        ${['Fácil', 'Média', 'Difícil']
-          .map((d) => `<option ${d === pergunta.dificuldade ? 'selected' : ''}>${d}</option>`)
-          .join('')}
-      </select>
+      <input type="hidden" class="ia-dificuldade" value="${esc(pergunta.dificuldade || 'Média')}" />
 
       <label>Alternativas (marque a correta)</label>
       ${pergunta.opcoes

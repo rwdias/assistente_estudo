@@ -138,21 +138,8 @@
             <p class="card-sub">Escolha os filtros e comece a praticar.</p>
           </div>
           <div class="card-body">
-            <div class="form-grade">
-              <div>
-                <label>Dificuldade</label>
-                <select id="simulado-dificuldade">
-                  <option value="">Todas</option>
-                  <option>Fácil</option>
-                  <option>Média</option>
-                  <option>Difícil</option>
-                </select>
-              </div>
-              <div>
-                <label>Quantidade de questões</label>
-                <input type="number" id="simulado-quantidade" value="5" min="1" max="60" />
-              </div>
-            </div>
+            <label>Quantidade de questões</label>
+            <input type="number" id="simulado-quantidade" value="5" min="1" max="60" />
             <label class="checkbox-label"><input type="checkbox" id="simulado-embaralhar" checked /> Embaralhar questões</label>
             <button type="button" id="iniciar-simulado-btn" class="btn btn-primary">▶ Iniciar simulado</button>
           </div>
@@ -166,6 +153,7 @@
         <div class="tipo-toggle" id="tipo-toggle-manual">
           <button type="button" class="ativo" data-tipo="pergunta">❓ Pergunta</button>
           <button type="button" data-tipo="flashcard">🃏 Flashcard</button>
+          <button type="button" data-tipo="config">⚙️ Matéria</button>
         </div>
 
         <div class="card" id="card-nova-pergunta">
@@ -177,12 +165,8 @@
             <form id="form-nova-pergunta">
               <label>Enunciado</label>
               <textarea id="pergunta-enunciado" rows="3" required placeholder="Digite a pergunta aqui..."></textarea>
-              <label>Dificuldade</label>
-              <select id="pergunta-dificuldade">
-                <option>Fácil</option>
-                <option selected>Média</option>
-                <option>Difícil</option>
-              </select>
+              <label>Tópico (opcional)</label>
+              <select id="pergunta-topico"></select>
               <div id="pergunta-opcoes-container"></div>
               <div class="form-acoes">
                 <button type="button" id="add-opcao-btn" class="btn btn-secondary btn-sm">+ Alternativa</button>
@@ -203,16 +187,33 @@
               <textarea id="fc-frente" rows="2" required placeholder="Ex.: O que caracteriza overfitting?"></textarea>
               <label>Verso</label>
               <textarea id="fc-verso" rows="3" required placeholder="A resposta objetiva..."></textarea>
-              <label>Dificuldade</label>
-              <select id="fc-dificuldade">
-                <option>Fácil</option>
-                <option selected>Média</option>
-                <option>Difícil</option>
-              </select>
+              <label>Tópico (opcional)</label>
+              <select id="fc-topico"></select>
               <div class="form-acoes">
                 <button type="submit" class="btn btn-primary">Adicionar flashcard</button>
               </div>
             </form>
+          </div>
+        </div>
+
+        <div class="card" id="card-config-materia" style="display:none">
+          <div class="card-header">
+            <div class="card-title">Configurações da matéria</div>
+            <p class="card-sub">Renomeie a matéria e organize os tópicos usados por perguntas e flashcards.</p>
+          </div>
+          <div class="card-body">
+            <label>Nome da matéria</label>
+            <div class="opcao-row">
+              <input type="text" id="config-materia-nome" />
+              <button type="button" class="btn btn-secondary btn-sm" id="config-salvar-nome-btn">Salvar</button>
+            </div>
+
+            <label>Tópicos</label>
+            <div id="config-topicos-lista"></div>
+            <div class="opcao-row" style="margin-top:8px">
+              <input type="text" id="config-novo-topico" placeholder="Ex.: IAM, Redes, Regressão..." />
+              <button type="button" class="btn btn-secondary btn-sm" id="config-add-topico-btn">+ Adicionar</button>
+            </div>
           </div>
         </div>
 
@@ -222,6 +223,11 @@
 
       <!-- REVISÃO -->
       <div class="panel" id="panel-revisao">
+        <div class="tipo-toggle" id="tipo-toggle-revisao">
+          <button type="button" class="ativo" data-filtro="tudo">Tudo</button>
+          <button type="button" data-filtro="pergunta">❓ Perguntas</button>
+          <button type="button" data-filtro="flashcard">🃏 Flashcards</button>
+        </div>
         <div id="revisao-resumo" class="stat-grid stat-grid-3"></div>
         <div id="revisao-atual"></div>
       </div>

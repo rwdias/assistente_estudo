@@ -389,6 +389,15 @@ textarea { resize: vertical; }
   border-left: 3px solid var(--borda-forte); padding-left: 10px; margin-top: 4px;
 }
 
+/* ============ configurações da matéria: lista de tópicos ============ */
+.topico-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 12px; border: 1px solid var(--borda); border-radius: var(--radius-sm);
+  margin-bottom: 7px; background: var(--superficie-2);
+}
+.topico-item span:first-child { font-weight: 600; flex: 1; }
+.topico-item button:disabled { opacity: .45; cursor: default; }
+
 /* ============ PERGUNTAS (lista) ============ */
 .pergunta-card {
   background: var(--superficie); border: 1px solid var(--borda); border-radius: var(--radius);

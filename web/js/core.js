@@ -42,6 +42,9 @@ function normalizarPergunta(linha) {
   return {
     id: linha.id,
     tipo: linha.tipo || 'pergunta',
+    topico: linha.subdivisoes?.nome && linha.subdivisoes.nome !== 'Geral'
+      ? linha.subdivisoes.nome
+      : null,
     enunciado: linha.enunciado,
     verso: linha.verso,
     dificuldade: linha.dificuldade,
@@ -63,8 +66,23 @@ const SELECT_PERGUNTA = `
   opcoes ( texto, correta, ordem ),
   revisoes_perguntas ( vezes_respondida, vezes_acertada, ultima_resposta_correta,
                        intervalo_dias, proxima_revisao_em ),
-  subdivisoes!inner ( materia_id )
+  subdivisoes!inner ( materia_id, nome )
 `;
+
+async function listarTopicos(materiaId) {
+  const { data, error } = await sb
+    .from('subdivisoes')
+    .select('id, nome, perguntas ( count )')
+    .eq('materia_id', materiaId)
+    .order('nome');
+
+  if (error) throw new Error(error.message);
+  return data.map((s) => ({
+    id: s.id,
+    nome: s.nome,
+    itens: s.perguntas?.[0]?.count ?? 0,
+  }));
+}
 
 async function buscarPerguntasDaMateria(materiaId) {
   const { data, error } = await sb
@@ -130,7 +148,7 @@ function goPanel(id) {
   document.getElementById('topbar-sub').textContent = meta.sub;
 
   if (id === 'dashboard') carregarDashboard();
-  if (id === 'perguntas') carregarPerguntas();
+  if (id === 'perguntas') aoAbrirPerguntas();
   if (id === 'revisao') carregarRevisao();
   if (id === 'ia') aoAbrirIa();
 
