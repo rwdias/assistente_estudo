@@ -46,6 +46,19 @@ document.getElementById('form-cadastro').addEventListener('submit', async (e) =>
   await iniciarApp();
 });
 
+// Login/cadastro com Google: redireciona para o OAuth do Supabase e volta
+// para esta mesma página; o supabase-js captura a sessão da URL ao carregar.
+async function entrarComGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.origin + window.location.pathname },
+  });
+  if (error) toast('Não foi possível iniciar o login com o Google.', 'error');
+}
+
+document.getElementById('google-login-btn').addEventListener('click', entrarComGoogle);
+document.getElementById('google-cadastro-btn').addEventListener('click', entrarComGoogle);
+
 document.getElementById('logout-btn').addEventListener('click', async () => {
   await sb.auth.signOut();
   definirMateriaAtual(null);

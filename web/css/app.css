@@ -162,6 +162,17 @@ textarea { resize: vertical; }
 .auth-switch a { color: var(--brand-ink); font-weight: 700; text-decoration: none; }
 .auth-switch a:hover { text-decoration: underline; }
 
+/* Divisor "ou" + botão do Google (logo colorido é marca, não emoji) */
+.auth-divisor {
+  display: flex; align-items: center; gap: 12px;
+  margin: 16px 0 0; color: var(--texto-3); font-size: .8rem;
+}
+.auth-divisor::before, .auth-divisor::after {
+  content: ""; flex: 1; height: 1px; background: var(--borda);
+}
+.btn-google { margin-top: 14px; gap: 10px; }
+.btn-google svg { width: 17px; height: 17px; flex: none; }
+
 /* ============ LAYOUT ============ */
 /* Sidebar em "rail": recolhida por padrão (só ícones), expande no hover e
    fica aberta com .pinned (botão de fixar, persistido em localStorage). */
