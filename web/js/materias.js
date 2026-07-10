@@ -1,5 +1,13 @@
 async function carregarMaterias() {
-  Estado.materias = await api('GET', '/api/materias');
+  const { data, error } = await sb.rpc('resumo_materias');
+
+  if (error) {
+    toast('Erro ao carregar matérias: ' + error.message, 'error');
+    Estado.materias = [];
+    return;
+  }
+
+  Estado.materias = data;
 
   const select = document.getElementById('sidebar-materia');
   select.innerHTML = Estado.materias
@@ -31,28 +39,41 @@ document.getElementById('confirmar-nova-materia-btn').addEventListener('click', 
   const nome = document.getElementById('nova-materia-nome').value.trim();
   if (!nome) return;
 
+  const { data: materia, error } = await sb
+    .from('materias')
+    .insert({ nome })
+    .select('id, nome')
+    .single();
+
+  if (error) {
+    const msg = error.code === '23505' ? 'Você já tem uma matéria com esse nome.' : error.message;
+    toast(msg, 'error');
+    return;
+  }
+
   try {
-    const materia = await api('POST', '/api/materias', { nome });
-    closeModal('modal-nova-materia');
-    await carregarMaterias();
-    definirMateriaAtual(materia.id);
-    document.getElementById('sidebar-materia').value = String(materia.id);
-    toast('Matéria criada.');
-    carregarDashboard();
+    await garantirSubdivisao(materia.id, 'Geral');
   } catch (erro) {
     toast(erro.message, 'error');
+    return;
   }
+
+  closeModal('modal-nova-materia');
+  await carregarMaterias();
+  definirMateriaAtual(materia.id);
+  document.getElementById('sidebar-materia').value = String(materia.id);
+  toast('Matéria criada.');
+  carregarDashboard();
 });
 
 async function carregarDashboard() {
-  // recarrega para refletir contagens atualizadas (respostas, novas perguntas)
   await carregarMaterias();
 
   const resumo = document.getElementById('dashboard-resumo');
   const container = document.getElementById('dashboard-materias');
 
-  const totalPerguntas = Estado.materias.reduce((s, m) => s + m.total_perguntas, 0);
-  const totalDevidas = Estado.materias.reduce((s, m) => s + m.devidas_revisao, 0);
+  const totalPerguntas = Estado.materias.reduce((s, m) => s + Number(m.total_perguntas), 0);
+  const totalDevidas = Estado.materias.reduce((s, m) => s + Number(m.devidas_revisao), 0);
 
   resumo.innerHTML = `
     <div class="stat-card">
@@ -72,7 +93,7 @@ async function carregarDashboard() {
   if (Estado.materias.length === 0) {
     container.innerHTML = `
       <div class="empty-state" style="grid-column: 1 / -1">
-        <div class="icone">🎓</div>
+        <div class="icone">🐭</div>
         Nenhuma matéria ainda.<br />Crie a primeira pelo botão "+" na barra lateral.
       </div>`;
     return;
@@ -82,10 +103,10 @@ async function carregarDashboard() {
     .map(
       (m) => `
       <div class="card-materia" data-id="${m.id}">
-        ${m.devidas_revisao > 0 ? `<span class="badge badge-amber badge-devidas">${m.devidas_revisao} devida${m.devidas_revisao === 1 ? '' : 's'}</span>` : ''}
+        ${Number(m.devidas_revisao) > 0 ? `<span class="badge badge-amber badge-devidas">${m.devidas_revisao} devida${Number(m.devidas_revisao) === 1 ? '' : 's'}</span>` : ''}
         <div class="nome">${esc(m.nome)}</div>
         <div class="metricas">
-          <span><b>${m.total_perguntas}</b> pergunta${m.total_perguntas === 1 ? '' : 's'}</span>
+          <span><b>${m.total_perguntas}</b> pergunta${Number(m.total_perguntas) === 1 ? '' : 's'}</span>
           <span><b>${m.devidas_revisao}</b> para revisar</span>
         </div>
       </div>`

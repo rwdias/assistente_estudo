@@ -1,15 +1,10 @@
-// --- estado global simples (sem framework) ---
+// --- cliente Supabase + estado global ---
+const sb = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+
 const Estado = {
-  token: localStorage.getItem('token') || null,
   materiaId: localStorage.getItem('materiaId') ? Number(localStorage.getItem('materiaId')) : null,
   materias: [],
 };
-
-function definirToken(token) {
-  Estado.token = token;
-  if (token) localStorage.setItem('token', token);
-  else localStorage.removeItem('token');
-}
 
 function definirMateriaAtual(id) {
   Estado.materiaId = id;
@@ -17,35 +12,99 @@ function definirMateriaAtual(id) {
   else localStorage.removeItem('materiaId');
 }
 
-// --- helper de API ---
-async function api(method, path, body) {
-  const opts = { method, headers: {} };
+// --- domínio: SRS (exibição) ---
+// Porta de src/srs.py: dificuldade pessoal e maturidade são derivadas do
+// histórico salvo em revisoes_perguntas; o SM-2 em si roda no banco
+// (função registrar_resposta).
+const MATURIDADE_DIAS = 21;
+const TAXA_ACERTO_FACIL = 0.75;
+const TAXA_ACERTO_MEDIA = 0.4;
 
-  if (Estado.token) opts.headers['Authorization'] = `Bearer ${Estado.token}`;
-  if (body !== undefined) {
-    opts.headers['Content-Type'] = 'application/json';
-    opts.body = JSON.stringify(body);
-  }
+function dificuldadePessoal(estatica, vezesRespondida, vezesAcertada, ultimaCorreta) {
+  if (!vezesRespondida) return estatica;
+  if (ultimaCorreta === false) return 'Difícil';
+  const taxa = vezesAcertada / vezesRespondida;
+  if (taxa >= TAXA_ACERTO_FACIL) return 'Fácil';
+  if (taxa >= TAXA_ACERTO_MEDIA) return 'Média';
+  return 'Difícil';
+}
 
-  const resposta = await fetch(path, opts);
+// Converte a linha aninhada do PostgREST para o formato que a UI consome.
+function normalizarPergunta(linha) {
+  const rev = Array.isArray(linha.revisoes_perguntas)
+    ? linha.revisoes_perguntas[0]
+    : linha.revisoes_perguntas;
 
-  if (resposta.status === 401) {
-    definirToken(null);
-    mostrarTelaAuth();
-    throw new Error('Sessão expirada. Faça login novamente.');
-  }
+  const opcoes = (linha.opcoes || []).slice().sort((a, b) => a.ordem - b.ordem);
+  const vezesRespondida = rev?.vezes_respondida ?? 0;
+  const vezesAcertada = rev?.vezes_acertada ?? 0;
 
-  if (!resposta.ok) {
-    let mensagem = `Erro ${resposta.status}`;
-    try {
-      const corpo = await resposta.json();
-      mensagem = corpo.detail || mensagem;
-    } catch (_) { /* corpo não era JSON */ }
-    throw new Error(mensagem);
-  }
+  return {
+    id: linha.id,
+    enunciado: linha.enunciado,
+    dificuldade: linha.dificuldade,
+    origem: linha.origem,
+    opcoes,
+    vezes_respondida: vezesRespondida,
+    vezes_acertada: vezesAcertada,
+    madura: (rev?.intervalo_dias ?? 0) >= MATURIDADE_DIAS,
+    dificuldade_pessoal: dificuldadePessoal(
+      linha.dificuldade, vezesRespondida, vezesAcertada,
+      rev?.ultima_resposta_correta ?? null,
+    ),
+    proxima_revisao_em: rev?.proxima_revisao_em ?? null,
+  };
+}
 
-  if (resposta.status === 204) return null;
-  return resposta.json();
+const SELECT_PERGUNTA = `
+  id, enunciado, dificuldade, origem, created_at,
+  opcoes ( texto, correta, ordem ),
+  revisoes_perguntas ( vezes_respondida, vezes_acertada, ultima_resposta_correta,
+                       intervalo_dias, proxima_revisao_em ),
+  subdivisoes!inner ( materia_id )
+`;
+
+async function buscarPerguntasDaMateria(materiaId) {
+  const { data, error } = await sb
+    .from('perguntas')
+    .select(SELECT_PERGUNTA)
+    .eq('subdivisoes.materia_id', materiaId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data.map(normalizarPergunta);
+}
+
+async function garantirSubdivisao(materiaId, nome) {
+  const nomeLimpo = (nome || 'Geral').trim() || 'Geral';
+
+  const { data: existente, error: erroBusca } = await sb
+    .from('subdivisoes')
+    .select('id')
+    .eq('materia_id', materiaId)
+    .eq('nome', nomeLimpo)
+    .maybeSingle();
+
+  if (erroBusca) throw new Error(erroBusca.message);
+  if (existente) return existente.id;
+
+  const { data: criada, error: erroInsert } = await sb
+    .from('subdivisoes')
+    .insert({ materia_id: materiaId, nome: nomeLimpo })
+    .select('id')
+    .single();
+
+  if (erroInsert) throw new Error(erroInsert.message);
+  return criada.id;
+}
+
+// Mensagem de erro amigável para invocações de Edge Function.
+async function mensagemErroFuncao(error) {
+  try {
+    const corpo = await error.context.json();
+    if (corpo?.erro) return corpo.erro;
+  } catch (_) { /* resposta sem JSON */ }
+  return 'Falha ao chamar a IA. Tente novamente.';
 }
 
 // --- navegação entre panels (SPA sem router) ---
@@ -96,8 +155,6 @@ document.querySelectorAll('.modal-overlay').forEach((m) => {
 });
 
 // --- renderização compartilhada de uma pergunta em modo quiz ---
-// `pergunta.opcoes` já vem com `correta` (mesma decisão de paridade com o
-// app antigo: quem responde vê o feedback certo/errado imediatamente).
 const LETRAS = 'ABCDEFGH';
 
 function renderPerguntaQuizHTML(pergunta, chave) {
@@ -141,17 +198,7 @@ function wirePerguntaQuiz(pergunta, chave, aoResponder) {
   });
 }
 
-// --- escape para innerHTML ---
-function esc(s) {
-  if (s == null) return '';
-  return String(s).replace(/[&<>"']/g, (m) => (
-    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]
-  ));
-}
-
 // --- tema claro/escuro ---
-// Sem escolha salva, o app segue o sistema; a partir do primeiro clique no
-// botão sol/lua a escolha fica em localStorage e passa a valer sempre.
 function temaEfetivo() {
   const manual = document.documentElement.dataset.theme;
   if (manual) return manual;
@@ -186,6 +233,14 @@ document.querySelectorAll('.tema-toggle').forEach((btn) => {
 });
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', atualizarIconesTema);
 aplicarTemaSalvo();
+
+// --- escape para innerHTML (obrigatório em todo dado dinâmico) ---
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, (m) => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]
+  ));
+}
 
 function mostrarTelaAuth() {
   document.getElementById('auth-screen').style.display = 'flex';

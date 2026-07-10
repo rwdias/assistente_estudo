@@ -1,5 +1,13 @@
 let extracaoPendente = [];
 
+// Porta de validar_pergunta_json: >=2 opções, exatamente 1 correta,
+// todos os textos preenchidos.
+function perguntaValida(p) {
+  if (!p.enunciado?.trim() || !Array.isArray(p.opcoes) || p.opcoes.length < 2) return false;
+  if (p.opcoes.filter((o) => o.correta === true).length !== 1) return false;
+  return p.opcoes.every((o) => o.texto?.trim());
+}
+
 document.getElementById('ia-extrair-btn').addEventListener('click', async () => {
   if (!Estado.materiaId) {
     toast('Crie ou selecione uma matéria primeiro.', 'error');
@@ -8,6 +16,7 @@ document.getElementById('ia-extrair-btn').addEventListener('click', async () => 
 
   const modelo = document.getElementById('ia-modelo').value;
   const texto = document.getElementById('ia-texto').value.trim();
+  const materia = Estado.materias.find((m) => m.id === Estado.materiaId);
 
   if (!texto) {
     toast('Cole algum texto primeiro.', 'error');
@@ -18,21 +27,26 @@ document.getElementById('ia-extrair-btn').addEventListener('click', async () => 
   btn.disabled = true;
   btn.textContent = `Consultando ${modelo}...`;
 
-  try {
-    extracaoPendente = await api('POST', '/api/ia/extrair', {
-      materia_id: Estado.materiaId,
+  const { data, error } = await sb.functions.invoke('extrair', {
+    body: {
       modelo,
       texto,
+      assunto: materia?.nome ?? 'Estudo',
       dificuldade_padrao: 'Média',
-    });
-    renderIaPreview();
-    toast(`${extracaoPendente.length} pergunta(s) extraída(s).`);
-  } catch (erro) {
-    toast(erro.message, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Extrair perguntas';
+    },
+  });
+
+  btn.disabled = false;
+  btn.textContent = '✨ Extrair perguntas';
+
+  if (error) {
+    toast(await mensagemErroFuncao(error), 'error');
+    return;
   }
+
+  extracaoPendente = data.perguntas ?? [];
+  renderIaPreview();
+  toast(`${extracaoPendente.length} pergunta(s) extraída(s).`);
 });
 
 function renderIaPreview() {
@@ -44,7 +58,7 @@ function renderIaPreview() {
   }
 
   container.innerHTML = `
-    <h2>Revise antes de salvar</h2>
+    <h2 class="secao-titulo">Revise antes de salvar</h2>
     ${extracaoPendente.map((p, i) => renderIaItemHTML(p, i)).join('')}
     <button type="button" class="btn btn-primary" id="ia-salvar-btn">Salvar perguntas selecionadas</button>
   `;
@@ -88,41 +102,73 @@ function renderIaItemHTML(pergunta, indice) {
 
 async function salvarExtracao() {
   const cards = document.querySelectorAll('#ia-preview .pergunta-card');
-  const perguntas = [];
+  const selecionadas = [];
 
   cards.forEach((card) => {
-    const incluir = card.querySelector('.ia-incluir').checked;
-    if (!incluir) return;
+    if (!card.querySelector('.ia-incluir').checked) return;
 
-    const enunciado = card.querySelector('.ia-enunciado').value.trim();
-    const dificuldade = card.querySelector('.ia-dificuldade').value;
-    const topico = card.querySelector('.ia-topico').value.trim() || null;
     const textos = Array.from(card.querySelectorAll('.ia-opcao-texto')).map((i) => i.value.trim());
     const indiceCorreto = Number(card.querySelector('.ia-correta-radio:checked')?.value ?? 0);
 
-    perguntas.push({
-      enunciado,
-      dificuldade,
-      topico,
+    selecionadas.push({
+      enunciado: card.querySelector('.ia-enunciado').value.trim(),
+      dificuldade: card.querySelector('.ia-dificuldade').value,
+      topico: card.querySelector('.ia-topico').value.trim() || null,
       opcoes: textos.map((texto, j) => ({ texto, correta: j === indiceCorreto })),
     });
   });
 
-  if (perguntas.length === 0) {
+  if (selecionadas.length === 0) {
     toast('Nenhuma pergunta selecionada.', 'error');
     return;
   }
 
+  let existentes;
   try {
-    const resultado = await api('POST', '/api/ia/salvar', {
-      materia_id: Estado.materiaId,
-      perguntas,
-    });
-    toast(`Salvas: ${resultado.salvas} · Duplicadas: ${resultado.duplicadas} · Inválidas: ${resultado.invalidas}`);
-    extracaoPendente = [];
-    document.getElementById('ia-preview').innerHTML = '';
-    document.getElementById('ia-texto').value = '';
+    existentes = new Set(
+      (await buscarPerguntasDaMateria(Estado.materiaId)).map((p) =>
+        p.enunciado.trim().toLowerCase()
+      )
+    );
   } catch (erro) {
     toast(erro.message, 'error');
+    return;
   }
+
+  let salvas = 0;
+  let duplicadas = 0;
+  let invalidas = 0;
+
+  for (const pergunta of selecionadas) {
+    if (!perguntaValida(pergunta)) {
+      invalidas += 1;
+      continue;
+    }
+
+    const normalizado = pergunta.enunciado.trim().toLowerCase();
+    if (existentes.has(normalizado)) {
+      duplicadas += 1;
+      continue;
+    }
+
+    try {
+      await inserirPergunta(Estado.materiaId, {
+        enunciado: pergunta.enunciado,
+        dificuldade: pergunta.dificuldade,
+        origem: 'llm',
+        topico: pergunta.topico,
+        opcoes: pergunta.opcoes,
+      });
+      salvas += 1;
+      existentes.add(normalizado);
+    } catch (erro) {
+      toast(erro.message, 'error');
+      break;
+    }
+  }
+
+  toast(`Salvas: ${salvas} · Duplicadas: ${duplicadas} · Inválidas: ${invalidas}`);
+  extracaoPendente = [];
+  document.getElementById('ia-preview').innerHTML = '';
+  document.getElementById('ia-texto').value = '';
 }

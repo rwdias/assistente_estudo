@@ -3,6 +3,10 @@ let revisaoIndice = 0;
 let revisaoAcertos = 0;
 let revisaoErros = 0;
 
+// Cache por dia da versão reformulada (mesma semântica do backend antigo):
+// evita gastar quota re-reformulando a mesma pergunta em reloads.
+const cacheReformulacao = {};
+
 async function carregarRevisao() {
   const resumo = document.getElementById('revisao-resumo');
   const atual = document.getElementById('revisao-atual');
@@ -15,12 +19,22 @@ async function carregarRevisao() {
 
   atual.innerHTML = '<p>Carregando...</p>';
 
+  let perguntas;
   try {
-    revisaoFila = await api('GET', `/api/materias/${Estado.materiaId}/revisao`);
+    perguntas = await buscarPerguntasDaMateria(Estado.materiaId);
   } catch (erro) {
     toast(erro.message, 'error');
     return;
   }
+
+  const agora = new Date();
+  revisaoFila = perguntas
+    .filter((p) => p.proxima_revisao_em === null || new Date(p.proxima_revisao_em) <= agora)
+    .sort((a, b) => {
+      if (a.proxima_revisao_em === null) return -1;
+      if (b.proxima_revisao_em === null) return 1;
+      return new Date(a.proxima_revisao_em) - new Date(b.proxima_revisao_em);
+    });
 
   revisaoIndice = 0;
   revisaoAcertos = 0;
@@ -97,11 +111,11 @@ function renderPerguntaRevisao(pergunta) {
     renderResumoRevisao();
     document.getElementById('revisao-proxima-btn').style.display = 'inline-flex';
 
-    try {
-      await api('POST', `/api/perguntas/${pergunta.id}/responder`, { correta });
-    } catch (erro) {
-      toast(erro.message, 'error');
-    }
+    const { error } = await sb.rpc('registrar_resposta', {
+      p_pergunta_id: pergunta.id,
+      p_correta: correta,
+    });
+    if (error) toast(error.message, 'error');
   });
 
   document.getElementById('revisao-proxima-btn').addEventListener('click', () => {
@@ -114,22 +128,42 @@ async function reformularAtual() {
   const pergunta = revisaoFila[revisaoIndice];
   const modelo = document.getElementById('revisao-reformular-modelo').value;
   const btn = document.getElementById('revisao-reformular-btn');
+  const chaveCache = `${pergunta.id}-${new Date().toISOString().slice(0, 10)}`;
 
-  btn.disabled = true;
-  btn.textContent = `Consultando ${modelo}...`;
+  let reformulada = cacheReformulacao[chaveCache];
 
-  try {
-    const reformulada = await api('POST', `/api/revisao/${pergunta.id}/reformular`, { modelo });
-    renderPerguntaRevisao({
-      id: reformulada.pergunta_id,
-      enunciado: reformulada.enunciado,
-      opcoes: reformulada.opcoes,
+  if (!reformulada) {
+    btn.disabled = true;
+    btn.textContent = `Consultando ${modelo}...`;
+
+    const { data, error } = await sb.functions.invoke('reformular', {
+      body: {
+        modelo,
+        pergunta: {
+          enunciado: pergunta.enunciado,
+          dificuldade: pergunta.dificuldade,
+          opcoes: pergunta.opcoes.map((o) => ({ texto: o.texto, correta: o.correta })),
+          topico: null,
+        },
+      },
     });
-    toast('Pergunta reformulada pela IA.');
-  } catch (erro) {
-    toast(erro.message, 'error');
-  } finally {
+
     btn.disabled = false;
     btn.textContent = 'Reformular com IA';
+
+    if (error) {
+      toast(await mensagemErroFuncao(error), 'error');
+      return;
+    }
+
+    reformulada = data;
+    cacheReformulacao[chaveCache] = reformulada;
   }
+
+  renderPerguntaRevisao({
+    id: pergunta.id,
+    enunciado: reformulada.enunciado,
+    opcoes: reformulada.opcoes,
+  });
+  toast('Pergunta reformulada pela IA.');
 }

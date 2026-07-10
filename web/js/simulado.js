@@ -10,23 +10,27 @@ async function iniciarSimulado() {
   }
 
   const dificuldade = document.getElementById('simulado-dificuldade').value;
-  const quantidade = document.getElementById('simulado-quantidade').value;
+  const quantidade = Number(document.getElementById('simulado-quantidade').value) || 5;
   const embaralhar = document.getElementById('simulado-embaralhar').checked;
 
-  const params = new URLSearchParams();
-  if (dificuldade) params.set('dificuldade', dificuldade);
-  if (quantidade) params.set('quantidade', quantidade);
-  params.set('embaralhar', embaralhar);
-
+  let perguntas;
   try {
-    simuladoQuestions = await api(
-      'GET',
-      `/api/materias/${Estado.materiaId}/simulado?${params.toString()}`
-    );
+    perguntas = await buscarPerguntasDaMateria(Estado.materiaId);
   } catch (erro) {
     toast(erro.message, 'error');
     return;
   }
+
+  if (dificuldade) perguntas = perguntas.filter((p) => p.dificuldade === dificuldade);
+
+  if (embaralhar) {
+    for (let i = perguntas.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [perguntas[i], perguntas[j]] = [perguntas[j], perguntas[i]];
+    }
+  }
+
+  simuladoQuestions = perguntas.slice(0, quantidade);
 
   if (simuladoQuestions.length === 0) {
     toast('Nenhuma pergunta encontrada com esses filtros.', 'error');
@@ -63,11 +67,11 @@ function renderSimulado() {
       if (correta) simuladoAcertos += 1;
       atualizarPlacarSimulado();
 
-      try {
-        await api('POST', `/api/perguntas/${pergunta.id}/responder`, { correta });
-      } catch (erro) {
-        toast(erro.message, 'error');
-      }
+      const { error } = await sb.rpc('registrar_resposta', {
+        p_pergunta_id: pergunta.id,
+        p_correta: correta,
+      });
+      if (error) toast(error.message, 'error');
     });
   });
 

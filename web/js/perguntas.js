@@ -30,6 +30,42 @@ function resetarFormPergunta() {
   renderOpcoesForm();
 }
 
+// Insere pergunta + opções + linha de revisão. A primeira opção é a correta
+// quando `indiceCorreto` não é informado.
+async function inserirPergunta(materiaId, dados) {
+  const subdivisaoId = await garantirSubdivisao(materiaId, dados.topico || 'Geral');
+
+  const { data: pergunta, error: erroPergunta } = await sb
+    .from('perguntas')
+    .insert({
+      subdivisao_id: subdivisaoId,
+      enunciado: dados.enunciado,
+      dificuldade: dados.dificuldade,
+      origem: dados.origem,
+    })
+    .select('id')
+    .single();
+
+  if (erroPergunta) throw new Error(erroPergunta.message);
+
+  const { error: erroOpcoes } = await sb.from('opcoes').insert(
+    dados.opcoes.map((o, i) => ({
+      pergunta_id: pergunta.id,
+      texto: o.texto,
+      correta: o.correta,
+      ordem: i + 1,
+    }))
+  );
+  if (erroOpcoes) throw new Error(erroOpcoes.message);
+
+  const { error: erroRevisao } = await sb
+    .from('revisoes_perguntas')
+    .insert({ pergunta_id: pergunta.id });
+  if (erroRevisao) throw new Error(erroRevisao.message);
+
+  return pergunta.id;
+}
+
 document.getElementById('form-nova-pergunta').addEventListener('submit', async (e) => {
   e.preventDefault();
 
@@ -40,17 +76,22 @@ document.getElementById('form-nova-pergunta').addEventListener('submit', async (
 
   const enunciado = document.getElementById('pergunta-enunciado').value.trim();
   const dificuldade = document.getElementById('pergunta-dificuldade').value;
-  const opcoes = Array.from(document.querySelectorAll('#pergunta-opcoes-container .opcao-input'))
+  const textos = Array.from(document.querySelectorAll('#pergunta-opcoes-container .opcao-input'))
     .map((i) => i.value.trim())
     .filter(Boolean);
 
-  if (opcoes.length < 2) {
+  if (textos.length < 2) {
     toast('Preencha pelo menos duas alternativas.', 'error');
     return;
   }
 
   try {
-    await api('POST', `/api/materias/${Estado.materiaId}/perguntas`, { enunciado, dificuldade, opcoes });
+    await inserirPergunta(Estado.materiaId, {
+      enunciado,
+      dificuldade,
+      origem: 'manual',
+      opcoes: textos.map((texto, i) => ({ texto, correta: i === 0 })),
+    });
     toast('Pergunta adicionada.');
     resetarFormPergunta();
     carregarPerguntas();
@@ -70,7 +111,15 @@ async function carregarPerguntas() {
   }
 
   lista.innerHTML = '<p>Carregando...</p>';
-  const perguntas = await api('GET', `/api/materias/${Estado.materiaId}/perguntas`);
+
+  let perguntas;
+  try {
+    perguntas = await buscarPerguntasDaMateria(Estado.materiaId);
+  } catch (erro) {
+    lista.innerHTML = '';
+    toast(erro.message, 'error');
+    return;
+  }
 
   if (perguntas.length === 0) {
     lista.innerHTML = '<p>Nenhuma pergunta cadastrada ainda.</p>';
@@ -113,16 +162,16 @@ async function carregarPerguntas() {
 document.getElementById('modal-delete-confirm').addEventListener('click', async () => {
   if (perguntaParaRemover == null) return;
 
-  try {
-    await api('DELETE', `/api/perguntas/${perguntaParaRemover}`);
+  const { error } = await sb.from('perguntas').delete().eq('id', perguntaParaRemover);
+
+  if (error) {
+    toast(error.message, 'error');
+  } else {
     closeModal('modal-delete');
     toast('Pergunta removida.');
     carregarPerguntas();
-  } catch (erro) {
-    toast(erro.message, 'error');
-  } finally {
-    perguntaParaRemover = null;
   }
+  perguntaParaRemover = null;
 });
 
 resetarFormPergunta();
