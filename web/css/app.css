@@ -711,3 +711,10 @@ textarea { resize: vertical; }
 .auth-switch a { color: var(--brand-ink); }
 
 .modal-sub { font-size: .88rem; color: var(--texto-2); margin: -6px 0 4px; }
+
+.ld-credito { display: block; margin-top: 6px; }
+.ld-credito a {
+  color: var(--brand-ink); font-weight: 700; text-decoration: none;
+  font-family: 'Pixelify Sans', sans-serif;
+}
+.ld-credito a:hover { text-decoration: underline; }
