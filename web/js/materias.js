@@ -74,7 +74,8 @@ async function carregarDashboard() {
 
   const totalPerguntas = Estado.materias.reduce((s, m) => s + Number(m.total_perguntas), 0);
   const totalFlashcards = Estado.materias.reduce((s, m) => s + Number(m.total_flashcards || 0), 0);
-  const totalDevidas = Estado.materias.reduce((s, m) => s + Number(m.devidas_revisao), 0);
+  const totalAprender = Estado.materias.reduce((s, m) => s + Number(m.a_aprender || 0), 0);
+  const totalRevisar = Estado.materias.reduce((s, m) => s + Number(m.a_revisar || 0), 0);
 
   resumo.innerHTML = `
     <div class="stat-card">
@@ -90,8 +91,12 @@ async function carregarDashboard() {
       <div class="stat-rotulo">flashcard${totalFlashcards === 1 ? '' : 's'}</div>
     </div>
     <div class="stat-card">
-      <div class="stat-valor ${totalDevidas > 0 ? 'alerta' : ''}">${totalDevidas}</div>
-      <div class="stat-rotulo">para revisar hoje</div>
+      <div class="stat-valor brand">${totalAprender}</div>
+      <div class="stat-rotulo">a aprender</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-valor ${totalRevisar > 0 ? 'alerta' : ''}">${totalRevisar}</div>
+      <div class="stat-rotulo">a revisar</div>
     </div>
   `;
 
@@ -105,18 +110,20 @@ async function carregarDashboard() {
   }
 
   container.innerHTML = Estado.materias
-    .map(
-      (m) => `
+    .map((m) => {
+      const pendentes = Number(m.a_aprender || 0) + Number(m.a_revisar || 0);
+      return `
       <div class="card-materia" data-id="${m.id}">
-        ${Number(m.devidas_revisao) > 0 ? `<span class="badge badge-amber badge-devidas">${m.devidas_revisao} devida${Number(m.devidas_revisao) === 1 ? '' : 's'}</span>` : ''}
+        ${pendentes > 0 ? `<span class="badge badge-amber badge-devidas">${pendentes} pendente${pendentes === 1 ? '' : 's'}</span>` : ''}
         <div class="nome">${esc(m.nome)}</div>
         <div class="metricas">
           <span><b>${m.total_perguntas}</b> pergunta${Number(m.total_perguntas) === 1 ? '' : 's'}</span>
           <span><b>${m.total_flashcards || 0}</b> flashcard${Number(m.total_flashcards) === 1 ? '' : 's'}</span>
-          <span><b>${m.devidas_revisao}</b> a revisar</span>
+          <span><b>${m.a_aprender || 0}</b> a aprender</span>
+          <span><b>${m.a_revisar || 0}</b> a revisar</span>
         </div>
-      </div>`
-    )
+      </div>`;
+    })
     .join('');
 
   container.querySelectorAll('.card-materia').forEach((card) => {

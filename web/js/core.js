@@ -129,10 +129,10 @@ async function mensagemErroFuncao(error) {
 
 // --- navegação entre panels (SPA sem router) ---
 const panelMeta = {
+  revisao: { titulo: 'Aprendizado', sub: 'Aprenda o que é novo e revise o que está devido — repetição espaçada' },
   dashboard: { titulo: 'Início', sub: 'Visão geral do seu estudo' },
   simulado: { titulo: 'Simulado', sub: 'Pratique com as perguntas da matéria atual' },
   perguntas: { titulo: 'Perguntas', sub: 'Cadastre e gerencie o banco de questões' },
-  revisao: { titulo: 'Revisão', sub: 'Repetição espaçada — responda o que está devido hoje' },
   ia: { titulo: 'Adicionar via IA', sub: 'Cole questões e deixe a IA estruturar tudo' },
 };
 

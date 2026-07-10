@@ -37,11 +37,16 @@ async function carregarRevisao() {
     return;
   }
 
+  // Estilo Anki: itens nunca respondidos são "a aprender" (novos) e vêm
+  // primeiro; os já respondidos e vencidos são "a revisar". Ambos passam
+  // pelo mesmo SM-2 ao serem respondidos.
   const agora = new Date();
   revisaoFila = perguntas
     .filter((p) => filtroRevisao === 'tudo' || p.tipo === filtroRevisao)
     .filter((p) => p.proxima_revisao_em === null || new Date(p.proxima_revisao_em) <= agora)
+    .map((p) => ({ ...p, novo: p.vezes_respondida === 0 }))
     .sort((a, b) => {
+      if (a.novo !== b.novo) return a.novo ? -1 : 1;
       if (a.proxima_revisao_em === null) return -1;
       if (b.proxima_revisao_em === null) return 1;
       return new Date(a.proxima_revisao_em) - new Date(b.proxima_revisao_em);
@@ -54,10 +59,18 @@ async function carregarRevisao() {
 }
 
 function renderResumoRevisao() {
+  const restantes = revisaoFila.slice(revisaoIndice);
+  const aAprender = restantes.filter((p) => p.novo).length;
+  const aRevisar = restantes.length - aAprender;
+
   document.getElementById('revisao-resumo').innerHTML = `
     <div class="stat-card">
-      <div class="stat-valor brand">${Math.max(revisaoFila.length - revisaoIndice, 0)}</div>
-      <div class="stat-rotulo">restantes</div>
+      <div class="stat-valor brand">${aAprender}</div>
+      <div class="stat-rotulo">a aprender</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-valor ${aRevisar > 0 ? 'alerta' : ''}">${aRevisar}</div>
+      <div class="stat-rotulo">a revisar</div>
     </div>
     <div class="stat-card">
       <div class="stat-valor">${revisaoAcertos}</div>
@@ -77,8 +90,8 @@ function renderRevisaoAtual() {
   if (revisaoIndice >= revisaoFila.length) {
     container.innerHTML =
       revisaoFila.length === 0
-        ? '<p>Nenhuma pergunta devida para revisão agora. 🎉</p>'
-        : '<p>Revisão concluída por agora. 🎉</p>';
+        ? '<p>Nada para aprender ou revisar agora. 🎉</p>'
+        : '<p>Sessão de aprendizado concluída. 🎉</p>';
     return;
   }
 
@@ -86,6 +99,11 @@ function renderRevisaoAtual() {
   const podeReformular = pergunta.madura && pergunta.tipo !== 'flashcard';
 
   container.innerHTML = `
+    <div style="margin-bottom:10px">
+      ${pergunta.novo
+        ? '<span class="badge badge-blue">🆕 a aprender</span>'
+        : '<span class="badge badge-amber">🔄 revisão</span>'}
+    </div>
     ${
       podeReformular
         ? `<div class="card" style="padding:14px 18px">

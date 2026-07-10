@@ -11,7 +11,8 @@ async function iniciarApp() {
   document.getElementById('sb-avatar').textContent = email[0] || '?';
 
   mostrarApp();
-  goPanel('dashboard');
+  await carregarMaterias();
+  goPanel('revisao');
 }
 
 iniciarApp();
