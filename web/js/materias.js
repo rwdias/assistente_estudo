@@ -144,8 +144,10 @@ async function carregarDashboard() {
   if (Estado.materias.length === 0) {
     container.innerHTML = `
       <div class="empty-state" style="grid-column: 1 / -1">
-        <div class="icone">🐭</div>
-        Nenhuma matéria ainda.<br />Crie a primeira pelo botão "+" na barra lateral.
+        <div class="icone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:42px;height:42px"><circle cx="7" cy="6.5" r="2.6"/><circle cx="17" cy="6.5" r="2.6"/><circle cx="12" cy="13.5" r="7"/><circle cx="9.5" cy="12.5" r=".6" fill="currentColor" stroke="none"/><circle cx="14.5" cy="12.5" r=".6" fill="currentColor" stroke="none"/><path d="M10.7 16h2.6"/></svg>
+        </div>
+        Nenhuma matéria ainda.<br />Crie a primeira pelo seletor de matéria no topo.
       </div>`;
     return;
   }
@@ -154,14 +156,20 @@ async function carregarDashboard() {
     .map((m) => {
       const pendentes = Number(m.a_aprender || 0) + Number(m.a_revisar || 0);
       return `
-      <div class="card-materia" data-id="${m.id}">
-        ${pendentes > 0 ? `<span class="badge badge-amber badge-devidas">${pendentes} pendente${pendentes === 1 ? '' : 's'}</span>` : ''}
+      <div class="card-materia" data-id="${m.id}" title="Abrir aprendizado de ${esc(m.nome)}">
+        <div class="card-materia-acoes">
+          <button type="button" class="card-acao-btn acao-adicionar" data-id="${m.id}" title="Adicionar perguntas/flashcards">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button type="button" class="card-acao-btn acao-config" data-id="${m.id}" title="Configurações da matéria">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+          </button>
+        </div>
         <div class="nome">${esc(m.nome)}</div>
         <div class="metricas">
           <span><b>${m.total_perguntas}</b> pergunta${Number(m.total_perguntas) === 1 ? '' : 's'}</span>
           <span><b>${m.total_flashcards || 0}</b> flashcard${Number(m.total_flashcards) === 1 ? '' : 's'}</span>
-          <span><b>${m.a_aprender || 0}</b> a aprender</span>
-          <span><b>${m.a_revisar || 0}</b> a revisar</span>
+          ${pendentes > 0 ? `<span class="badge badge-amber">${pendentes} pendente${pendentes === 1 ? '' : 's'}</span>` : ''}
         </div>
       </div>`;
     })
@@ -171,7 +179,27 @@ async function carregarDashboard() {
     card.addEventListener('click', () => {
       definirMateriaAtual(Number(card.dataset.id));
       renderMateriaDropdown();
+      goPanel('revisao');
+    });
+  });
+
+  container.querySelectorAll('.acao-adicionar').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      definirMateriaAtual(Number(btn.dataset.id));
+      renderMateriaDropdown();
       goPanel('perguntas');
+      abrirAbaManual('pergunta');
+    });
+  });
+
+  container.querySelectorAll('.acao-config').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      definirMateriaAtual(Number(btn.dataset.id));
+      renderMateriaDropdown();
+      goPanel('perguntas');
+      abrirAbaManual('config');
     });
   });
 }

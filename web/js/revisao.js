@@ -96,20 +96,26 @@ function renderRevisaoAtual() {
   renderResumoRevisao();
   const container = document.getElementById('revisao-atual');
 
+  const ICONE_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.1V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+
   if (revisaoIndice >= revisaoFila.length) {
     container.innerHTML =
       revisaoFila.length === 0
-        ? '<p>Nada para aprender ou revisar agora. 🎉</p>'
-        : '<p>Sessão de aprendizado concluída. 🎉</p>';
+        ? `<p class="fim-sessao">${ICONE_OK} Nada para aprender ou revisar agora.</p>`
+        : `<p class="fim-sessao">${ICONE_OK} Sessão de aprendizado concluída.</p>`;
     return;
   }
 
   const pergunta = revisaoFila[revisaoIndice];
   const podeReformular = pergunta.madura && pergunta.tipo !== 'flashcard';
 
-  let badgeEstado = '<span class="badge badge-amber">🔄 revisão</span>';
-  if (pergunta.reaprendendo) badgeEstado = '<span class="badge badge-red">🔁 reaprendendo</span>';
-  else if (pergunta.novo) badgeEstado = '<span class="badge badge-blue">🆕 a aprender</span>';
+  const ICONE_REVISAO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>';
+  const ICONE_REAPRENDER = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.85 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>';
+  const ICONE_NOVO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>';
+
+  let badgeEstado = `<span class="badge badge-amber">${ICONE_REVISAO} revisão</span>`;
+  if (pergunta.reaprendendo) badgeEstado = `<span class="badge badge-red">${ICONE_REAPRENDER} reaprendendo</span>`;
+  else if (pergunta.novo) badgeEstado = `<span class="badge badge-blue">${ICONE_NOVO} a aprender</span>`;
 
   container.innerHTML = `
     <div style="margin-bottom:10px">${badgeEstado}</div>
@@ -149,15 +155,24 @@ function renderFlashcardRevisao(card) {
 
   container.innerHTML = `
     <div class="question-card">
-      <span class="fc-rotulo">🃏 Flashcard</span>
+      <span class="fc-rotulo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7.5 7V6a2 2 0 0 1 2-2H19a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-1"/></svg>
+        Flashcard
+      </span>
       <div class="question-title">${esc(card.enunciado)}</div>
       <div class="fc-verso" id="fc-verso-revisao" style="display:none">${esc(card.verso || '')}</div>
       <div class="fc-acoes">
         <button type="button" class="btn btn-primary" id="fc-mostrar-btn">Mostrar resposta</button>
       </div>
       <div class="fc-acoes" id="fc-avaliacao" style="display:none">
-        <button type="button" class="btn btn-danger" id="fc-errei-btn">✘ Errei</button>
-        <button type="button" class="btn btn-primary" id="fc-acertei-btn">✔ Acertei</button>
+        <button type="button" class="btn btn-danger" id="fc-errei-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
+          Errei
+        </button>
+        <button type="button" class="btn btn-primary" id="fc-acertei-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg>
+          Acertei
+        </button>
       </div>
     </div>
     <button type="button" class="btn btn-primary" id="revisao-proxima-btn" style="display:none">Próxima pergunta</button>

@@ -1,16 +1,18 @@
 const MAX_OPCOES = 6;
 
 // --- alternância pergunta/flashcard/configurações no cadastro manual ---
+function abrirAbaManual(tipo) {
+  document.querySelectorAll('#tipo-toggle-manual button').forEach((b) =>
+    b.classList.toggle('ativo', b.dataset.tipo === tipo)
+  );
+  document.getElementById('card-nova-pergunta').style.display = tipo === 'pergunta' ? 'block' : 'none';
+  document.getElementById('card-novo-flashcard').style.display = tipo === 'flashcard' ? 'block' : 'none';
+  document.getElementById('card-config-materia').style.display = tipo === 'config' ? 'block' : 'none';
+  if (tipo === 'config') carregarConfigMateria();
+}
+
 document.querySelectorAll('#tipo-toggle-manual button').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#tipo-toggle-manual button').forEach((b) => b.classList.remove('ativo'));
-    btn.classList.add('ativo');
-    const tipo = btn.dataset.tipo;
-    document.getElementById('card-nova-pergunta').style.display = tipo === 'pergunta' ? 'block' : 'none';
-    document.getElementById('card-novo-flashcard').style.display = tipo === 'flashcard' ? 'block' : 'none';
-    document.getElementById('card-config-materia').style.display = tipo === 'config' ? 'block' : 'none';
-    if (tipo === 'config') carregarConfigMateria();
-  });
+  btn.addEventListener('click', () => abrirAbaManual(btn.dataset.tipo));
 });
 
 // --- tópicos nos selects dos formulários ---
@@ -296,7 +298,9 @@ async function carregarPerguntas() {
       <div class="pergunta-card">
         <div class="pergunta-enunciado">${esc(p.enunciado)}</div>
         <div class="pergunta-meta">
-          ${p.tipo === 'flashcard' ? '<span class="badge badge-blue">🃏 flashcard</span>' : ''}
+          ${p.tipo === 'flashcard'
+            ? '<span class="badge badge-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7.5 7V6a2 2 0 0 1 2-2H19a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-1"/></svg>flashcard</span>'
+            : ''}
           ${p.topico ? `<span class="badge badge-amber">${esc(p.topico)}</span>` : ''}
           <span>${p.vezes_acertada}/${p.vezes_respondida} acertos</span>
           ${p.madura ? '<span class="badge badge-green">dominada</span>' : ''}

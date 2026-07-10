@@ -76,7 +76,7 @@ document.getElementById('salvar-contexto-btn').addEventListener('click', async (
     return;
   }
 
-  document.getElementById('contexto-status').textContent = 'Contexto salvo ✔';
+  document.getElementById('contexto-status').textContent = 'Contexto salvo.';
   toast('Contexto da matéria salvo.');
 });
 
@@ -98,6 +98,7 @@ document.getElementById('ia-extrair-btn').addEventListener('click', async () => 
   }
 
   const btn = document.getElementById('ia-extrair-btn');
+  const conteudoOriginal = btn.innerHTML;
   btn.disabled = true;
   btn.textContent = `Consultando ${modelo}...`;
 
@@ -115,7 +116,7 @@ document.getElementById('ia-extrair-btn').addEventListener('click', async () => 
   const { data, error } = await sb.functions.invoke('extrair', { body: corpo });
 
   btn.disabled = false;
-  btn.textContent = '✨ Extrair';
+  btn.innerHTML = conteudoOriginal;
 
   if (error) {
     toast(await mensagemErroFuncao(error), 'error');

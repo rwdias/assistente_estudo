@@ -151,9 +151,10 @@ textarea { resize: vertical; }
 .auth-logo { display: flex; align-items: center; gap: 13px; margin-bottom: 26px; }
 .auth-logo-icone {
   width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
-  font-size: 1.5rem; background: linear-gradient(135deg, var(--brand), var(--brand-dark));
+  color: white; background: linear-gradient(135deg, var(--brand), var(--brand-dark));
   box-shadow: 0 4px 14px color-mix(in srgb, var(--brand) 40%, transparent);
 }
+.auth-logo-icone svg { width: 28px; height: 28px; }
 .auth-logo-nome { font-weight: 800; font-size: 1.05rem; line-height: 1.2; }
 .auth-logo-sub { font-size: .78rem; color: var(--texto-3); margin-top: 2px; }
 .auth-card h2 { font-size: 1.25rem; margin-bottom: 4px; }
@@ -200,8 +201,9 @@ textarea { resize: vertical; }
 .sb-logo { display: flex; align-items: center; gap: 11px; padding: 20px 16px 16px; }
 .sb-logo-icone {
   width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
-  font-size: 1.15rem; background: rgba(255,255,255,.12); flex-shrink: 0;
+  color: white; background: rgba(255,255,255,.12); flex-shrink: 0;
 }
+.sb-logo-icone svg { width: 22px; height: 22px; }
 .sb-logo-texto { font-family: 'Sora', sans-serif; font-weight: 800; font-size: .95rem; line-height: 1.15; }
 .sb-logo-texto small { font-weight: 600; font-size: .72rem; color: rgba(255,255,255,.55); }
 
@@ -336,12 +338,19 @@ textarea { resize: vertical; }
   position: relative;
 }
 .card-materia:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--brand); }
-.card-materia .nome { font-family: 'Sora', sans-serif; font-weight: 700; font-size: .95rem; margin-bottom: 10px; padding-right: 60px; }
-.card-materia .metricas { display: flex; gap: 14px; font-size: .8rem; color: var(--texto-2); }
+.card-materia .nome { font-family: 'Sora', sans-serif; font-weight: 700; font-size: .95rem; margin-bottom: 10px; padding-right: 76px; }
+.card-materia .metricas { display: flex; gap: 12px; font-size: .8rem; color: var(--texto-2); flex-wrap: wrap; align-items: center; }
 .card-materia .metricas b { color: var(--texto); }
-.card-materia .badge-devidas {
-  position: absolute; top: 14px; right: 14px;
+.card-materia-acoes { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; }
+.card-acao-btn {
+  width: 30px; height: 30px; border-radius: 8px;
+  border: 1px solid var(--borda); background: var(--superficie);
+  color: var(--texto-2); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: border-color .13s, color .13s;
 }
+.card-acao-btn:hover { border-color: var(--brand); color: var(--brand-ink); }
+.card-acao-btn svg { width: 15px; height: 15px; }
 .empty-state {
   text-align: center; padding: 48px 24px; color: var(--texto-3);
   background: var(--superficie); border: 1.5px dashed var(--borda-forte); border-radius: var(--radius);
@@ -377,7 +386,9 @@ textarea { resize: vertical; }
   padding: 8px 18px; border-radius: 9px; font: inherit;
   font-size: .86rem; font-weight: 600; color: var(--texto-2);
   transition: background .13s, color .13s;
+  display: inline-flex; align-items: center; gap: 7px;
 }
+.tipo-toggle button svg { width: 15px; height: 15px; flex-shrink: 0; }
 .tipo-toggle button:hover { color: var(--texto); }
 .tipo-toggle button.ativo {
   background: var(--brand); color: white;
@@ -392,10 +403,12 @@ textarea { resize: vertical; }
 }
 .fc-acoes { display: flex; gap: 10px; margin-top: 14px; }
 .fc-rotulo {
-  display: inline-block; font-size: .68rem; font-weight: 800;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: .68rem; font-weight: 800;
   letter-spacing: .08em; text-transform: uppercase; color: var(--brand-ink);
   margin-bottom: 8px;
 }
+.fc-rotulo svg { width: 13px; height: 13px; }
 .verso-lista {
   font-size: .88rem; color: var(--texto-2); white-space: pre-wrap;
   border-left: 3px solid var(--borda-forte); padding-left: 10px; margin-top: 4px;
@@ -427,17 +440,22 @@ textarea { resize: vertical; }
   border-color: var(--ok); background: var(--ok);
 }
 .opcao-lista.correta .marcador::after {
-  content: '✓'; color: white; font-size: .68rem; font-weight: 800;
-  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  content: ''; position: absolute; left: 5px; top: 3px;
+  width: 4px; height: 8px;
+  border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg);
 }
 .opcao-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
 .opcao-row input[type=text] { flex: 1; }
 .opcao-correta-badge { font-size: .7rem; color: var(--ok); font-weight: 700; white-space: nowrap; }
 
 .badge {
-  display: inline-flex; align-items: center; gap: 4px; padding: 3.5px 10px;
+  display: inline-flex; align-items: center; gap: 5px; padding: 3.5px 10px;
   border-radius: 20px; font-size: .72rem; font-weight: 700;
 }
+.badge svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+.fim-sessao { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--texto-2); }
+.fim-sessao svg { width: 22px; height: 22px; color: var(--ok); flex-shrink: 0; }
 .badge-blue { background: var(--brand-light); color: var(--brand-ink); }
 .badge-green { background: var(--ok-bg); color: var(--ok); }
 .badge-red { background: var(--erro-bg); color: var(--erro); }

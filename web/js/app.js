@@ -12,7 +12,7 @@ async function iniciarApp() {
 
   mostrarApp();
   await carregarMaterias();
-  goPanel('revisao');
+  goPanel('dashboard');
 }
 
 iniciarApp();
