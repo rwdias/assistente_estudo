@@ -174,6 +174,10 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 document.querySelectorAll('.modal-overlay').forEach((m) => {
   m.addEventListener('click', (e) => { if (e.target === m) m.classList.remove('open'); });
 });
+// Botões "Cancelar" dos modais (sem onclick inline, bloqueado pela CSP).
+document.querySelectorAll('[data-fechar-modal]').forEach((btn) => {
+  btn.addEventListener('click', () => closeModal(btn.dataset.fecharModal));
+});
 
 // --- renderização compartilhada de uma pergunta em modo quiz ---
 const LETRAS = 'ABCDEFGH';

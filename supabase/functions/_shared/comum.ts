@@ -16,9 +16,11 @@ const ORIGENS_PERMITIDAS = [
 
 export function corsHeaders(req: Request): Record<string, string> {
   const origem = req.headers.get("Origin") ?? "";
-  const permitida = ORIGENS_PERMITIDAS.includes(origem) ? origem : ORIGENS_PERMITIDAS[0];
+  // Origem fora da allowlist (ou ausente, ex.: curl) não recebe headers de
+  // liberação — o preflight falha e o navegador bloqueia a chamada.
+  if (!ORIGENS_PERMITIDAS.includes(origem)) return { "Vary": "Origin" };
   return {
-    "Access-Control-Allow-Origin": permitida,
+    "Access-Control-Allow-Origin": origem,
     "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Vary": "Origin",

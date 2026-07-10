@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src https://fonts.gstatic.com; connect-src 'self' https://scafgcpxjsimzaaviean.supabase.co; img-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'" />
   <title>Study Rats — simulados, revisão espaçada e IA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -327,7 +328,7 @@
     <label>Nome</label>
     <input type="text" id="nova-materia-nome" placeholder="Ex.: AWS Certified Solutions Architect" />
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-nova-materia')">Cancelar</button>
+      <button class="btn btn-secondary" data-fechar-modal="modal-nova-materia">Cancelar</button>
       <button class="btn btn-primary" id="confirmar-nova-materia-btn">Criar</button>
     </div>
   </div>
@@ -339,7 +340,7 @@
     <h3>Remover pergunta</h3>
     <p>Tem certeza? Esta ação não pode ser desfeita.</p>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-delete')">Cancelar</button>
+      <button class="btn btn-secondary" data-fechar-modal="modal-delete">Cancelar</button>
       <button class="btn btn-danger" id="modal-delete-confirm">Remover</button>
     </div>
   </div>
@@ -347,7 +348,7 @@
 
 <div id="toast-container"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.2/dist/umd/supabase.min.js" integrity="sha384-sgcvElP/LlNRtORGYFLO/9K/bENcpJK19HgvqslWXog6d8f/Va4TpltGiBlGntCM" crossorigin="anonymous"></script>
 <script src="js/config.js"></script>
 <script src="js/core.js"></script>
 <script src="js/auth.js"></script>
