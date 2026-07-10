@@ -23,7 +23,9 @@ O SQLite antigo (`assistente_estudo.db`, `backups/`) é só fallback histórico.
 
 ```
 auth.users (Supabase)
-└── perfis            (quota diária de IA; escrita SÓ via função definer)
+└── perfis            (quota diária de IA + nome/objetivo/nascimento do
+    │                  cadastro; quota SÓ via função definer — o UPDATE do
+    │                  usuário tem grant POR COLUNA nas 3 de perfil)
 └── materias          (usuario_id uuid, nome, contexto_ia md p/ flashcards)
     └── subdivisoes   ("tópicos"; "Geral" é o padrão implícito)
         └── perguntas (tipo 'pergunta'|'flashcard'; frente=enunciado, verso;
@@ -123,6 +125,10 @@ user `postgres.scafgcpxjsimzaaviean`, senha no `.env`. (O host direto
   `web/js/auth.js`); credenciais no Google Cloud Console do dono e no
   config do Auth (Management API); `site_url` e `uri_allow_list` apontam
   para o Pages + localhost:8001.
+- Cadastro coleta nome/objetivo/nascimento → metadados do signUp → trigger
+  `criar_perfil` grava em `perfis`. Conta sem perfil completo (Google,
+  antigas) recebe o modal `#modal-completar-perfil` no primeiro acesso
+  (`aplicarPerfilUsuario` em auth.js).
 - Confirmação de e-mail no signup está DESLIGADA (sem SMTP próprio);
   senha mínima 8. HIBP (senha vazada) exige plano Pro — pendente.
 - Gerenciamento via Management API (`api.supabase.com`) requer header

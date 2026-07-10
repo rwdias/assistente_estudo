@@ -40,8 +40,22 @@ document.getElementById('form-cadastro').addEventListener('submit', async (e) =>
   e.preventDefault();
   const email = document.getElementById('cadastro-email').value.trim();
   const senha = document.getElementById('cadastro-senha').value;
+  const nome = document.getElementById('cadastro-nome').value.trim();
+  const objetivo = document.getElementById('cadastro-objetivo').value;
+  const nascimento = document.getElementById('cadastro-nascimento').value;
 
-  const { data, error } = await sb.auth.signUp({ email, password: senha });
+  const hoje = new Date().toISOString().slice(0, 10);
+  if (nascimento < '1900-01-01' || nascimento > hoje) {
+    toast('Data de nascimento inválida.', 'error');
+    return;
+  }
+
+  // Os metadados viram o perfil via trigger criar_perfil no banco.
+  const { data, error } = await sb.auth.signUp({
+    email,
+    password: senha,
+    options: { data: { nome, objetivo, nascimento } },
+  });
 
   if (error) {
     toast(error.message, 'error');
@@ -55,6 +69,66 @@ document.getElementById('form-cadastro').addEventListener('submit', async (e) =>
   }
 
   await iniciarApp();
+});
+
+// --- perfil (nome/objetivo/nascimento em perfis) ---
+
+// Mostra o nome na sidebar e, se o perfil estiver incompleto (login social
+// ou conta antiga), abre o modal para completar. A quota de IA fica fora
+// do alcance: o grant de UPDATE cobre só as três colunas de perfil.
+async function aplicarPerfilUsuario() {
+  const { data: { user } } = await sb.auth.getUser();
+  const { data: perfil } = await sb
+    .from('perfis')
+    .select('nome, objetivo, nascimento')
+    .single();
+
+  const nome = perfil?.nome || user?.user_metadata?.full_name || user?.user_metadata?.name || '';
+  if (nome) {
+    const alvo = document.getElementById('sb-user-email');
+    alvo.textContent = nome;
+    alvo.title = user?.email ?? '';
+    document.getElementById('sb-avatar').textContent = nome[0].toUpperCase();
+  }
+
+  if (!perfil || !perfil.nome || !perfil.objetivo || !perfil.nascimento) {
+    document.getElementById('perfil-nome').value = nome;
+    if (perfil?.objetivo) document.getElementById('perfil-objetivo').value = perfil.objetivo;
+    if (perfil?.nascimento) document.getElementById('perfil-nascimento').value = perfil.nascimento;
+    openModal('modal-completar-perfil');
+  }
+}
+
+document.getElementById('salvar-perfil-btn').addEventListener('click', async () => {
+  const nome = document.getElementById('perfil-nome').value.trim();
+  const objetivo = document.getElementById('perfil-objetivo').value;
+  const nascimento = document.getElementById('perfil-nascimento').value;
+
+  const hoje = new Date().toISOString().slice(0, 10);
+  if (!nome || !objetivo || !nascimento) {
+    toast('Preencha nome, objetivo e data de nascimento.', 'error');
+    return;
+  }
+  if (nascimento < '1900-01-01' || nascimento > hoje) {
+    toast('Data de nascimento inválida.', 'error');
+    return;
+  }
+
+  const { data: { user } } = await sb.auth.getUser();
+  const { error } = await sb
+    .from('perfis')
+    .update({ nome, objetivo, nascimento })
+    .eq('user_id', user.id);
+
+  if (error) {
+    toast(error.message, 'error');
+    return;
+  }
+
+  closeModal('modal-completar-perfil');
+  document.getElementById('sb-user-email').textContent = nome;
+  document.getElementById('sb-avatar').textContent = nome[0].toUpperCase();
+  toast('Perfil salvo.');
 });
 
 // Login/cadastro com Google: redireciona para o OAuth do Supabase e volta

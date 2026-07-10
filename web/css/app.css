@@ -709,3 +709,5 @@ textarea { resize: vertical; }
 .auth-card .btn:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--texto); }
 .auth-card .btn-primary { font-family: 'Pixelify Sans', 'Sora', sans-serif; font-size: 1rem; }
 .auth-switch a { color: var(--brand-ink); }
+
+.modal-sub { font-size: .88rem; color: var(--texto-2); margin: -6px 0 4px; }
