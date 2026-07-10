@@ -23,6 +23,13 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      # Cache busting: sufixa js/css locais com o SHA do commit para o
+      # navegador nunca misturar HTML novo com assets antigos em cache.
+      - name: Versionar assets
+        run: |
+          sed -i -E "s|(src=\"js/[^\"?]+\.js)\"|\1?v=${GITHUB_SHA::8}\"|g" web/index.html
+          sed -i -E "s|(href=\"css/[^\"?]+\.css)\"|\1?v=${GITHUB_SHA::8}\"|g" web/index.html
+          grep -o 'js/core.js[^"]*' web/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
