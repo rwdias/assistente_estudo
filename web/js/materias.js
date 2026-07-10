@@ -109,6 +109,7 @@ document.getElementById('confirmar-nova-materia-btn').addEventListener('click', 
 
 async function carregarDashboard() {
   await carregarMaterias();
+  carregarCatalogo();
 
   const resumo = document.getElementById('dashboard-resumo');
   const container = document.getElementById('dashboard-materias');
@@ -200,6 +201,70 @@ async function carregarDashboard() {
       renderMateriaDropdown();
       goPanel('perguntas');
       abrirAbaManual('config');
+    });
+  });
+}
+
+// --- Banco de provas (catálogo público, curado fora do app) ---
+
+async function carregarCatalogo() {
+  const secao = document.getElementById('dashboard-catalogo-secao');
+  const container = document.getElementById('dashboard-catalogo');
+
+  const { data: provas, error } = await sb
+    .from('catalogo_provas')
+    .select('id, fonte, nome, ano, area, total_questoes')
+    .order('ano', { ascending: false })
+    .order('nome');
+
+  if (error || !provas || provas.length === 0) {
+    secao.style.display = 'none';
+    return;
+  }
+
+  const minhas = new Set(Estado.materias.map((m) => m.nome));
+  const ICONE_PROVA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>';
+
+  secao.style.display = 'block';
+  container.innerHTML = provas
+    .map((p) => {
+      const jaTem = minhas.has(p.nome);
+      return `
+      <div class="card-prova">
+        <div class="card-prova-icone">${ICONE_PROVA}</div>
+        <div class="nome">${esc(p.nome)}</div>
+        <div class="metricas">
+          <span class="badge badge-blue">${esc(p.fonte)}</span>
+          <span><b>${p.total_questoes}</b> questões</span>
+        </div>
+        <button type="button" class="btn ${jaTem ? 'btn-secondary' : 'btn-primary'} btn-sm importar-prova-btn"
+                data-id="${p.id}" ${jaTem ? 'disabled' : ''}>
+          ${jaTem
+            ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg> Adicionada'
+            : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Adicionar à minha conta'}
+        </button>
+      </div>`;
+    })
+    .join('');
+
+  container.querySelectorAll('.importar-prova-btn:not([disabled])').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = 'Adicionando...';
+
+      const { data, error: erro } = await sb.rpc('importar_prova_catalogo', {
+        p_prova_id: Number(btn.dataset.id),
+      });
+
+      if (erro) {
+        toast(erro.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Adicionar à minha conta';
+        return;
+      }
+
+      toast(`${data.importadas} questões adicionadas em "${data.materia_nome}".`);
+      await carregarDashboard();
     });
   });
 }

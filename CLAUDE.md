@@ -36,6 +36,15 @@ auth.users (Supabase)
 
 Toda FK tem `ON DELETE CASCADE`. Ids são `bigint identity`.
 
+### Banco de provas (catálogo público)
+`catalogo_provas` → `catalogo_questoes` → `catalogo_alternativas`:
+leitura para todo `authenticated`, **nenhuma política de escrita** — a
+curadoria roda fora do app (`ferramentas/provas/`, ver README de lá:
+scraping de fontes oficiais + revisão em JSON + publicação via pooler).
+Usuário importa com `rpc('importar_prova_catalogo')` (SECURITY INVOKER —
+cópia passa pelo RLS dele; idempotente por enunciado). UI: seção "Banco
+de provas" no Início (`carregarCatalogo` em `web/js/materias.js`).
+
 ### SM-2 / Aprendizado (conceitos centrais)
 - Acerto = q5, erro = q2; EF piso 1.3; progressão 1 → 6 → round(i×EF) dias;
   erro zera intervalo e reagenda +10min. Implementação canônica: função SQL
