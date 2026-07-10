@@ -36,7 +36,8 @@
   --shadow: 0 1px 2px rgba(23,38,46,.05), 0 2px 8px rgba(23,38,46,.05);
   --shadow-md: 0 6px 24px rgba(23,38,46,.10);
   --shadow-lg: 0 24px 70px rgba(23,38,46,.16);
-  --sidebar-w: 252px;
+  --sidebar-w: 252px;        /* expandida (hover ou fixada) */
+  --sidebar-w-rail: 72px;    /* recolhida: só ícones */
 }
 
 /*
@@ -161,12 +162,48 @@ textarea { resize: vertical; }
 .auth-switch a:hover { text-decoration: underline; }
 
 /* ============ LAYOUT ============ */
+/* Sidebar em "rail": recolhida por padrão (só ícones), expande no hover e
+   fica aberta com .pinned (botão de fixar, persistido em localStorage). */
 .sidebar {
-  position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w);
+  position: fixed; top: 0; left: 0; bottom: 0; width: var(--sidebar-w-rail);
   background: linear-gradient(180deg, var(--sidebar-top), var(--sidebar-bottom));
   color: white; display: flex; flex-direction: column; z-index: 100;
+  overflow: hidden; transition: width .18s ease;
 }
-.sb-logo { display: flex; align-items: center; gap: 11px; padding: 20px 20px 16px; }
+.sidebar:hover, .sidebar.pinned { width: var(--sidebar-w); }
+
+/* textos/controles que só existem na versão expandida */
+.sb-logo-texto, .sb-nav-titulo, .sb-item span, .sb-user-info, .sb-pin {
+  opacity: 1; max-width: 180px; white-space: nowrap; overflow: hidden;
+  transition: opacity .12s ease, max-width .18s ease;
+}
+.sidebar:not(.pinned):not(:hover) .sb-logo-texto,
+.sidebar:not(.pinned):not(:hover) .sb-nav-titulo,
+.sidebar:not(.pinned):not(:hover) .sb-item span,
+.sidebar:not(.pinned):not(:hover) .sb-user-info,
+.sidebar:not(.pinned):not(:hover) .sb-pin {
+  opacity: 0; max-width: 0; margin: 0;
+}
+.sidebar:not(.pinned):not(:hover) .sb-item { justify-content: center; gap: 0; }
+.sidebar:not(.pinned):not(:hover) .sb-logout { display: none; }
+.sidebar:not(.pinned):not(:hover) .sb-user { justify-content: center; }
+
+.sb-materia { transition: opacity .12s ease, max-height .18s ease; max-height: 120px; }
+.sidebar:not(.pinned):not(:hover) .sb-materia {
+  opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0;
+  pointer-events: none;
+}
+
+.sb-pin {
+  margin-left: auto; width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
+  border: none; background: transparent; color: rgba(255,255,255,.5); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.sb-pin:hover { background: rgba(255,255,255,.12); color: white; }
+.sidebar.pinned .sb-pin { background: rgba(255,255,255,.16); color: white; }
+.sb-pin svg { width: 15px; height: 15px; }
+
+.sb-logo { display: flex; align-items: center; gap: 11px; padding: 20px 16px 16px; }
 .sb-logo-icone {
   width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center;
   font-size: 1.15rem; background: rgba(255,255,255,.12); flex-shrink: 0;
@@ -224,7 +261,8 @@ textarea { resize: vertical; }
 .sb-logout:hover { color: white; background: rgba(255,255,255,.1); }
 .sb-logout svg { width: 16px; height: 16px; display: block; }
 
-.main { margin-left: var(--sidebar-w); min-height: 100vh; }
+.main { margin-left: var(--sidebar-w-rail); min-height: 100vh; transition: margin-left .18s ease; }
+.sidebar.pinned ~ .main { margin-left: var(--sidebar-w); }
 .topbar {
   background: color-mix(in srgb, var(--superficie) 85%, transparent);
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);

@@ -234,6 +234,20 @@ document.querySelectorAll('.tema-toggle').forEach((btn) => {
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', atualizarIconesTema);
 aplicarTemaSalvo();
 
+// --- sidebar: fixar/recolher (rail expande no hover) ---
+(function initSidebarPin() {
+  const sidebar = document.getElementById('sidebar');
+  const btn = document.getElementById('sidebar-pin-btn');
+  if (!sidebar || !btn) return;
+
+  if (localStorage.getItem('sidebarFixa') === '1') sidebar.classList.add('pinned');
+
+  btn.addEventListener('click', () => {
+    const fixa = sidebar.classList.toggle('pinned');
+    localStorage.setItem('sidebarFixa', fixa ? '1' : '0');
+  });
+})();
+
 // --- escape para innerHTML (obrigatório em todo dado dinâmico) ---
 function esc(s) {
   if (s == null) return '';
