@@ -9,28 +9,70 @@ async function carregarMaterias() {
 
   Estado.materias = data;
 
-  const select = document.getElementById('sidebar-materia');
-  select.innerHTML = Estado.materias
-    .map((m) => `<option value="${m.id}">${esc(m.nome)}</option>`)
-    .join('');
-
   if (Estado.materias.length === 0) {
     definirMateriaAtual(null);
+  } else if (!Estado.materias.some((m) => m.id === Estado.materiaId)) {
+    definirMateriaAtual(Estado.materias[0].id);
+  }
+
+  renderMateriaDropdown();
+}
+
+// --- dropdown de matérias no header ---
+
+function painelAtivo() {
+  return document.querySelector('.sb-item.active')?.dataset.panel || 'revisao';
+}
+
+function renderMateriaDropdown() {
+  const atual = Estado.materias.find((m) => m.id === Estado.materiaId);
+  document.getElementById('materia-atual-nome').textContent = atual ? atual.nome : 'Sem matéria';
+
+  const lista = document.getElementById('materia-dropdown-lista');
+
+  if (Estado.materias.length === 0) {
+    lista.innerHTML = '<div class="materia-vazio">Nenhuma matéria ainda</div>';
     return;
   }
 
-  const existeAtual = Estado.materias.some((m) => m.id === Estado.materiaId);
-  if (!existeAtual) definirMateriaAtual(Estado.materias[0].id);
+  lista.innerHTML = Estado.materias
+    .map((m) => {
+      const pendentes = Number(m.a_aprender || 0) + Number(m.a_revisar || 0);
+      return `
+      <button type="button" class="materia-item ${m.id === Estado.materiaId ? 'ativo' : ''}" data-id="${m.id}">
+        <span>${esc(m.nome)}</span>
+        ${pendentes > 0 ? `<span class="badge badge-amber">${pendentes}</span>` : ''}
+      </button>`;
+    })
+    .join('');
 
-  select.value = String(Estado.materiaId);
+  lista.querySelectorAll('.materia-item').forEach((item) => {
+    item.addEventListener('click', () => {
+      definirMateriaAtual(Number(item.dataset.id));
+      fecharDropdownMaterias();
+      renderMateriaDropdown();
+      goPanel(painelAtivo()); // recarrega o painel atual (Aprendizado incluso)
+    });
+  });
 }
 
-document.getElementById('sidebar-materia').addEventListener('change', (e) => {
-  definirMateriaAtual(Number(e.target.value));
-  goPanel(document.querySelector('.sb-item.active')?.dataset.panel || 'dashboard');
+function fecharDropdownMaterias() {
+  document.getElementById('materia-dropdown-menu').classList.remove('aberto');
+}
+
+document.getElementById('materia-dropdown-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  document.getElementById('materia-dropdown-menu').classList.toggle('aberto');
+});
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.materia-dropdown')) fecharDropdownMaterias();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') fecharDropdownMaterias();
 });
 
 document.getElementById('nova-materia-btn').addEventListener('click', () => {
+  fecharDropdownMaterias();
   document.getElementById('nova-materia-nome').value = '';
   openModal('modal-nova-materia');
 });
@@ -59,11 +101,10 @@ document.getElementById('confirmar-nova-materia-btn').addEventListener('click', 
   }
 
   closeModal('modal-nova-materia');
-  await carregarMaterias();
   definirMateriaAtual(materia.id);
-  document.getElementById('sidebar-materia').value = String(materia.id);
+  await carregarMaterias();
   toast('Matéria criada.');
-  carregarDashboard();
+  goPanel(painelAtivo());
 });
 
 async function carregarDashboard() {
@@ -128,9 +169,8 @@ async function carregarDashboard() {
 
   container.querySelectorAll('.card-materia').forEach((card) => {
     card.addEventListener('click', () => {
-      const id = Number(card.dataset.id);
-      definirMateriaAtual(id);
-      document.getElementById('sidebar-materia').value = String(id);
+      definirMateriaAtual(Number(card.dataset.id));
+      renderMateriaDropdown();
       goPanel('perguntas');
     });
   });

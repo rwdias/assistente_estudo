@@ -4,6 +4,15 @@ let revisaoAcertos = 0;
 let revisaoErros = 0;
 let filtroRevisao = 'tudo'; // 'tudo' | 'pergunta' | 'flashcard'
 
+// Reaprendizagem estilo Anki: um item respondido errado volta para o fim
+// da fila da MESMA sessão (como o passo de 10min do Anki, com "learn
+// ahead" quando a fila é curta) e se repete até ser acertado. No banco o
+// SM-2 já reagendou para +10min a cada erro; o acerto seguinte gradua o
+// item para 1 dia.
+function reenfileirarErrado(pergunta) {
+  revisaoFila.push({ ...pergunta, novo: false, reaprendendo: true });
+}
+
 document.querySelectorAll('#tipo-toggle-revisao button').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#tipo-toggle-revisao button').forEach((b) => b.classList.remove('ativo'));
@@ -98,12 +107,12 @@ function renderRevisaoAtual() {
   const pergunta = revisaoFila[revisaoIndice];
   const podeReformular = pergunta.madura && pergunta.tipo !== 'flashcard';
 
+  let badgeEstado = '<span class="badge badge-amber">🔄 revisão</span>';
+  if (pergunta.reaprendendo) badgeEstado = '<span class="badge badge-red">🔁 reaprendendo</span>';
+  else if (pergunta.novo) badgeEstado = '<span class="badge badge-blue">🆕 a aprender</span>';
+
   container.innerHTML = `
-    <div style="margin-bottom:10px">
-      ${pergunta.novo
-        ? '<span class="badge badge-blue">🆕 a aprender</span>'
-        : '<span class="badge badge-amber">🔄 revisão</span>'}
-    </div>
+    <div style="margin-bottom:10px">${badgeEstado}</div>
     ${
       podeReformular
         ? `<div class="card" style="padding:14px 18px">
@@ -162,8 +171,12 @@ function renderFlashcardRevisao(card) {
 
   async function avaliar(correta) {
     document.getElementById('fc-avaliacao').style.display = 'none';
-    if (correta) revisaoAcertos += 1;
-    else revisaoErros += 1;
+    if (correta) {
+      revisaoAcertos += 1;
+    } else {
+      revisaoErros += 1;
+      reenfileirarErrado(card);
+    }
     renderResumoRevisao();
     document.getElementById('revisao-proxima-btn').style.display = 'inline-flex';
 
@@ -190,8 +203,12 @@ function renderPerguntaRevisao(pergunta) {
     '<button type="button" class="btn btn-primary" id="revisao-proxima-btn" style="display:none">Próxima pergunta</button>';
 
   wirePerguntaQuiz(pergunta, 'revisao-atual', async (correta) => {
-    if (correta) revisaoAcertos += 1;
-    else revisaoErros += 1;
+    if (correta) {
+      revisaoAcertos += 1;
+    } else {
+      revisaoErros += 1;
+      reenfileirarErrado(pergunta);
+    }
     renderResumoRevisao();
     document.getElementById('revisao-proxima-btn').style.display = 'inline-flex';
 
