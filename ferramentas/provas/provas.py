@@ -194,28 +194,24 @@ def cmd_baixar(args):
     enem_baixar(args.ano, args.dia)
 
 
-def cmd_extrair(args):
-    if args.fonte != "enem":
-        sys.exit(f"fonte '{args.fonte}' ainda não implementada (só 'enem')")
-    if args.area not in ENEM_AREAS:
-        sys.exit(f"área deve ser uma de: {', '.join(ENEM_AREAS)}")
+def extrair_enem(ano, area, maximo=None, log=print):
+    """Núcleo da extração (compartilhado pelo CLI e pelo servidor local)."""
+    if area not in ENEM_AREAS:
+        raise ValueError(f"área deve ser uma de: {', '.join(ENEM_AREAS)}")
 
-    dia, ini, fim = ENEM_AREAS[args.area]
-    if args.dia and args.dia != dia:
-        sys.exit(f"área {args.area} é do dia {dia}")
-
-    enem_baixar(args.ano, dia)
-    gabarito = enem_gabarito(args.ano, dia)
-    blocos = enem_blocos_questoes(args.ano, dia, ini, fim)
-    numeros = sorted(blocos)[: args.max] if args.max else sorted(blocos)
-    print(f"{len(numeros)} questões localizadas na faixa {ini}-{fim}"
-          f" | gabarito com {len(gabarito)} entradas")
+    dia, ini, fim = ENEM_AREAS[area]
+    enem_baixar(ano, dia)
+    gabarito = enem_gabarito(ano, dia)
+    blocos = enem_blocos_questoes(ano, dia, ini, fim)
+    numeros = sorted(blocos)[:maximo] if maximo else sorted(blocos)
+    log(f"{len(numeros)} questões localizadas na faixa {ini}-{fim}"
+        f" | gabarito com {len(gabarito)} entradas")
 
     questoes = []
     LOTE = 8
     for i in range(0, len(numeros), LOTE):
         lote = [(n, blocos[n]) for n in numeros[i:i + LOTE]]
-        print(f"  IA: questões {lote[0][0]}-{lote[-1][0]}...")
+        log(f"IA: questões {lote[0][0]}-{lote[-1][0]}...")
         questoes.extend(chamar_openai(lote))
 
     saida = []
@@ -240,20 +236,29 @@ def cmd_extrair(args):
         })
 
     REVISAO.mkdir(exist_ok=True)
-    destino = REVISAO / f"enem_{args.ano}_{args.area}.json"
+    destino = REVISAO / f"enem_{ano}_{area}.json"
     doc = {
         "fonte": "enem",
-        "nome": f"ENEM {args.ano} — {ENEM_NOMES[args.area]}",
-        "ano": args.ano,
-        "area": ENEM_NOMES[args.area],
+        "nome": f"ENEM {ano} — {ENEM_NOMES[area]}",
+        "ano": ano,
+        "area": ENEM_NOMES[area],
         "questoes": saida,
     }
     destino.write_text(json.dumps(doc, ensure_ascii=False, indent=2))
     aprovadas = sum(1 for q in saida if q["aprovada"])
-    print(f"\ngerado: {destino}")
-    print(f"  {len(saida)} questões ({aprovadas} pré-aprovadas, "
-          f"{len(saida) - aprovadas} para revisar — imagem/alternativas), "
-          f"{sem_gabarito} descartadas (anuladas/sem gabarito)")
+    log(f"gerado: {destino.name} — {len(saida)} questões "
+        f"({aprovadas} pré-aprovadas, {len(saida) - aprovadas} para revisar, "
+        f"{sem_gabarito} descartadas)")
+    return destino
+
+
+def cmd_extrair(args):
+    if args.fonte != "enem":
+        sys.exit(f"fonte '{args.fonte}' ainda não implementada (só 'enem')")
+    try:
+        destino = extrair_enem(args.ano, args.area, args.max)
+    except ValueError as erro:
+        sys.exit(str(erro))
     print("revise o arquivo (edite textos, ajuste 'aprovada') e rode: "
           f"python provas.py publicar {destino.relative_to(BASE_DIR)}")
 
@@ -271,19 +276,19 @@ def validar_questao(q):
     return None
 
 
-def cmd_publicar(args):
+def publicar_arquivo(caminho, substituir=False):
+    """Valida o JSON revisado e insere no catálogo. Levanta ValueError."""
     import psycopg
 
-    doc = json.loads(Path(args.arquivo).read_text())
+    doc = json.loads(Path(caminho).read_text())
     aprovadas = [q for q in doc["questoes"] if q.get("aprovada")]
     if not aprovadas:
-        sys.exit("nenhuma questão com aprovada=true no arquivo")
+        raise ValueError("nenhuma questão com aprovada=true no arquivo")
 
     invalidas = [(q["numero"], erro) for q in aprovadas if (erro := validar_questao(q))]
     if invalidas:
-        for n, erro in invalidas:
-            print(f"  questão {n}: {erro}")
-        sys.exit("corrija as questões acima (ou marque aprovada=false)")
+        detalhe = "; ".join(f"questão {n}: {e}" for n, e in invalidas)
+        raise ValueError(f"corrija (ou marque aprovada=false): {detalhe}")
 
     conninfo = POOLER.format(senha=ler_env("SUPABASE_DB_PASSWORD"))
     with psycopg.connect(conninfo) as conn:
@@ -292,8 +297,8 @@ def cmd_publicar(args):
             (doc["fonte"], doc["nome"]),
         ).fetchone()
         if existente:
-            if not args.substituir:
-                sys.exit(f"'{doc['nome']}' já está no catálogo — use --substituir para republicar")
+            if not substituir:
+                raise ValueError(f"'{doc['nome']}' já está no catálogo — use substituir para republicar")
             conn.execute("delete from public.catalogo_provas where id=%s", (existente[0],))
 
         prova_id = conn.execute(
@@ -315,22 +320,39 @@ def cmd_publicar(args):
                     (questao_id, alt["texto"].strip(), bool(alt.get("correta")), ordem),
                 )
 
-    print(f"publicada: '{doc['nome']}' (id {prova_id}) com {len(aprovadas)} questões")
+    return {"prova_id": prova_id, "nome": doc["nome"], "questoes": len(aprovadas)}
 
 
-def cmd_listar(_args):
+def cmd_publicar(args):
+    try:
+        r = publicar_arquivo(args.arquivo, args.substituir)
+    except ValueError as erro:
+        sys.exit(str(erro))
+    print(f"publicada: '{r['nome']}' (id {r['prova_id']}) com {r['questoes']} questões")
+
+
+def listar_catalogo():
     import psycopg
 
     conninfo = POOLER.format(senha=ler_env("SUPABASE_DB_PASSWORD"))
     with psycopg.connect(conninfo) as conn:
         provas = conn.execute(
-            "select id, fonte, nome, total_questoes, publicada_em::date "
+            "select id, fonte, nome, total_questoes, publicada_em::date::text "
             "from public.catalogo_provas order by id"
         ).fetchall()
+    return [
+        {"id": p[0], "fonte": p[1], "nome": p[2], "total_questoes": p[3], "publicada_em": p[4]}
+        for p in provas
+    ]
+
+
+def cmd_listar(_args):
+    provas = listar_catalogo()
     if not provas:
         print("catálogo vazio")
     for p in provas:
-        print(f"  [{p[0]}] ({p[1]}) {p[2]} — {p[3]} questões — {p[4]}")
+        print(f"  [{p['id']}] ({p['fonte']}) {p['nome']} — "
+              f"{p['total_questoes']} questões — {p['publicada_em']}")
 
 
 def main():

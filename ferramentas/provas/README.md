@@ -5,7 +5,19 @@ a partir de fontes oficiais. Roda fora do app, na máquina do curador, com
 as credenciais do `.env` da raiz — os usuários do app só leem o catálogo
 e importam provas para a própria conta (sem gastar quota de IA).
 
-## Fluxo
+## Interface web local (recomendado)
+
+```bash
+../../venv/bin/python curadoria.py    # abre http://127.0.0.1:8777 no navegador
+```
+
+Tudo pela tela: **1·Extrair** (fonte/ano/área, log ao vivo) → **2·Revisar**
+(editor visual: enunciado, alternativas, correta por rádio, aprovada por
+checkbox) → **Publicar** (checkbox "substituir" para republicar) → o
+catálogo publicado aparece embaixo. Só escuta em 127.0.0.1 — não expor,
+usa as credenciais do `.env`.
+
+## Fluxo (CLI, mesmo núcleo)
 
 ```
 baixar  ->  extrair  ->  revisar o JSON no editor  ->  publicar

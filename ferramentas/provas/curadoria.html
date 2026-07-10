@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Curadoria de provas — Study Rats</title>
+<style>
+  :root {
+    --brand: #0d9488; --brand-dark: #0f766e; --brand-light: #d5f5f0;
+    --fundo: #f3f6f8; --superficie: #fff; --borda: #e2e9ed;
+    --texto: #17262e; --texto-2: #445863; --texto-3: #71858f;
+    --erro: #dc2626; --erro-bg: #fdeaea; --ok: #15803d; --ok-bg: #e2f8e9;
+    --destaque-bg: #fdf2d9; --destaque: #b45309;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: var(--fundo); color: var(--texto); font-size: 15px; line-height: 1.5; }
+  .topo { background: var(--superficie); border-bottom: 1px solid var(--borda); padding: 14px 28px; display: flex; align-items: center; gap: 12px; }
+  .topo h1 { font-size: 1.05rem; margin: 0; }
+  .topo .sub { color: var(--texto-3); font-size: .85rem; }
+  main { max-width: 1080px; margin: 0 auto; padding: 24px 20px 80px; }
+  section { background: var(--superficie); border: 1px solid var(--borda); border-radius: 14px; padding: 20px 24px; margin-bottom: 22px; }
+  h2 { font-size: 1rem; margin: 0 0 14px; }
+  label { display: block; font-size: .78rem; font-weight: 600; color: var(--texto-2); margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; padding: 8px 11px; border: 1.5px solid var(--borda); border-radius: 9px; font: inherit; font-size: .9rem; }
+  textarea { resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand); }
+  .linha { display: flex; gap: 14px; align-items: end; flex-wrap: wrap; }
+  .linha > div { flex: 1; min-width: 130px; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border: none; border-radius: 9px; font: inherit; font-size: .88rem; font-weight: 600; cursor: pointer; background: var(--brand); color: #fff; }
+  .btn:hover { background: var(--brand-dark); }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn-sec { background: var(--superficie); color: var(--texto); border: 1.5px solid var(--borda); }
+  .btn-sec:hover { background: var(--fundo); }
+  .btn-sm { padding: 6px 12px; font-size: .82rem; }
+  .log { background: #0e1315; color: #9fe8dd; font-family: ui-monospace, monospace; font-size: .8rem; border-radius: 9px; padding: 12px 14px; margin-top: 14px; white-space: pre-wrap; display: none; max-height: 200px; overflow-y: auto; }
+  .lista-item { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--borda); }
+  .lista-item:last-child { border-bottom: none; }
+  .lista-item .info { flex: 1; }
+  .lista-item .titulo { font-weight: 600; }
+  .lista-item .meta { font-size: .82rem; color: var(--texto-3); }
+  .badge { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 99px; font-size: .74rem; font-weight: 700; }
+  .badge-ok { background: var(--ok-bg); color: var(--ok); }
+  .badge-warn { background: var(--destaque-bg); color: var(--destaque); }
+  .badge-red { background: var(--erro-bg); color: var(--erro); }
+  .questao { border: 1.5px solid var(--borda); border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+  .questao.reprovada { opacity: .62; background: var(--fundo); }
+  .questao-topo { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .questao-topo .num { font-weight: 800; }
+  .questao-topo .aprovar { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: .84rem; font-weight: 600; }
+  .questao-topo .aprovar input { width: auto; accent-color: var(--brand); }
+  .alt { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+  .alt input[type=radio] { width: auto; accent-color: var(--brand); }
+  .alt .letra { font-weight: 700; font-size: .82rem; width: 16px; color: var(--texto-3); }
+  .barra-editor { position: sticky; bottom: 0; background: var(--superficie); border-top: 1px solid var(--borda); margin: 0 -24px -20px; padding: 14px 24px; display: flex; gap: 10px; align-items: center; border-radius: 0 0 14px 14px; }
+  .aviso { font-size: .85rem; padding: 10px 14px; border-radius: 9px; margin-top: 12px; display: none; }
+  .aviso.ok { background: var(--ok-bg); color: var(--ok); display: block; }
+  .aviso.erro { background: var(--erro-bg); color: var(--erro); display: block; }
+  .check-inline { display: flex; align-items: center; gap: 6px; font-size: .84rem; }
+  .check-inline input { width: auto; accent-color: var(--brand); }
+  svg { width: 15px; height: 15px; }
+</style>
+</head>
+<body>
+
+<div class="topo">
+  <svg viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="1.8" style="width:26px;height:26px"><circle cx="7" cy="6.5" r="2.6"/><circle cx="17" cy="6.5" r="2.6"/><circle cx="12" cy="13.5" r="7"/><circle cx="9.5" cy="12.5" r=".6" fill="#0d9488" stroke="none"/><circle cx="14.5" cy="12.5" r=".6" fill="#0d9488" stroke="none"/><path d="M10.7 16h2.6"/></svg>
+  <h1>Curadoria de provas</h1>
+  <span class="sub">local · alimenta o Banco de provas do Study Rats</span>
+</div>
+
+<main>
+
+<section>
+  <h2>1 · Extrair prova de fonte oficial</h2>
+  <div class="linha">
+    <div><label>Fonte</label><select id="ex-fonte"><option value="enem">ENEM (INEP)</option></select></div>
+    <div><label>Ano</label><input type="number" id="ex-ano" value="2023" min="2009" max="2030" /></div>
+    <div><label>Área</label><select id="ex-area"></select></div>
+    <div><label>Máx. questões (opcional)</label><input type="number" id="ex-max" min="1" placeholder="todas" /></div>
+    <div style="flex:0"><button class="btn" id="ex-btn">Extrair</button></div>
+  </div>
+  <div class="log" id="ex-log"></div>
+</section>
+
+<section>
+  <h2>2 · Revisar e publicar</h2>
+  <div id="revisoes-lista"><span class="meta" style="color:var(--texto-3)">Carregando...</span></div>
+  <div class="aviso" id="pub-aviso"></div>
+</section>
+
+<section id="editor-secao" style="display:none">
+  <h2 id="editor-titulo">Editor</h2>
+  <div id="editor-questoes"></div>
+  <div class="barra-editor">
+    <button class="btn" id="salvar-btn">Salvar revisão</button>
+    <button class="btn btn-sec" id="fechar-btn">Fechar sem salvar</button>
+    <span id="editor-status" style="font-size:.84rem;color:var(--texto-3)"></span>
+  </div>
+</section>
+
+<section>
+  <h2>Catálogo publicado (o que os usuários veem no app)</h2>
+  <div id="catalogo-lista"><span style="color:var(--texto-3);font-size:.85rem">Carregando...</span></div>
+</section>
+
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (m) =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+const api = async (rota, opcoes) => {
+  const resp = await fetch(rota, opcoes);
+  const corpo = await resp.json();
+  if (!resp.ok) throw new Error(corpo.erro || resp.statusText);
+  return corpo;
+};
+
+let docAtual = null;
+let arquivoAtual = null;
+
+// --- config (áreas por fonte) ---
+async function carregarConfig() {
+  const cfg = await api('/api/config');
+  const areas = cfg.fontes.enem;
+  $('ex-area').innerHTML = areas.areas
+    .map((a) => `<option value="${a}">${esc(areas.nomes[a])}</option>`).join('');
+}
+
+// --- extração com polling do job ---
+$('ex-btn').addEventListener('click', async () => {
+  try {
+    await api('/api/extrair', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fonte: $('ex-fonte').value,
+        ano: $('ex-ano').value,
+        area: $('ex-area').value,
+        max: $('ex-max').value || null,
+      }),
+    });
+  } catch (erro) {
+    alert(erro.message);
+    return;
+  }
+  $('ex-btn').disabled = true;
+  $('ex-log').style.display = 'block';
+  acompanharJob();
+});
+
+async function acompanharJob() {
+  const job = await api('/api/job');
+  $('ex-log').textContent = job.log.join('\n') + (job.ativo ? '\n…' : '');
+  $('ex-log').scrollTop = $('ex-log').scrollHeight;
+  if (job.ativo) {
+    setTimeout(acompanharJob, 2000);
+    return;
+  }
+  $('ex-btn').disabled = false;
+  if (job.erro) $('ex-log').textContent += '\nERRO: ' + job.erro;
+  await carregarRevisoes();
+}
+
+// --- lista de revisões ---
+async function carregarRevisoes() {
+  const arquivos = await api('/api/revisoes');
+  $('revisoes-lista').innerHTML = arquivos.length === 0
+    ? '<span style="color:var(--texto-3);font-size:.85rem">Nenhum arquivo de revisão ainda — extraia uma prova acima.</span>'
+    : arquivos.map((a) => `
+      <div class="lista-item">
+        <div class="info">
+          <div class="titulo">${esc(a.nome)}</div>
+          <div class="meta">${esc(a.arquivo)} · ${a.aprovadas}/${a.questoes} aprovadas</div>
+        </div>
+        <span class="badge ${a.aprovadas === a.questoes ? 'badge-ok' : 'badge-warn'}">
+          ${a.aprovadas === a.questoes ? 'pronta' : (a.questoes - a.aprovadas) + ' p/ revisar'}
+        </span>
+        <button class="btn btn-sec btn-sm" data-abrir="${esc(a.arquivo)}">Revisar</button>
+        <label class="check-inline"><input type="checkbox" data-subst="${esc(a.arquivo)}" /> substituir</label>
+        <button class="btn btn-sm" data-pub="${esc(a.arquivo)}">Publicar</button>
+      </div>`).join('');
+
+  document.querySelectorAll('[data-abrir]').forEach((b) =>
+    b.addEventListener('click', () => abrirEditor(b.dataset.abrir)));
+  document.querySelectorAll('[data-pub]').forEach((b) =>
+    b.addEventListener('click', () => publicar(b.dataset.pub, b)));
+}
+
+async function publicar(arquivo, btn) {
+  const aviso = $('pub-aviso');
+  aviso.className = 'aviso';
+  btn.disabled = true;
+  btn.textContent = 'Publicando...';
+  try {
+    const substituir = document.querySelector(`[data-subst="${arquivo}"]`).checked;
+    const r = await api('/api/publicar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ arquivo, substituir }),
+    });
+    aviso.className = 'aviso ok';
+    aviso.textContent = `Publicada: "${r.nome}" com ${r.questoes} questões (id ${r.prova_id}).`;
+    await carregarCatalogo();
+  } catch (erro) {
+    aviso.className = 'aviso erro';
+    aviso.textContent = erro.message;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Publicar';
+}
+
+// --- editor ---
+async function abrirEditor(arquivo) {
+  docAtual = await api('/api/revisao/' + arquivo);
+  arquivoAtual = arquivo;
+  $('editor-titulo').textContent = `Editor — ${docAtual.nome} (${arquivo})`;
+  $('editor-status').textContent = '';
+  $('editor-questoes').innerHTML = docAtual.questoes.map((q, i) => `
+    <div class="questao ${q.aprovada ? '' : 'reprovada'}" data-i="${i}">
+      <div class="questao-topo">
+        <span class="num">Q${q.numero}</span>
+        ${q.depende_de_imagem ? '<span class="badge badge-red">depende de imagem</span>' : ''}
+        ${q.alternativas.length !== 5 ? `<span class="badge badge-warn">${q.alternativas.length} alternativas</span>` : ''}
+        <label class="aprovar"><input type="checkbox" class="q-aprovada" ${q.aprovada ? 'checked' : ''} /> aprovada</label>
+      </div>
+      <textarea class="q-enunciado" rows="4">${esc(q.enunciado)}</textarea>
+      ${q.alternativas.map((a, j) => `
+        <div class="alt">
+          <input type="radio" name="correta-${i}" value="${j}" ${a.correta ? 'checked' : ''} title="correta" />
+          <span class="letra">${'ABCDE'[j] ?? j + 1}</span>
+          <input type="text" class="q-alt" value="${esc(a.texto)}" />
+        </div>`).join('')}
+    </div>`).join('');
+  $('editor-secao').style.display = 'block';
+  $('editor-secao').scrollIntoView({ behavior: 'smooth' });
+
+  document.querySelectorAll('.q-aprovada').forEach((chk) =>
+    chk.addEventListener('change', () =>
+      chk.closest('.questao').classList.toggle('reprovada', !chk.checked)));
+}
+
+$('salvar-btn').addEventListener('click', async () => {
+  document.querySelectorAll('#editor-questoes .questao').forEach((card) => {
+    const q = docAtual.questoes[Number(card.dataset.i)];
+    q.aprovada = card.querySelector('.q-aprovada').checked;
+    q.enunciado = card.querySelector('.q-enunciado').value.trim();
+    const correta = Number(card.querySelector('input[type=radio]:checked')?.value ?? -1);
+    card.querySelectorAll('.q-alt').forEach((inp, j) => {
+      q.alternativas[j].texto = inp.value.trim();
+      q.alternativas[j].correta = j === correta;
+    });
+  });
+  try {
+    await api('/api/revisao/' + arquivoAtual, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(docAtual),
+    });
+    $('editor-status').textContent = 'Salvo.';
+    await carregarRevisoes();
+  } catch (erro) {
+    $('editor-status').textContent = 'Erro: ' + erro.message;
+  }
+});
+
+$('fechar-btn').addEventListener('click', () => {
+  $('editor-secao').style.display = 'none';
+  docAtual = null;
+});
+
+// --- catálogo ---
+async function carregarCatalogo() {
+  const provas = await api('/api/catalogo');
+  $('catalogo-lista').innerHTML = provas.length === 0
+    ? '<span style="color:var(--texto-3);font-size:.85rem">Catálogo vazio.</span>'
+    : provas.map((p) => `
+      <div class="lista-item">
+        <div class="info">
+          <div class="titulo">${esc(p.nome)}</div>
+          <div class="meta">fonte: ${esc(p.fonte)} · publicada em ${esc(p.publicada_em)}</div>
+        </div>
+        <span class="badge badge-ok">${p.total_questoes} questões</span>
+      </div>`).join('');
+}
+
+carregarConfig();
+carregarRevisoes();
+carregarCatalogo();
+</script>
+</body>
+</html>
