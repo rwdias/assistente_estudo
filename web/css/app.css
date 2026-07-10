@@ -188,7 +188,7 @@ textarea { resize: vertical; }
 .sidebar:not(.pinned):not(:hover) .sb-logout { display: none; }
 .sidebar:not(.pinned):not(:hover) .sb-user { justify-content: center; }
 
-.sb-materia { transition: opacity .12s ease, max-height .18s ease; max-height: 120px; }
+.sb-materia { transition: opacity .12s ease, max-height .18s ease; max-height: 120px; overflow: hidden; }
 .sidebar:not(.pinned):not(:hover) .sb-materia {
   opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0;
   pointer-events: none;
@@ -354,6 +354,40 @@ textarea { resize: vertical; }
 .btn-danger:hover { background: var(--erro); color: white; }
 .btn-sm { padding: 7px 13px; font-size: .8rem; }
 .btn-block { width: 100%; justify-content: center; margin-top: 20px; }
+
+/* ============ seletor de tipo (pergunta/flashcard) ============ */
+.tipo-toggle {
+  display: inline-flex; gap: 3px; padding: 4px; margin-bottom: 16px;
+  background: var(--superficie); border: 1.5px solid var(--borda); border-radius: 12px;
+}
+.tipo-toggle button {
+  border: none; background: transparent; cursor: pointer;
+  padding: 8px 18px; border-radius: 9px; font: inherit;
+  font-size: .86rem; font-weight: 600; color: var(--texto-2);
+  transition: background .13s, color .13s;
+}
+.tipo-toggle button:hover { color: var(--texto); }
+.tipo-toggle button.ativo {
+  background: var(--brand); color: white;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--brand) 35%, transparent);
+}
+
+/* ============ flashcards ============ */
+.fc-verso {
+  background: var(--superficie-2); border: 1.5px dashed var(--borda-forte);
+  border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 12px;
+  white-space: pre-wrap; color: var(--texto);
+}
+.fc-acoes { display: flex; gap: 10px; margin-top: 14px; }
+.fc-rotulo {
+  display: inline-block; font-size: .68rem; font-weight: 800;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--brand-ink);
+  margin-bottom: 8px;
+}
+.verso-lista {
+  font-size: .88rem; color: var(--texto-2); white-space: pre-wrap;
+  border-left: 3px solid var(--borda-forte); padding-left: 10px; margin-top: 4px;
+}
 
 /* ============ PERGUNTAS (lista) ============ */
 .pergunta-card {

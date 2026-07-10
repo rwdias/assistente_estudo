@@ -21,6 +21,8 @@ async function iniciarSimulado() {
     return;
   }
 
+  // simulado é só múltipla escolha — flashcards vivem na Revisão
+  perguntas = perguntas.filter((p) => p.tipo !== 'flashcard');
   if (dificuldade) perguntas = perguntas.filter((p) => p.dificuldade === dificuldade);
 
   if (embaralhar) {

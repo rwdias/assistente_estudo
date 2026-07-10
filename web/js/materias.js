@@ -73,6 +73,7 @@ async function carregarDashboard() {
   const container = document.getElementById('dashboard-materias');
 
   const totalPerguntas = Estado.materias.reduce((s, m) => s + Number(m.total_perguntas), 0);
+  const totalFlashcards = Estado.materias.reduce((s, m) => s + Number(m.total_flashcards || 0), 0);
   const totalDevidas = Estado.materias.reduce((s, m) => s + Number(m.devidas_revisao), 0);
 
   resumo.innerHTML = `
@@ -82,7 +83,11 @@ async function carregarDashboard() {
     </div>
     <div class="stat-card">
       <div class="stat-valor">${totalPerguntas}</div>
-      <div class="stat-rotulo">pergunta${totalPerguntas === 1 ? '' : 's'} no total</div>
+      <div class="stat-rotulo">pergunta${totalPerguntas === 1 ? '' : 's'}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-valor">${totalFlashcards}</div>
+      <div class="stat-rotulo">flashcard${totalFlashcards === 1 ? '' : 's'}</div>
     </div>
     <div class="stat-card">
       <div class="stat-valor ${totalDevidas > 0 ? 'alerta' : ''}">${totalDevidas}</div>
@@ -107,7 +112,8 @@ async function carregarDashboard() {
         <div class="nome">${esc(m.nome)}</div>
         <div class="metricas">
           <span><b>${m.total_perguntas}</b> pergunta${Number(m.total_perguntas) === 1 ? '' : 's'}</span>
-          <span><b>${m.devidas_revisao}</b> para revisar</span>
+          <span><b>${m.total_flashcards || 0}</b> flashcard${Number(m.total_flashcards) === 1 ? '' : 's'}</span>
+          <span><b>${m.devidas_revisao}</b> a revisar</span>
         </div>
       </div>`
     )

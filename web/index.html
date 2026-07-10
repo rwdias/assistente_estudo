@@ -163,7 +163,12 @@
 
       <!-- PERGUNTAS -->
       <div class="panel" id="panel-perguntas">
-        <div class="card">
+        <div class="tipo-toggle" id="tipo-toggle-manual">
+          <button type="button" class="ativo" data-tipo="pergunta">❓ Pergunta</button>
+          <button type="button" data-tipo="flashcard">🃏 Flashcard</button>
+        </div>
+
+        <div class="card" id="card-nova-pergunta">
           <div class="card-header">
             <div class="card-title">Nova pergunta</div>
             <p class="card-sub">A primeira alternativa é a correta — as demais são distratores.</p>
@@ -187,7 +192,31 @@
           </div>
         </div>
 
-        <h2 class="secao-titulo">Perguntas cadastradas</h2>
+        <div class="card" id="card-novo-flashcard" style="display:none">
+          <div class="card-header">
+            <div class="card-title">Novo flashcard</div>
+            <p class="card-sub">Frente com a pergunta/termo, verso com a resposta — estilo Anki.</p>
+          </div>
+          <div class="card-body">
+            <form id="form-novo-flashcard">
+              <label>Frente</label>
+              <textarea id="fc-frente" rows="2" required placeholder="Ex.: O que caracteriza overfitting?"></textarea>
+              <label>Verso</label>
+              <textarea id="fc-verso" rows="3" required placeholder="A resposta objetiva..."></textarea>
+              <label>Dificuldade</label>
+              <select id="fc-dificuldade">
+                <option>Fácil</option>
+                <option selected>Média</option>
+                <option>Difícil</option>
+              </select>
+              <div class="form-acoes">
+                <button type="submit" class="btn btn-primary">Adicionar flashcard</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <h2 class="secao-titulo">Itens cadastrados</h2>
         <div id="lista-perguntas"></div>
       </div>
 
@@ -199,10 +228,29 @@
 
       <!-- IA -->
       <div class="panel" id="panel-ia">
+        <div class="tipo-toggle" id="tipo-toggle-ia">
+          <button type="button" class="ativo" data-tipo="pergunta">❓ Perguntas</button>
+          <button type="button" data-tipo="flashcard">🃏 Flashcards</button>
+        </div>
+
+        <div class="card" id="ia-contexto-card" style="display:none">
+          <div class="card-header">
+            <div class="card-title">Contexto da matéria</div>
+            <p class="card-sub">Markdown usado pela IA ao gerar flashcards desta matéria — cole trechos do edital, vocabulário e estilo desejados.</p>
+          </div>
+          <div class="card-body">
+            <textarea id="ia-contexto" rows="6" placeholder="Ex.: Edital: 2.1 Conceitos de aprendizado supervisionado... Escreva os cards no vocabulário da banca CESPE..."></textarea>
+            <div class="form-acoes">
+              <button type="button" id="salvar-contexto-btn" class="btn btn-secondary btn-sm">Salvar contexto</button>
+              <span class="card-sub" id="contexto-status"></span>
+            </div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Adicionar perguntas via IA</div>
-            <p class="card-sub">Cole questões em qualquer formato — a IA extrai enunciado, alternativas e resposta correta.</p>
+            <div class="card-title" id="ia-titulo">Adicionar perguntas via IA</div>
+            <p class="card-sub" id="ia-subtitulo">Cole questões em qualquer formato — a IA extrai enunciado, alternativas e resposta correta.</p>
           </div>
           <div class="card-body">
             <label>Provedor</label>
@@ -211,9 +259,9 @@
               <option>Claude</option>
               <option>Grok</option>
             </select>
-            <label>Cole o texto com as perguntas</label>
+            <label id="ia-texto-label">Cole o texto com as perguntas</label>
             <textarea id="ia-texto" rows="8" placeholder="Cole aqui um ou mais enunciados, com alternativas..."></textarea>
-            <button type="button" id="ia-extrair-btn" class="btn btn-primary">✨ Extrair perguntas</button>
+            <button type="button" id="ia-extrair-btn" class="btn btn-primary">✨ Extrair</button>
           </div>
         </div>
 

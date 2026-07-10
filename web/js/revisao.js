@@ -72,10 +72,11 @@ function renderRevisaoAtual() {
   }
 
   const pergunta = revisaoFila[revisaoIndice];
+  const podeReformular = pergunta.madura && pergunta.tipo !== 'flashcard';
 
   container.innerHTML = `
     ${
-      pergunta.madura
+      podeReformular
         ? `<div class="card" style="padding:14px 18px">
              <span class="reformulado-aviso">Esta pergunta está dominada — que tal tentar reformulada?</span>
              <div style="display:flex; gap:8px; align-items:center; margin-top:8px">
@@ -90,13 +91,67 @@ function renderRevisaoAtual() {
     <div id="revisao-pergunta-container"></div>
   `;
 
-  renderPerguntaRevisao(pergunta);
+  if (pergunta.tipo === 'flashcard') {
+    renderFlashcardRevisao(pergunta);
+  } else {
+    renderPerguntaRevisao(pergunta);
+  }
 
-  if (pergunta.madura) {
+  if (podeReformular) {
     document
       .getElementById('revisao-reformular-btn')
       .addEventListener('click', reformularAtual);
   }
+}
+
+// Fluxo Anki: mostra a frente, revela o verso sob demanda e o próprio
+// usuário se avalia (Errei/Acertei) — o resultado alimenta o mesmo SM-2.
+function renderFlashcardRevisao(card) {
+  const container = document.getElementById('revisao-pergunta-container');
+
+  container.innerHTML = `
+    <div class="question-card">
+      <span class="fc-rotulo">🃏 Flashcard</span>
+      <div class="question-title">${esc(card.enunciado)}</div>
+      <div class="fc-verso" id="fc-verso-revisao" style="display:none">${esc(card.verso || '')}</div>
+      <div class="fc-acoes">
+        <button type="button" class="btn btn-primary" id="fc-mostrar-btn">Mostrar resposta</button>
+      </div>
+      <div class="fc-acoes" id="fc-avaliacao" style="display:none">
+        <button type="button" class="btn btn-danger" id="fc-errei-btn">✘ Errei</button>
+        <button type="button" class="btn btn-primary" id="fc-acertei-btn">✔ Acertei</button>
+      </div>
+    </div>
+    <button type="button" class="btn btn-primary" id="revisao-proxima-btn" style="display:none">Próxima pergunta</button>
+  `;
+
+  document.getElementById('fc-mostrar-btn').addEventListener('click', () => {
+    document.getElementById('fc-verso-revisao').style.display = 'block';
+    document.getElementById('fc-mostrar-btn').style.display = 'none';
+    document.getElementById('fc-avaliacao').style.display = 'flex';
+  });
+
+  async function avaliar(correta) {
+    document.getElementById('fc-avaliacao').style.display = 'none';
+    if (correta) revisaoAcertos += 1;
+    else revisaoErros += 1;
+    renderResumoRevisao();
+    document.getElementById('revisao-proxima-btn').style.display = 'inline-flex';
+
+    const { error } = await sb.rpc('registrar_resposta', {
+      p_pergunta_id: card.id,
+      p_correta: correta,
+    });
+    if (error) toast(error.message, 'error');
+  }
+
+  document.getElementById('fc-errei-btn').addEventListener('click', () => avaliar(false));
+  document.getElementById('fc-acertei-btn').addEventListener('click', () => avaliar(true));
+
+  document.getElementById('revisao-proxima-btn').addEventListener('click', () => {
+    revisaoIndice += 1;
+    renderRevisaoAtual();
+  });
 }
 
 function renderPerguntaRevisao(pergunta) {

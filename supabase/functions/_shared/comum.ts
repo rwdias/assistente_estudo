@@ -102,6 +102,27 @@ export const EXTRACAO_SCHEMA = {
   additionalProperties: false,
 };
 
+const FLASHCARD_SCHEMA = {
+  type: "object",
+  properties: {
+    frente: { type: "string" },
+    verso: { type: "string" },
+    dificuldade: { type: "string", enum: DIFICULDADES },
+    topico: { type: ["string", "null"] },
+  },
+  required: ["frente", "verso", "dificuldade", "topico"],
+  additionalProperties: false,
+};
+
+export const FLASHCARDS_SCHEMA = {
+  type: "object",
+  properties: {
+    flashcards: { type: "array", items: FLASHCARD_SCHEMA },
+  },
+  required: ["flashcards"],
+  additionalProperties: false,
+};
+
 export function promptExtracao(
   assunto: string,
   dificuldadePadrao: string,
@@ -126,6 +147,35 @@ export function promptExtracao(
     '"Redes", "Regressão Linear"), ou null se não for possível ' +
     "determinar.\n\n" +
     `Assunto geral das perguntas: ${assunto}.\n` +
+    "Responda apenas com o JSON pedido, sem texto adicional."
+  );
+}
+
+export function promptFlashcards(
+  assunto: string,
+  dificuldadePadrao: string,
+  maxFlashcards: number,
+  contexto: string,
+): string {
+  const blocoContexto = contexto.trim()
+    ? "\n\nCONTEXTO DA MATÉRIA (siga rigorosamente o estilo, o vocabulário e o " +
+      "recorte de conteúdo descritos abaixo — ex.: edital da prova):\n" +
+      "-----\n" + contexto.trim() + "\n-----\n"
+    : "";
+
+  return (
+    "Você é um assistente que cria flashcards de estudo (estilo Anki) a " +
+    "partir de um texto bruto colado pelo usuário (anotações, trechos de " +
+    "apostila, edital, questões, etc.).\n\n" +
+    `Crie flashcards objetivos, no máximo ${maxFlashcards}, cada um com:\n` +
+    '- "frente": uma pergunta curta, termo ou lacuna que force recall ' +
+    "ativo de UM conceito específico (nunca mais de um conceito por card).\n" +
+    '- "verso": a resposta direta e concisa, sem rodeios.\n' +
+    '- "dificuldade": "Fácil", "Média" ou "Difícil". Se não for possível ' +
+    `inferir, use "${dificuldadePadrao}".\n` +
+    `- "topico": um subtópico curto dentro de "${assunto}", ou null.\n` +
+    blocoContexto +
+    `\nAssunto geral: ${assunto}.\n` +
     "Responda apenas com o JSON pedido, sem texto adicional."
   );
 }

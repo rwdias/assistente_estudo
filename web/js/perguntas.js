@@ -1,5 +1,16 @@
 const MAX_OPCOES = 6;
 
+// --- alternância pergunta/flashcard no cadastro manual ---
+document.querySelectorAll('#tipo-toggle-manual button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#tipo-toggle-manual button').forEach((b) => b.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    const flashcard = btn.dataset.tipo === 'flashcard';
+    document.getElementById('card-nova-pergunta').style.display = flashcard ? 'none' : 'block';
+    document.getElementById('card-novo-flashcard').style.display = flashcard ? 'block' : 'none';
+  });
+});
+
 function renderOpcoesForm() {
   const container = document.getElementById('pergunta-opcoes-container');
   const linhas = container.querySelectorAll('.opcao-row').length;
@@ -30,8 +41,8 @@ function resetarFormPergunta() {
   renderOpcoesForm();
 }
 
-// Insere pergunta + opções + linha de revisão. A primeira opção é a correta
-// quando `indiceCorreto` não é informado.
+// Insere pergunta OU flashcard + linha de revisão (SM-2). Flashcards não
+// têm opções: a frente fica em `enunciado` e a resposta em `verso`.
 async function inserirPergunta(materiaId, dados) {
   const subdivisaoId = await garantirSubdivisao(materiaId, dados.topico || 'Geral');
 
@@ -39,7 +50,9 @@ async function inserirPergunta(materiaId, dados) {
     .from('perguntas')
     .insert({
       subdivisao_id: subdivisaoId,
+      tipo: dados.tipo || 'pergunta',
       enunciado: dados.enunciado,
+      verso: dados.verso ?? null,
       dificuldade: dados.dificuldade,
       origem: dados.origem,
     })
@@ -48,15 +61,17 @@ async function inserirPergunta(materiaId, dados) {
 
   if (erroPergunta) throw new Error(erroPergunta.message);
 
-  const { error: erroOpcoes } = await sb.from('opcoes').insert(
-    dados.opcoes.map((o, i) => ({
-      pergunta_id: pergunta.id,
-      texto: o.texto,
-      correta: o.correta,
-      ordem: i + 1,
-    }))
-  );
-  if (erroOpcoes) throw new Error(erroOpcoes.message);
+  if (dados.opcoes?.length) {
+    const { error: erroOpcoes } = await sb.from('opcoes').insert(
+      dados.opcoes.map((o, i) => ({
+        pergunta_id: pergunta.id,
+        texto: o.texto,
+        correta: o.correta,
+        ordem: i + 1,
+      }))
+    );
+    if (erroOpcoes) throw new Error(erroOpcoes.message);
+  }
 
   const { error: erroRevisao } = await sb
     .from('revisoes_perguntas')
@@ -65,6 +80,39 @@ async function inserirPergunta(materiaId, dados) {
 
   return pergunta.id;
 }
+
+document.getElementById('form-novo-flashcard').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  if (!Estado.materiaId) {
+    toast('Crie ou selecione uma matéria primeiro.', 'error');
+    return;
+  }
+
+  const frente = document.getElementById('fc-frente').value.trim();
+  const verso = document.getElementById('fc-verso').value.trim();
+
+  if (!frente || !verso) {
+    toast('Preencha frente e verso.', 'error');
+    return;
+  }
+
+  try {
+    await inserirPergunta(Estado.materiaId, {
+      tipo: 'flashcard',
+      enunciado: frente,
+      verso,
+      dificuldade: document.getElementById('fc-dificuldade').value,
+      origem: 'manual',
+      opcoes: [],
+    });
+    toast('Flashcard adicionado.');
+    document.getElementById('form-novo-flashcard').reset();
+    carregarPerguntas();
+  } catch (erro) {
+    toast(erro.message, 'error');
+  }
+});
 
 document.getElementById('form-nova-pergunta').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -122,7 +170,7 @@ async function carregarPerguntas() {
   }
 
   if (perguntas.length === 0) {
-    lista.innerHTML = '<p>Nenhuma pergunta cadastrada ainda.</p>';
+    lista.innerHTML = '<p>Nenhuma pergunta ou flashcard cadastrado ainda.</p>';
     return;
   }
 
@@ -132,20 +180,23 @@ async function carregarPerguntas() {
       <div class="pergunta-card">
         <div class="pergunta-enunciado">${esc(p.enunciado)}</div>
         <div class="pergunta-meta">
+          ${p.tipo === 'flashcard' ? '<span class="badge badge-blue">🃏 flashcard</span>' : ''}
           <span class="badge badge-blue">Prova: ${esc(p.dificuldade)}</span>
           <span class="badge badge-amber">Para você: ${esc(p.dificuldade_pessoal)}</span>
           <span>${p.vezes_acertada}/${p.vezes_respondida} acertos</span>
           ${p.madura ? '<span class="badge badge-green">dominada</span>' : ''}
         </div>
-        ${p.opcoes
-          .map(
-            (o) => `
-            <div class="opcao-lista ${o.correta ? 'correta' : ''}">
-              <span class="marcador"></span>
-              <span>${esc(o.texto)}</span>
-            </div>`
-          )
-          .join('')}
+        ${p.tipo === 'flashcard'
+          ? `<div class="verso-lista">${esc(p.verso || '')}</div>`
+          : p.opcoes
+              .map(
+                (o) => `
+                <div class="opcao-lista ${o.correta ? 'correta' : ''}">
+                  <span class="marcador"></span>
+                  <span>${esc(o.texto)}</span>
+                </div>`
+              )
+              .join('')}
         <button type="button" class="btn btn-danger btn-sm remover-pergunta-btn" data-id="${p.id}" style="margin-top:10px">Remover</button>
       </div>`
     )

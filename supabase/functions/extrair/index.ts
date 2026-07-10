@@ -9,12 +9,15 @@ import {
   DIFICULDADES,
   ErroProvedorIA,
   EXTRACAO_SCHEMA,
+  FLASHCARDS_SCHEMA,
   promptExtracao,
+  promptFlashcards,
   respostaJson,
   usuarioAutenticado,
 } from "../_shared/comum.ts";
 
 const MAX_TEXTO = 20_000;
+const MAX_CONTEXTO = 10_000;
 const MAX_ASSUNTO = 150;
 const MAX_PERGUNTAS = 60;
 
@@ -41,7 +44,12 @@ Deno.serve(async (req) => {
   const texto = String(corpo.texto ?? "");
   const assunto = String(corpo.assunto ?? "");
   const dificuldadePadrao = String(corpo.dificuldade_padrao ?? "Média");
+  const tipo = String(corpo.tipo ?? "pergunta");
+  const contexto = String(corpo.contexto ?? "");
 
+  if (!["pergunta", "flashcard"].includes(tipo)) {
+    return respostaJson(req, { erro: "Tipo inválido." }, 400);
+  }
   if (!texto.trim()) {
     return respostaJson(req, { erro: "Cole algum texto primeiro." }, 400);
   }
@@ -49,6 +57,13 @@ Deno.serve(async (req) => {
     return respostaJson(
       req,
       { erro: `Texto grande demais (máximo ${MAX_TEXTO} caracteres).` },
+      400,
+    );
+  }
+  if (contexto.length > MAX_CONTEXTO) {
+    return respostaJson(
+      req,
+      { erro: `Contexto grande demais (máximo ${MAX_CONTEXTO} caracteres).` },
       400,
     );
   }
@@ -68,6 +83,19 @@ Deno.serve(async (req) => {
   }
 
   try {
+    if (tipo === "flashcard") {
+      const system = promptFlashcards(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto);
+      const dados = (await chamarProvedor(
+        modelo,
+        system,
+        texto,
+        FLASHCARDS_SCHEMA,
+        "extracao_flashcards",
+      )) as { flashcards: unknown[] };
+
+      return respostaJson(req, { flashcards: dados.flashcards.slice(0, MAX_PERGUNTAS) });
+    }
+
     const system = promptExtracao(assunto, dificuldadePadrao, MAX_PERGUNTAS);
     const dados = (await chamarProvedor(
       modelo,

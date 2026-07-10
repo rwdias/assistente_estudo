@@ -41,7 +41,9 @@ function normalizarPergunta(linha) {
 
   return {
     id: linha.id,
+    tipo: linha.tipo || 'pergunta',
     enunciado: linha.enunciado,
+    verso: linha.verso,
     dificuldade: linha.dificuldade,
     origem: linha.origem,
     opcoes,
@@ -57,7 +59,7 @@ function normalizarPergunta(linha) {
 }
 
 const SELECT_PERGUNTA = `
-  id, enunciado, dificuldade, origem, created_at,
+  id, tipo, enunciado, verso, dificuldade, origem, created_at,
   opcoes ( texto, correta, ordem ),
   revisoes_perguntas ( vezes_respondida, vezes_acertada, ultima_resposta_correta,
                        intervalo_dias, proxima_revisao_em ),
@@ -130,6 +132,7 @@ function goPanel(id) {
   if (id === 'dashboard') carregarDashboard();
   if (id === 'perguntas') carregarPerguntas();
   if (id === 'revisao') carregarRevisao();
+  if (id === 'ia') aoAbrirIa();
 
   window.scrollTo(0, 0);
 }
