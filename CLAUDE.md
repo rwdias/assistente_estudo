@@ -75,6 +75,10 @@ user `postgres.scafgcpxjsimzaaviean`, senha no `.env`. (O host direto
 - Sem framework e sem build: `index.html` + `css/app.css` + `js/*.js`
   (escopo global, carregados em ordem: config → core → auth → materias →
   perguntas → simulado → revisao → ia → app).
+- **CSP via `<meta>`** no `index.html` e supabase-js **pinado com SRI**
+  (versão exata + `integrity`): trocar a versão exige recalcular o hash
+  sha384 do arquivo do CDN. A CSP proíbe handlers inline (`onclick=`) —
+  usar `addEventListener` (padrão `data-fechar-modal` nos modais).
 - Panels trocados via `goPanel(id)` (SPA sem router). "Início" é a landing;
   "Aprendizado" (id interno `revisao`) é a área principal de estudo.
 - Design: fonte Sora (títulos) + Inter; teal educacional; dark mode NEUTRO
