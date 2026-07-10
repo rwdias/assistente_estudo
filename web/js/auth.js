@@ -1,3 +1,14 @@
+// CTAs da landing -> tela de auth no painel certo
+document.getElementById('ld-entrar').addEventListener('click', () => mostrarAuth('login'));
+document.getElementById('ld-ja-tenho').addEventListener('click', () => mostrarAuth('login'));
+document.getElementById('ld-comecar').addEventListener('click', () => mostrarAuth('cadastro'));
+document.getElementById('ld-cta-final').addEventListener('click', () => mostrarAuth('cadastro'));
+
+document.getElementById('voltar-landing').addEventListener('click', (e) => {
+  e.preventDefault();
+  mostrarTelaAuth();
+});
+
 document.getElementById('ir-para-cadastro').addEventListener('click', (e) => {
   e.preventDefault();
   document.getElementById('auth-panel-login').style.display = 'none';

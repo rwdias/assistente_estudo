@@ -7,18 +7,117 @@
   <title>Study Rats — simulados, revisão espaçada e IA</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&family=Pixelify+Sans:wght@500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/app.css" />
 </head>
 <body>
 
+<!-- LANDING (visitante sem sessão) -->
+<div id="landing" class="landing">
+
+  <header class="ld-topo">
+    <div class="ld-marca">
+      <span class="ld-marca-icone"><svg class="px-rato" viewBox="0 0 16 17" shape-rendering="crispEdges" aria-hidden="true"><rect x="4" y="0" width="8" height="1" fill="#14b8a6"/><rect x="2" y="1" width="12" height="1" fill="#14b8a6"/><rect x="2" y="2" width="12" height="1" fill="#14b8a6"/><rect x="14" y="2" width="1" height="1" fill="#fbbf24"/><rect x="4" y="3" width="8" height="1" fill="#0f766e"/><rect x="14" y="3" width="1" height="1" fill="#fbbf24"/><rect x="1" y="4" width="2" height="1" fill="#94a3b8"/><rect x="4" y="4" width="8" height="1" fill="#0f766e"/><rect x="13" y="4" width="2" height="1" fill="#94a3b8"/><rect x="0" y="5" width="1" height="1" fill="#94a3b8"/><rect x="1" y="5" width="2" height="1" fill="#f9a8d4"/><rect x="3" y="5" width="1" height="1" fill="#94a3b8"/><rect x="5" y="5" width="6" height="1" fill="#94a3b8"/><rect x="12" y="5" width="1" height="1" fill="#94a3b8"/><rect x="13" y="5" width="2" height="1" fill="#f9a8d4"/><rect x="15" y="5" width="1" height="1" fill="#94a3b8"/><rect x="0" y="6" width="1" height="1" fill="#94a3b8"/><rect x="1" y="6" width="2" height="1" fill="#f9a8d4"/><rect x="3" y="6" width="10" height="1" fill="#94a3b8"/><rect x="13" y="6" width="2" height="1" fill="#f9a8d4"/><rect x="15" y="6" width="1" height="1" fill="#94a3b8"/><rect x="1" y="7" width="2" height="1" fill="#94a3b8"/><rect x="4" y="7" width="8" height="1" fill="#94a3b8"/><rect x="13" y="7" width="2" height="1" fill="#94a3b8"/><rect x="2" y="8" width="12" height="1" fill="#94a3b8"/><rect x="1" y="9" width="2" height="1" fill="#94a3b8"/><rect x="3" y="9" width="2" height="1" fill="#1e293b"/><rect x="5" y="9" width="6" height="1" fill="#94a3b8"/><rect x="11" y="9" width="2" height="1" fill="#1e293b"/><rect x="13" y="9" width="2" height="1" fill="#94a3b8"/><rect x="1" y="10" width="2" height="1" fill="#94a3b8"/><rect x="3" y="10" width="2" height="1" fill="#1e293b"/><rect x="5" y="10" width="6" height="1" fill="#94a3b8"/><rect x="11" y="10" width="2" height="1" fill="#1e293b"/><rect x="13" y="10" width="2" height="1" fill="#94a3b8"/><rect x="1" y="11" width="1" height="1" fill="#94a3b8"/><rect x="2" y="11" width="1" height="1" fill="#f9a8d4"/><rect x="3" y="11" width="4" height="1" fill="#94a3b8"/><rect x="7" y="11" width="2" height="1" fill="#ffffff"/><rect x="9" y="11" width="4" height="1" fill="#94a3b8"/><rect x="13" y="11" width="1" height="1" fill="#f9a8d4"/><rect x="14" y="11" width="1" height="1" fill="#94a3b8"/><rect x="2" y="12" width="4" height="1" fill="#94a3b8"/><rect x="6" y="12" width="4" height="1" fill="#ffffff"/><rect x="10" y="12" width="4" height="1" fill="#94a3b8"/><rect x="2" y="13" width="4" height="1" fill="#94a3b8"/><rect x="6" y="13" width="1" height="1" fill="#ffffff"/><rect x="7" y="13" width="2" height="1" fill="#f9a8d4"/><rect x="9" y="13" width="1" height="1" fill="#ffffff"/><rect x="10" y="13" width="4" height="1" fill="#94a3b8"/><rect x="3" y="14" width="3" height="1" fill="#94a3b8"/><rect x="6" y="14" width="4" height="1" fill="#ffffff"/><rect x="10" y="14" width="3" height="1" fill="#94a3b8"/><rect x="4" y="15" width="2" height="1" fill="#94a3b8"/><rect x="6" y="15" width="1" height="1" fill="#ffffff"/><rect x="7" y="15" width="2" height="1" fill="#1e293b"/><rect x="9" y="15" width="1" height="1" fill="#ffffff"/><rect x="10" y="15" width="2" height="1" fill="#94a3b8"/><rect x="5" y="16" width="1" height="1" fill="#94a3b8"/><rect x="6" y="16" width="4" height="1" fill="#ffffff"/><rect x="10" y="16" width="1" height="1" fill="#94a3b8"/></svg></span>
+      <span class="ld-marca-nome">Study Rats</span>
+    </div>
+    <div class="ld-topo-acoes">
+      <button type="button" class="tema-toggle" title="Alternar tema claro/escuro">
+        <svg class="icone-lua" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+        <svg class="icone-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <button type="button" class="btn-px btn-px-ghost btn-px-sm" id="ld-entrar">Entrar</button>
+    </div>
+  </header>
+
+  <section class="ld-hero">
+    <div class="ld-hero-texto">
+      <span class="ld-badge"><svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><rect x="3" y="0" width="2" height="1" fill="#fbbf24"/><rect x="3" y="1" width="2" height="1" fill="#fbbf24"/><rect x="1" y="2" width="6" height="1" fill="#fbbf24"/><rect x="0" y="3" width="8" height="1" fill="#fbbf24"/><rect x="1" y="4" width="6" height="1" fill="#fbbf24"/><rect x="2" y="5" width="4" height="1" fill="#fbbf24"/><rect x="1" y="6" width="2" height="1" fill="#fbbf24"/><rect x="5" y="6" width="2" height="1" fill="#fbbf24"/></svg> grátis · direto no navegador</span>
+      <h1 class="ld-h1">Suba de <span class="ld-grifo">nível</span> nos estudos</h1>
+      <p class="ld-sub">
+        Simulados, flashcards e repetição espaçada num lugar só — com IA que
+        transforma seu material em questões. Você estuda; o algoritmo decide
+        a hora certa de revisar.
+      </p>
+      <div class="ld-ctas">
+        <button type="button" class="btn-px" id="ld-comecar">Começar grátis</button>
+        <button type="button" class="btn-px btn-px-ghost" id="ld-ja-tenho">Já tenho conta</button>
+      </div>
+    </div>
+    <div class="ld-hero-arte" aria-hidden="true">
+      <span class="ld-sprite ld-sprite-1"><svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><rect x="3" y="0" width="2" height="1" fill="#fbbf24"/><rect x="3" y="1" width="2" height="1" fill="#fbbf24"/><rect x="1" y="2" width="6" height="1" fill="#fbbf24"/><rect x="0" y="3" width="8" height="1" fill="#fbbf24"/><rect x="1" y="4" width="6" height="1" fill="#fbbf24"/><rect x="2" y="5" width="4" height="1" fill="#fbbf24"/><rect x="1" y="6" width="2" height="1" fill="#fbbf24"/><rect x="5" y="6" width="2" height="1" fill="#fbbf24"/></svg></span>
+      <span class="ld-sprite ld-sprite-2"><svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><rect x="1" y="0" width="2" height="1" fill="#f87171"/><rect x="5" y="0" width="2" height="1" fill="#f87171"/><rect x="0" y="1" width="8" height="1" fill="#f87171"/><rect x="0" y="2" width="8" height="1" fill="#f87171"/><rect x="0" y="3" width="8" height="1" fill="#f87171"/><rect x="1" y="4" width="6" height="1" fill="#f87171"/><rect x="2" y="5" width="4" height="1" fill="#f87171"/><rect x="3" y="6" width="2" height="1" fill="#f87171"/></svg></span>
+      <span class="ld-sprite ld-sprite-3"><svg viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><rect x="4" y="0" width="2" height="1" fill="#fb923c"/><rect x="4" y="1" width="2" height="1" fill="#fb923c"/><rect x="2" y="2" width="1" height="1" fill="#fb923c"/><rect x="4" y="2" width="2" height="1" fill="#fb923c"/><rect x="7" y="2" width="1" height="1" fill="#fb923c"/><rect x="3" y="3" width="4" height="1" fill="#fb923c"/><rect x="0" y="4" width="4" height="1" fill="#fb923c"/><rect x="6" y="4" width="4" height="1" fill="#fb923c"/><rect x="0" y="5" width="4" height="1" fill="#fb923c"/><rect x="6" y="5" width="4" height="1" fill="#fb923c"/><rect x="3" y="6" width="4" height="1" fill="#fb923c"/><rect x="2" y="7" width="1" height="1" fill="#fb923c"/><rect x="4" y="7" width="2" height="1" fill="#fb923c"/><rect x="7" y="7" width="1" height="1" fill="#fb923c"/><rect x="4" y="8" width="2" height="1" fill="#fb923c"/><rect x="4" y="9" width="2" height="1" fill="#fb923c"/></svg></span>
+      <span class="ld-mascote"><svg class="px-rato" viewBox="0 0 16 17" shape-rendering="crispEdges" aria-hidden="true"><rect x="4" y="0" width="8" height="1" fill="#14b8a6"/><rect x="2" y="1" width="12" height="1" fill="#14b8a6"/><rect x="2" y="2" width="12" height="1" fill="#14b8a6"/><rect x="14" y="2" width="1" height="1" fill="#fbbf24"/><rect x="4" y="3" width="8" height="1" fill="#0f766e"/><rect x="14" y="3" width="1" height="1" fill="#fbbf24"/><rect x="1" y="4" width="2" height="1" fill="#94a3b8"/><rect x="4" y="4" width="8" height="1" fill="#0f766e"/><rect x="13" y="4" width="2" height="1" fill="#94a3b8"/><rect x="0" y="5" width="1" height="1" fill="#94a3b8"/><rect x="1" y="5" width="2" height="1" fill="#f9a8d4"/><rect x="3" y="5" width="1" height="1" fill="#94a3b8"/><rect x="5" y="5" width="6" height="1" fill="#94a3b8"/><rect x="12" y="5" width="1" height="1" fill="#94a3b8"/><rect x="13" y="5" width="2" height="1" fill="#f9a8d4"/><rect x="15" y="5" width="1" height="1" fill="#94a3b8"/><rect x="0" y="6" width="1" height="1" fill="#94a3b8"/><rect x="1" y="6" width="2" height="1" fill="#f9a8d4"/><rect x="3" y="6" width="10" height="1" fill="#94a3b8"/><rect x="13" y="6" width="2" height="1" fill="#f9a8d4"/><rect x="15" y="6" width="1" height="1" fill="#94a3b8"/><rect x="1" y="7" width="2" height="1" fill="#94a3b8"/><rect x="4" y="7" width="8" height="1" fill="#94a3b8"/><rect x="13" y="7" width="2" height="1" fill="#94a3b8"/><rect x="2" y="8" width="12" height="1" fill="#94a3b8"/><rect x="1" y="9" width="2" height="1" fill="#94a3b8"/><rect x="3" y="9" width="2" height="1" fill="#1e293b"/><rect x="5" y="9" width="6" height="1" fill="#94a3b8"/><rect x="11" y="9" width="2" height="1" fill="#1e293b"/><rect x="13" y="9" width="2" height="1" fill="#94a3b8"/><rect x="1" y="10" width="2" height="1" fill="#94a3b8"/><rect x="3" y="10" width="2" height="1" fill="#1e293b"/><rect x="5" y="10" width="6" height="1" fill="#94a3b8"/><rect x="11" y="10" width="2" height="1" fill="#1e293b"/><rect x="13" y="10" width="2" height="1" fill="#94a3b8"/><rect x="1" y="11" width="1" height="1" fill="#94a3b8"/><rect x="2" y="11" width="1" height="1" fill="#f9a8d4"/><rect x="3" y="11" width="4" height="1" fill="#94a3b8"/><rect x="7" y="11" width="2" height="1" fill="#ffffff"/><rect x="9" y="11" width="4" height="1" fill="#94a3b8"/><rect x="13" y="11" width="1" height="1" fill="#f9a8d4"/><rect x="14" y="11" width="1" height="1" fill="#94a3b8"/><rect x="2" y="12" width="4" height="1" fill="#94a3b8"/><rect x="6" y="12" width="4" height="1" fill="#ffffff"/><rect x="10" y="12" width="4" height="1" fill="#94a3b8"/><rect x="2" y="13" width="4" height="1" fill="#94a3b8"/><rect x="6" y="13" width="1" height="1" fill="#ffffff"/><rect x="7" y="13" width="2" height="1" fill="#f9a8d4"/><rect x="9" y="13" width="1" height="1" fill="#ffffff"/><rect x="10" y="13" width="4" height="1" fill="#94a3b8"/><rect x="3" y="14" width="3" height="1" fill="#94a3b8"/><rect x="6" y="14" width="4" height="1" fill="#ffffff"/><rect x="10" y="14" width="3" height="1" fill="#94a3b8"/><rect x="4" y="15" width="2" height="1" fill="#94a3b8"/><rect x="6" y="15" width="1" height="1" fill="#ffffff"/><rect x="7" y="15" width="2" height="1" fill="#1e293b"/><rect x="9" y="15" width="1" height="1" fill="#ffffff"/><rect x="10" y="15" width="2" height="1" fill="#94a3b8"/><rect x="5" y="16" width="1" height="1" fill="#94a3b8"/><rect x="6" y="16" width="4" height="1" fill="#ffffff"/><rect x="10" y="16" width="1" height="1" fill="#94a3b8"/></svg></span>
+    </div>
+  </section>
+
+  <section class="ld-secao">
+    <h2 class="ld-h2">O que tem dentro</h2>
+    <div class="ld-grid">
+      <div class="ld-card">
+        <span class="ld-chip ld-chip-red"><svg viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="0" width="6" height="1" fill="#f87171"/><rect x="1" y="1" width="2" height="1" fill="#f87171"/><rect x="7" y="1" width="2" height="1" fill="#f87171"/><rect x="0" y="2" width="2" height="1" fill="#f87171"/><rect x="3" y="2" width="4" height="1" fill="#ffffff"/><rect x="8" y="2" width="2" height="1" fill="#f87171"/><rect x="0" y="3" width="1" height="1" fill="#f87171"/><rect x="2" y="3" width="2" height="1" fill="#ffffff"/><rect x="6" y="3" width="2" height="1" fill="#ffffff"/><rect x="9" y="3" width="1" height="1" fill="#f87171"/><rect x="0" y="4" width="1" height="1" fill="#f87171"/><rect x="2" y="4" width="1" height="1" fill="#ffffff"/><rect x="4" y="4" width="2" height="1" fill="#f87171"/><rect x="7" y="4" width="1" height="1" fill="#ffffff"/><rect x="9" y="4" width="1" height="1" fill="#f87171"/><rect x="0" y="5" width="1" height="1" fill="#f87171"/><rect x="2" y="5" width="1" height="1" fill="#ffffff"/><rect x="4" y="5" width="2" height="1" fill="#f87171"/><rect x="7" y="5" width="1" height="1" fill="#ffffff"/><rect x="9" y="5" width="1" height="1" fill="#f87171"/><rect x="0" y="6" width="1" height="1" fill="#f87171"/><rect x="2" y="6" width="2" height="1" fill="#ffffff"/><rect x="6" y="6" width="2" height="1" fill="#ffffff"/><rect x="9" y="6" width="1" height="1" fill="#f87171"/><rect x="0" y="7" width="2" height="1" fill="#f87171"/><rect x="3" y="7" width="4" height="1" fill="#ffffff"/><rect x="8" y="7" width="2" height="1" fill="#f87171"/><rect x="1" y="8" width="2" height="1" fill="#f87171"/><rect x="7" y="8" width="2" height="1" fill="#f87171"/><rect x="2" y="9" width="6" height="1" fill="#f87171"/></svg></span>
+        <h3>Simulados</h3>
+        <p>Questões de múltipla escolha para treinar no ritmo da prova, por matéria e por tópico.</p>
+      </div>
+      <div class="ld-card">
+        <span class="ld-chip ld-chip-blue"><svg viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="0" width="7" height="1" fill="#60a5fa"/><rect x="2" y="1" width="1" height="1" fill="#60a5fa"/><rect x="8" y="1" width="1" height="1" fill="#60a5fa"/><rect x="0" y="2" width="7" height="1" fill="#60a5fa"/><rect x="8" y="2" width="1" height="1" fill="#60a5fa"/><rect x="0" y="3" width="1" height="1" fill="#60a5fa"/><rect x="6" y="3" width="1" height="1" fill="#60a5fa"/><rect x="8" y="3" width="1" height="1" fill="#60a5fa"/><rect x="0" y="4" width="1" height="1" fill="#60a5fa"/><rect x="2" y="4" width="3" height="1" fill="#ffffff"/><rect x="6" y="4" width="1" height="1" fill="#60a5fa"/><rect x="8" y="4" width="1" height="1" fill="#60a5fa"/><rect x="0" y="5" width="1" height="1" fill="#60a5fa"/><rect x="6" y="5" width="3" height="1" fill="#60a5fa"/><rect x="0" y="6" width="1" height="1" fill="#60a5fa"/><rect x="2" y="6" width="2" height="1" fill="#ffffff"/><rect x="6" y="6" width="1" height="1" fill="#60a5fa"/><rect x="0" y="7" width="1" height="1" fill="#60a5fa"/><rect x="6" y="7" width="1" height="1" fill="#60a5fa"/><rect x="0" y="8" width="7" height="1" fill="#60a5fa"/></svg></span>
+        <h3>Flashcards</h3>
+        <p>Cartões de frente e verso, estilo Anki — escritos por você ou gerados pela IA no estilo do seu edital.</p>
+      </div>
+      <div class="ld-card">
+        <span class="ld-chip ld-chip-purple"><svg viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="0" width="6" height="1" fill="#a78bfa"/><rect x="1" y="1" width="1" height="1" fill="#a78bfa"/><rect x="2" y="1" width="6" height="1" fill="#ffffff"/><rect x="8" y="1" width="1" height="1" fill="#a78bfa"/><rect x="0" y="2" width="1" height="1" fill="#a78bfa"/><rect x="1" y="2" width="4" height="1" fill="#ffffff"/><rect x="5" y="2" width="1" height="1" fill="#a78bfa"/><rect x="6" y="2" width="3" height="1" fill="#ffffff"/><rect x="9" y="2" width="1" height="1" fill="#a78bfa"/><rect x="0" y="3" width="1" height="1" fill="#a78bfa"/><rect x="1" y="3" width="4" height="1" fill="#ffffff"/><rect x="5" y="3" width="1" height="1" fill="#a78bfa"/><rect x="6" y="3" width="3" height="1" fill="#ffffff"/><rect x="9" y="3" width="1" height="1" fill="#a78bfa"/><rect x="0" y="4" width="1" height="1" fill="#a78bfa"/><rect x="1" y="4" width="4" height="1" fill="#ffffff"/><rect x="5" y="4" width="3" height="1" fill="#a78bfa"/><rect x="8" y="4" width="1" height="1" fill="#ffffff"/><rect x="9" y="4" width="1" height="1" fill="#a78bfa"/><rect x="0" y="5" width="1" height="1" fill="#a78bfa"/><rect x="1" y="5" width="8" height="1" fill="#ffffff"/><rect x="9" y="5" width="1" height="1" fill="#a78bfa"/><rect x="0" y="6" width="1" height="1" fill="#a78bfa"/><rect x="1" y="6" width="8" height="1" fill="#ffffff"/><rect x="9" y="6" width="1" height="1" fill="#a78bfa"/><rect x="1" y="7" width="1" height="1" fill="#a78bfa"/><rect x="2" y="7" width="6" height="1" fill="#ffffff"/><rect x="8" y="7" width="1" height="1" fill="#a78bfa"/><rect x="2" y="8" width="6" height="1" fill="#a78bfa"/></svg></span>
+        <h3>Repetição espaçada</h3>
+        <p>O algoritmo agenda cada revisão para pouco antes de você esquecer. Errou? O item volta na mesma sessão.</p>
+      </div>
+      <div class="ld-card">
+        <span class="ld-chip ld-chip-orange"><svg viewBox="0 0 10 10" shape-rendering="crispEdges" aria-hidden="true"><rect x="4" y="0" width="2" height="1" fill="#fb923c"/><rect x="4" y="1" width="2" height="1" fill="#fb923c"/><rect x="2" y="2" width="1" height="1" fill="#fb923c"/><rect x="4" y="2" width="2" height="1" fill="#fb923c"/><rect x="7" y="2" width="1" height="1" fill="#fb923c"/><rect x="3" y="3" width="4" height="1" fill="#fb923c"/><rect x="0" y="4" width="4" height="1" fill="#fb923c"/><rect x="6" y="4" width="4" height="1" fill="#fb923c"/><rect x="0" y="5" width="4" height="1" fill="#fb923c"/><rect x="6" y="5" width="4" height="1" fill="#fb923c"/><rect x="3" y="6" width="4" height="1" fill="#fb923c"/><rect x="2" y="7" width="1" height="1" fill="#fb923c"/><rect x="4" y="7" width="2" height="1" fill="#fb923c"/><rect x="7" y="7" width="1" height="1" fill="#fb923c"/><rect x="4" y="8" width="2" height="1" fill="#fb923c"/><rect x="4" y="9" width="2" height="1" fill="#fb923c"/></svg></span>
+        <h3>IA que cria questões</h3>
+        <p>Cole a apostila, a prova antiga ou o edital — e receba perguntas e flashcards prontos para salvar.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="ld-secao">
+    <h2 class="ld-h2">Como funciona</h2>
+    <ol class="ld-passos">
+      <li class="ld-passo">
+        <span class="ld-num">1</span>
+        <h3>Crie a matéria</h3>
+        <p>Organize por concurso, certificação ou disciplina — com tópicos, se quiser.</p>
+      </li>
+      <li class="ld-passo">
+        <span class="ld-num">2</span>
+        <h3>Adicione questões</h3>
+        <p>Na mão ou colando o material para a IA extrair em segundos.</p>
+      </li>
+      <li class="ld-passo">
+        <span class="ld-num">3</span>
+        <h3>Estude todo dia</h3>
+        <p>O Aprendizado entrega só o que vence hoje: itens novos, revisões e o que você errou.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="ld-final">
+    <span class="ld-final-icone"><svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><rect x="1" y="0" width="2" height="1" fill="#f87171"/><rect x="5" y="0" width="2" height="1" fill="#f87171"/><rect x="0" y="1" width="8" height="1" fill="#f87171"/><rect x="0" y="2" width="8" height="1" fill="#f87171"/><rect x="0" y="3" width="8" height="1" fill="#f87171"/><rect x="1" y="4" width="6" height="1" fill="#f87171"/><rect x="2" y="5" width="4" height="1" fill="#f87171"/><rect x="3" y="6" width="2" height="1" fill="#f87171"/></svg></span>
+    <h2 class="ld-h2">Pronto pro próximo nível?</h2>
+    <button type="button" class="btn-px" id="ld-cta-final">Criar conta grátis</button>
+  </section>
+
+  <footer class="ld-rodape">Study Rats — simulados, revisão espaçada e IA.</footer>
+</div>
+
 <!-- TELAS PÚBLICAS (sem login) -->
-<div id="auth-screen" class="auth-screen">
+<div id="auth-screen" class="auth-screen" style="display:none">
   <button type="button" class="tema-toggle tema-toggle-flutuante" title="Alternar tema claro/escuro">
     <svg class="icone-lua" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
     <svg class="icone-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
   </button>
   <div class="auth-card">
+    <a href="#" id="voltar-landing" class="auth-voltar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+      Voltar
+    </a>
     <div class="auth-logo">
       <span class="auth-logo-icone">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="6.5" r="2.6"/><circle cx="17" cy="6.5" r="2.6"/><circle cx="12" cy="13.5" r="7"/><circle cx="9.5" cy="12.5" r=".6" fill="currentColor" stroke="none"/><circle cx="14.5" cy="12.5" r=".6" fill="currentColor" stroke="none"/><path d="M10.7 16h2.6"/></svg>

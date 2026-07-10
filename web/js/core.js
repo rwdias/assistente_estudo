@@ -281,12 +281,25 @@ function esc(s) {
   ));
 }
 
+// Visitante sem sessão cai na landing; login/cadastro ficam em
+// mostrarAuth(painel), acionado pelos CTAs da landing.
 function mostrarTelaAuth() {
-  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('landing').style.display = 'block';
+  document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'none';
 }
 
+function mostrarAuth(painel) {
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  const cadastro = painel === 'cadastro';
+  document.getElementById('auth-panel-login').style.display = cadastro ? 'none' : 'block';
+  document.getElementById('auth-panel-cadastro').style.display = cadastro ? 'block' : 'none';
+}
+
 function mostrarApp() {
+  document.getElementById('landing').style.display = 'none';
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
 }
