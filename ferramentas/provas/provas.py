@@ -139,6 +139,13 @@ def enem_imagens(ano, dia, ini, fim, log=print):
     pasta = enem_dir(ano, dia) / "imagens"
     pasta.mkdir(parents=True, exist_ok=True)
 
+    # remove recortes antigos da MESMA faixa (rodada anterior pode ter
+    # atribuído a questões erradas; fora da faixa preserva outras áreas)
+    for antigo in pasta.glob("q*.png"):
+        m = re.match(r"q(\d+)_", antigo.name)
+        if m and ini <= int(m.group(1)) <= fim:
+            antigo.unlink()
+
     mapa = {}
     with pdfplumber.open(caminho) as pdf:
         marcadores = []  # (pagina, coluna, top, numero) em ordem de leitura
@@ -267,7 +274,7 @@ Para cada questão:
 Responda apenas o JSON no schema pedido."""
 
 
-def chamar_openai(blocos):
+def chamar_openai(blocos, log=print):
     chave = ler_env("OPENAI_API_KEY")
     modelo = ler_env("OPENAI_MODEL", obrigatoria=False) or "gpt-4o-mini"
 
@@ -275,6 +282,7 @@ def chamar_openai(blocos):
     corpo = {
         "model": modelo,
         "temperature": 0,
+        "max_tokens": 16000,
         "messages": [
             {"role": "system", "content": PROMPT_EXTRACAO},
             {"role": "user", "content": conteudo},
@@ -291,7 +299,22 @@ def chamar_openai(blocos):
     )
     with urllib.request.urlopen(req, timeout=300) as resp:
         dados = json.loads(resp.read().decode())
-    return json.loads(dados["choices"][0]["message"]["content"])["questoes"]
+
+    escolha = dados["choices"][0]
+    truncada = escolha.get("finish_reason") == "length"
+    if not truncada:
+        try:
+            return json.loads(escolha["message"]["content"])["questoes"]
+        except json.JSONDecodeError:
+            truncada = True  # JSON cortado no meio = mesmo sintoma
+
+    # Resposta estourou o limite de saída (textos-base longos): divide o
+    # lote ao meio e tenta de novo — cada metade gera metade do JSON.
+    if len(blocos) == 1:
+        raise ValueError(f"resposta da IA truncada até para a questão {blocos[0][0]} sozinha")
+    meio = len(blocos) // 2
+    log(f"  lote grande demais para a IA — dividindo ({blocos[0][0]}-{blocos[meio-1][0]} e {blocos[meio][0]}-{blocos[-1][0]})")
+    return chamar_openai(blocos[:meio], log) + chamar_openai(blocos[meio:], log)
 
 
 # =========================================================
@@ -324,7 +347,7 @@ def extrair_enem(ano, area, maximo=None, log=print):
     for i in range(0, len(numeros), LOTE):
         lote = [(n, blocos[n]) for n in numeros[i:i + LOTE]]
         log(f"IA: questões {lote[0][0]}-{lote[-1][0]}...")
-        questoes.extend(chamar_openai(lote))
+        questoes.extend(chamar_openai(lote, log))
 
     saida = []
     sem_gabarito = 0
