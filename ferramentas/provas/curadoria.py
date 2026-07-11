@@ -73,7 +73,7 @@ class Handler(BaseHTTPRequestHandler):
                 import urllib.parse
 
                 rel = urllib.parse.unquote(self.path.split("/api/imagem/", 1)[1])
-                base = (provas.CACHE / "imagens").resolve()
+                base = provas.CACHE.resolve()
                 caminho = (base / rel).resolve()
                 if not caminho.is_relative_to(base) or caminho.suffix != ".png":
                     raise ValueError("imagem inválida")

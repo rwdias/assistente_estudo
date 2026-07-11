@@ -34,6 +34,21 @@ $venv provas.py publicar revisao/enem_2023_humanas.json   # --substituir para re
 $venv provas.py listar
 ```
 
+## Acervo local (fora do git, sem downloads repetidos)
+
+```
+cache/                      # git-ignorado por completo
+  enem/
+    2023/
+      dia1/  prova.pdf · gabarito.pdf · imagens/qNN_i.png
+      dia2/  ...
+    2024/ ...
+  <fonte>/...               # cada fonte nova segue o mesmo padrão
+```
+
+O download só acontece se o arquivo ainda não existe no acervo — reextrair
+uma área reutiliza os PDFs já baixados.
+
 ## Cobertura, imagens e metadados
 
 - A UI tem um **mapa de cobertura** (ano × área): publicada / em revisão /

@@ -61,15 +61,20 @@ ENEM_NOMES = {
 }
 
 
+def enem_dir(ano, dia):
+    """Acervo estruturado (fora do git): cache/enem/<ano>/dia<en>/..."""
+    return CACHE / "enem" / str(ano) / f"dia{dia}"
+
+
 def enem_baixar(ano, dia):
     # curl em vez de urllib: o download.inep.gov.br entrega a cadeia TLS
     # incompleta e o urllib rejeita; o curl do macOS resolve sozinho.
     import subprocess
 
-    CACHE.mkdir(exist_ok=True)
+    enem_dir(ano, dia).mkdir(parents=True, exist_ok=True)
     arquivos = {}
     for tipo, rotulo in (("PV", "prova"), ("GB", "gabarito")):
-        destino = CACHE / f"enem_{ano}_d{dia}_{rotulo}.pdf"
+        destino = enem_dir(ano, dia) / f"{rotulo}.pdf"
         if not destino.exists():
             url = ENEM_URL.format(ano=ano, tipo=tipo, dia=dia, cd=ENEM_CADERNO_AZUL[dia])
             print(f"baixando {url}")
@@ -86,7 +91,7 @@ def enem_gabarito(ano, dia):
     """Extrai o mapa questão -> letra do PDF de gabarito (caderno azul)."""
     import pdfplumber
 
-    caminho = CACHE / f"enem_{ano}_d{dia}_gabarito.pdf"
+    caminho = enem_dir(ano, dia) / "gabarito.pdf"
     texto = ""
     with pdfplumber.open(caminho) as pdf:
         for pagina in pdf.pages:
@@ -109,8 +114,8 @@ def enem_imagens(ano, dia, ini, fim, log=print):
     """
     import pdfplumber
 
-    caminho = CACHE / f"enem_{ano}_d{dia}_prova.pdf"
-    pasta = CACHE / "imagens" / f"enem_{ano}_d{dia}"
+    caminho = enem_dir(ano, dia) / "prova.pdf"
+    pasta = enem_dir(ano, dia) / "imagens"
     pasta.mkdir(parents=True, exist_ok=True)
 
     mapa = {}
@@ -147,7 +152,7 @@ def enem_imagens(ano, dia, ini, fim, log=print):
                 except Exception as erro:  # noqa: BLE001 — imagem ruim não derruba a prova
                     log(f"  aviso: falha ao recortar imagem da Q{numero}: {erro}")
                     continue
-                mapa.setdefault(numero, []).append(f"{pasta.name}/{arquivo.name}")
+                mapa.setdefault(numero, []).append(str(arquivo.relative_to(CACHE)))
 
     log(f"imagens extraídas: {sum(len(v) for v in mapa.values())} "
         f"(questões com figura: {len(mapa)})")
@@ -158,7 +163,7 @@ def enem_blocos_questoes(ano, dia, ini, fim):
     """Divide o texto da prova em blocos por questão (via marcador QUESTÃO N)."""
     import pdfplumber
 
-    caminho = CACHE / f"enem_{ano}_d{dia}_prova.pdf"
+    caminho = enem_dir(ano, dia) / "prova.pdf"
     texto = ""
     with pdfplumber.open(caminho) as pdf:
         for pagina in pdf.pages:
