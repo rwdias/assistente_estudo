@@ -1,46 +1,47 @@
 # Disponibilidade das provas do ENEM (verificado 2026-07-11)
 
-Fonte oficial: `download.inep.gov.br`. O INEP hospeda o ENEM em eras de URL
-diferentes; o adaptador (`enem_urls` em `provas.py`) já resolve as duas
-modernas. Caderno **azul**: CD1 (dia 1) e CD7 (dia 2).
+## Melhor caminho: API enem.dev — 2009 a 2023 (15 anos)
 
-## Pronto para extrair agora — 2018 a 2024 (7 anos)
+A API pública **api.enem.dev** serve as questões já estruturadas (enunciado
+em texto, resposta oficial, alternativas, imagens hospedadas). Sem IA, sem
+OCR, sem PDF — precisão oficial. É o método preferido.
 
-Prova **e** gabarito oficiais confirmados, dias 1 e 2:
+```bash
+python provas.py enem-api --ano 2015 --area humanas   # uma área
+python provas.py enem-api --ano 2015                   # todas as áreas
+# áreas: ingles, espanhol, linguagens, humanas, natureza, matematica
+```
 
-| Anos | Prova | Gabarito |
-|---|---|---|
-| 2020–2024 | `enem/provas_e_gabaritos/{ano}_PV_impresso_D{dia}_CD{cd}.pdf` | `..._GB_impresso_...` |
-| 2018–2019 | `educacao_basica/enem/provas/{ano}/{ano}_PV_impresso_D{dia}_CD{cd}.pdf` | `educacao_basica/enem/gabaritos/{ano}/...` (nome varia; resolvido por candidatas) |
+Como o campo `discipline` da API é ruidoso (mistura reaplicação), buscamos
+por **faixa de índice canônica** (estável desde 2009):
 
-Basta `python provas.py extrair enem --ano <2018..2024> --area <...>`
-(baixa sozinho). Áreas: ingles, espanhol, linguagens, humanas, natureza,
-matematica.
+| Área | Questões |
+|---|---|
+| Língua Inglesa / Espanhola | 1–5 (por idioma) |
+| Linguagens e Códigos | 6–45 |
+| Ciências Humanas | 46–90 |
+| Ciências da Natureza | 91–135 |
+| Matemática | 136–180 |
 
-## Prova disponível, gabarito a resolver — 2014 a 2017
+Imagens são baixadas para o acervo e sobem ao Storage na publicação. A API
+tem rate-limit — o importador já faz pausa + backoff (código em
+`enem_api.py`). Validado: gabaritos batem 100% com a extração de PDF
+independente (2023 humanas Q46=C, Q50=E...).
 
-As provas existem em `educacao_basica/enem/provas/{ano}/{ano}_PV_impresso_D{dia}_CD{cd}.pdf`,
-mas o gabarito de cada ano usa um nome próprio ainda não mapeado. Quando
-for extrair esses anos, descobrir a URL do gabarito (buscar no INEP) e
-acrescentar à lista `gabs` em `enem_urls`. **Atenção**: até 2016 o ENEM
-tinha os dias INVERTIDOS (dia 1 = Humanas+Natureza, dia 2 =
-Linguagens+Matemática) — o mapa `ENEM_AREAS` vale para 2017+; anos
-anteriores exigem ajustar dia↔área.
+## 2024 (e anos ainda fora da API): extrator de PDF
 
-## Ainda não mapeado — 2009 a 2013
+`python provas.py extrair enem --ano 2024 --area <...>` — baixa da INEP
+(as duas eras de URL estão em `enem_urls`). Use quando o ano não estiver
+na enem.dev.
 
-Não estão nos caminhos acima. Provavelmente em outra estrutura de URL do
-INEP; exigem nova investigação. Mesma ressalva de dias invertidos.
+## Pré-2009 (1998–2008) — pendente
 
-## Formato antigo — 1998 a 2008
-
-ENEM pré-reforma: prova ÚNICA (~63 questões + redação), sem as 4 áreas nem
-a divisão em 2 dias. Precisa de um adaptador próprio (numeração e
-segmentação diferentes) — não é coberto pelo extrator atual.
+ENEM antigo: prova ÚNICA (~63 questões + redação), sem as 4 áreas nem 2
+dias. Não está na enem.dev nem no extrator atual. Precisaria de fonte e
+adaptador próprios — esforço à parte.
 
 ## Resumo
 
-- **12 edições com prova baixável** (2014–2024 aqui + 2019 confirmado E2E).
-- **7 prontas de imediato** (2018–2024): prova + gabarito automáticos.
-- Pré-2014: esforço adicional (gabarito 2014–2017; URLs 2009–2013; formato
-  antigo 1998–2008).
+- **2009–2023: 15 anos prontos** via `enem-api` (imediato, oficial).
+- **2024: pronto** via extrator de PDF.
+- **1998–2008: pendente** (formato antigo).

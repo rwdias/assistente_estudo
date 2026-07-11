@@ -754,6 +754,20 @@ def cmd_concurso(args):
     print(f"revise no editor e rode: python provas.py publicar {destino.relative_to(BASE_DIR)}")
 
 
+def cmd_enem_api(args):
+    import enem_api
+
+    if args.ano not in enem_api.anos_disponiveis():
+        sys.exit(f"ano {args.ano} não está na API (disponíveis: {enem_api.anos_disponiveis()})")
+    areas = [args.area] if args.area else list(enem_api.AREAS)
+    for area in areas:
+        try:
+            destino = enem_api.importar(args.ano, area, args.max)
+            print(f"  -> publique: python provas.py publicar {destino.relative_to(BASE_DIR)}")
+        except ValueError as erro:
+            sys.exit(str(erro))
+
+
 def cmd_ufpr(args):
     import ufpr
 
@@ -808,6 +822,12 @@ def main():
     p.add_argument("--materia", help="matéria do edital (omita p/ listar)")
     p.add_argument("--max", type=int)
     p.set_defaults(fn=cmd_concurso)
+
+    p = sub.add_parser("enem-api", help="importa ENEM 2009-2023 da API enem.dev (sem IA)")
+    p.add_argument("--ano", type=int, required=True)
+    p.add_argument("--area", help="humanas|natureza|matematica|linguagens|ingles|espanhol (omita p/ todas)")
+    p.add_argument("--max", type=int)
+    p.set_defaults(fn=cmd_enem_api)
 
     p = sub.add_parser("ufpr", help="extrai matéria do vestibular UFPR (PDF local, resposta ►)")
     p.add_argument("--slug", required=True, help="pasta em cache/ufpr/<slug>/")
