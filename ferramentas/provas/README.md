@@ -77,6 +77,22 @@ uma área reutiliza os PDFs já baixados.
 - **Atenção na revisão**: o layout de 2 colunas do PDF às vezes embaralha
   a ordem texto-base/comando — ler o enunciado antes de aprovar.
 
+## Formatação de enunciados (vale para TODAS as fontes)
+
+Convenção de Markdown restrito no texto — a IA já gera assim e o app
+renderiza com `formatarTexto()` (escapado antes; XSS-safe):
+
+```
+> linhas de citação/texto-base
+*AUTOR, Obra. Ano (adaptado).*   <- fonte/referência (itálico)
+| Coluna A | Coluna B |          <- tabelas (1ª linha = cabeçalho)
+| 1        | 2        |
+```
+
+O editor tem botão "Prévia da formatação" por questão, atualizando ao
+digitar. Fontes novas (PDF ou HTML) devem produzir a MESMA convenção —
+o render no app é um só.
+
 ## Adicionar uma fonte nova (banca, vestibular, certificação)
 
 Criar um adaptador com as mesmas 3 responsabilidades do ENEM:

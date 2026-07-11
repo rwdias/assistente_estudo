@@ -254,6 +254,11 @@ PROMPT_EXTRACAO = """Você recebe blocos de questões extraídos de um PDF de pr
 
 Para cada questão:
 - Reconstrua fielmente o enunciado (incluindo o texto-base/citações que o acompanham), consertando quebras de linha e hifenização. NÃO invente nem resuma conteúdo. O enunciado NUNCA deve conter as alternativas — elas vão exclusivamente no campo alternativas.
+- Estruture o enunciado com esta convenção (vale para qualquer prova):
+  * Texto-base citado (trecho de obra, poema, notícia, fala) vira linhas iniciadas por "> " (citação).
+  * A referência/fonte da citação (AUTOR, obra, site, ano, "adaptado") vai numa linha própria entre asteriscos: *SOUSA, M. Disponível em: ... (adaptado).*
+  * Tabelas de dados viram tabelas Markdown: cada linha como | célula | célula |, com a primeira linha de cabeçalho.
+  * Separe blocos (texto-base, comando da questão) com uma linha em branco.
 - Liste as 5 alternativas (A a E) na ordem, SEM a letra na frente.
 - Marque depende_de_imagem=true se a questão só faz sentido com figura, gráfico, charge, mapa ou tabela que não está no texto.
 - Em topico, classifique o assunto da questão em 2 a 4 palavras (ex.: "Guerra Fria", "Geografia agrária", "Interpretação de texto").

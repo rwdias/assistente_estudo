@@ -750,3 +750,17 @@ textarea { resize: vertical; }
   background: var(--brand-light); border-radius: 99px;
   padding: 3px 12px; margin-bottom: 12px;
 }
+
+/* Formatação de enunciados: tabelas, citações e fonte */
+.tabela-scroll { overflow-x: auto; margin: 10px 0; }
+.tabela-enunciado { border-collapse: collapse; font-size: .9rem; font-weight: 400; min-width: 60%; }
+.tabela-enunciado th, .tabela-enunciado td {
+  border: 1px solid var(--borda-forte); padding: 6px 12px; text-align: left;
+}
+.tabela-enunciado th { background: var(--superficie-2); font-weight: 700; }
+.citacao-enunciado {
+  margin: 10px 0; padding: 8px 14px; border-left: 3px solid var(--brand);
+  background: var(--superficie-2); font-weight: 400; border-radius: 0 8px 8px 0;
+}
+.fonte-enunciado { display: block; font-size: .78rem; color: var(--texto-3); font-style: italic; margin: 4px 0 8px; }
+.question-title .quebra { display: block; height: 10px; }

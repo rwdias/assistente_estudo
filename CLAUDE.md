@@ -103,6 +103,10 @@ user `postgres.scafgcpxjsimzaaviean`, senha no `.env`. (O host direto
 - **Nunca usar emojis na UI — só ícones SVG** de traço (stroke, currentColor).
 - **Dificuldade é interna**: existe nos dados, mas não aparece em nenhuma tela.
 - Todo dado dinâmico injetado via innerHTML passa por `esc()` (XSS).
+- Enunciados/versos aceitam **Markdown restrito** (convenção válida para
+  toda fonte de prova): tabelas `| a | b |`, citações `> linha`, fonte
+  `*REF...*`. Renderização SÓ via `formatarTexto()` (core.js), que escapa
+  antes de formatar — nunca interpretar HTML vindo de dado.
 - Sidebar é rail (72px) que expande no hover, com pin persistido; seletor de
   matéria é dropdown próprio no header (select nativo não aceita estilo).
 

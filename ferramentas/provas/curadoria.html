@@ -83,6 +83,12 @@
   #picker-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0; }
   #picker-grid img { max-width: 200px; max-height: 150px; border: 2px solid var(--borda); border-radius: 8px; cursor: pointer; }
   #picker-grid img:hover { border-color: var(--brand); }
+  .q-previa { border: 1.5px dashed var(--borda); border-radius: 9px; padding: 12px 14px; margin-top: 8px; font-size: .9rem; }
+  .tab-previa { border-collapse: collapse; margin: 8px 0; font-size: .85rem; }
+  .tab-previa th, .tab-previa td { border: 1px solid var(--borda); padding: 5px 10px; }
+  .tab-previa th { background: var(--fundo); }
+  .cit-previa { margin: 8px 0; padding: 6px 12px; border-left: 3px solid var(--brand); background: var(--fundo); border-radius: 0 8px 8px 0; }
+  .fonte-previa { display: block; font-size: .78rem; color: var(--texto-3); margin: 4px 0; }
 </style>
 </head>
 <body>
@@ -153,6 +159,43 @@
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (m) =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+// Mesmo formatador do app (Markdown restrito, escapado antes): tabelas |,
+// citações "> " e fonte *...* — a prévia mostra como o aluno verá.
+function formatarTexto(texto) {
+  const linhas = esc(texto ?? '').split('\n');
+  const html = [];
+  let tabela = [];
+  let citacao = [];
+  const fecharTabela = () => {
+    if (tabela.length === 0) return;
+    const celulas = tabela.map((l) => l.replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim()));
+    const corpo = celulas.filter((cels) => !cels.every((c) => /^:?-{2,}:?$/.test(c)));
+    if (corpo.length > 0) {
+      const [cab, ...resto] = corpo;
+      html.push('<table class="tab-previa"><thead><tr>' + cab.map((c) => `<th>${c}</th>`).join('') +
+        '</tr></thead><tbody>' + resto.map((cels) => '<tr>' + cels.map((c) => `<td>${c}</td>`).join('') + '</tr>').join('') +
+        '</tbody></table>');
+    }
+    tabela = [];
+  };
+  const fecharCitacao = () => {
+    if (citacao.length === 0) return;
+    html.push(`<blockquote class="cit-previa">${citacao.join('<br>')}</blockquote>`);
+    citacao = [];
+  };
+  for (const linha of linhas) {
+    const t = linha.trim();
+    if (/^\|.*\|$/.test(t)) { fecharCitacao(); tabela.push(t); continue; }
+    fecharTabela();
+    if (t.startsWith('&gt;')) { citacao.push(t.replace(/^&gt;\s?/, '')); continue; }
+    fecharCitacao();
+    html.push(t === '' ? '<div style="height:8px"></div>' : `${t}<br>`);
+  }
+  fecharTabela();
+  fecharCitacao();
+  return html.join('').replace(/\*([^*]{2,220}?)\*/g, '<em class="fonte-previa">$1</em>');
+}
+
 const api = async (rota, opcoes) => {
   const resp = await fetch(rota, opcoes);
   const corpo = await resp.json();
@@ -353,6 +396,8 @@ async function abrirEditor(arquivo) {
         <button type="button" class="btn btn-sec btn-sm q-add-alt">+ alternativa</button>
       </div>
       <textarea class="q-enunciado" rows="4">${esc(q.enunciado)}</textarea>
+      <div class="q-previa" style="display:none"></div>
+      <button type="button" class="btn btn-sec btn-sm q-ver-previa" style="margin-top:6px">Prévia da formatação</button>
       <div class="q-alternativas">
         ${q.alternativas.map((a, j) => renderAlternativaHTML(i, j, a)).join('')}
       </div>
@@ -388,6 +433,20 @@ async function abrirEditor(arquivo) {
     });
 
     card.querySelector('.q-add-imagem').addEventListener('click', () => abrirPicker(card, q));
+
+    // prévia da formatação (tabelas/citações/fonte), atualizada ao digitar
+    const previa = card.querySelector('.q-previa');
+    const areaTexto = card.querySelector('.q-enunciado');
+    card.querySelector('.q-ver-previa').addEventListener('click', (e) => {
+      const aberta = previa.style.display !== 'none';
+      previa.style.display = aberta ? 'none' : 'block';
+      e.target.textContent = aberta ? 'Prévia da formatação' : 'Esconder prévia';
+      if (!aberta) previa.innerHTML = formatarTexto(areaTexto.value);
+    });
+    areaTexto.addEventListener('input', () => {
+      if (previa.style.display !== 'none') previa.innerHTML = formatarTexto(areaTexto.value);
+    });
+
     wireRemocaoAlts(card);
   });
 }

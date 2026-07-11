@@ -197,6 +197,53 @@ function renderImagensPergunta(pergunta) {
     .join('')}</div>`;
 }
 
+// Formatação SEGURA de enunciados/versos (Markdown restrito, válido para
+// qualquer fonte de prova): tabelas (linhas "| a | b |"), citações (linhas
+// iniciadas por "> ") e fonte/referência em itálico (*...*).
+// O texto é SEMPRE escapado antes — nenhuma tag vinda do dado sobrevive.
+function formatarTexto(texto) {
+  const linhas = esc(texto ?? '').split('\n');
+  const html = [];
+  let tabela = [];
+  let citacao = [];
+
+  const fecharTabela = () => {
+    if (tabela.length === 0) return;
+    const celulas = tabela.map((l) =>
+      l.replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim()));
+    const corpo = celulas.filter((cels) => !cels.every((c) => /^:?-{2,}:?$/.test(c)));
+    if (corpo.length > 0) {
+      const [cab, ...resto] = corpo;
+      html.push(
+        '<div class="tabela-scroll"><table class="tabela-enunciado"><thead><tr>' +
+        cab.map((c) => `<th>${c}</th>`).join('') +
+        '</tr></thead><tbody>' +
+        resto.map((cels) => '<tr>' + cels.map((c) => `<td>${c}</td>`).join('') + '</tr>').join('') +
+        '</tbody></table></div>'
+      );
+    }
+    tabela = [];
+  };
+  const fecharCitacao = () => {
+    if (citacao.length === 0) return;
+    html.push(`<blockquote class="citacao-enunciado">${citacao.join('<br>')}</blockquote>`);
+    citacao = [];
+  };
+
+  for (const linha of linhas) {
+    const t = linha.trim();
+    if (/^\|.*\|$/.test(t)) { fecharCitacao(); tabela.push(t); continue; }
+    fecharTabela();
+    if (t.startsWith('&gt;')) { citacao.push(t.replace(/^&gt;\s?/, '')); continue; }
+    fecharCitacao();
+    html.push(t === '' ? '<span class="quebra"></span>' : `${t}<br>`);
+  }
+  fecharTabela();
+  fecharCitacao();
+
+  return html.join('').replace(/\*([^*]{2,220}?)\*/g, '<em class="fonte-enunciado">$1</em>');
+}
+
 // Chip com a origem da questão (nome da matéria — ex.: "ENEM 2023 — Área")
 function renderOrigemQuiz() {
   const materia = Estado.materias.find((m) => m.id === Estado.materiaId);
@@ -210,7 +257,7 @@ function renderPerguntaQuizHTML(pergunta, chave) {
     <div class="question-card" data-chave="${chave}">
       ${renderOrigemQuiz()}
       ${antes ? imagens : ''}
-      <div class="question-title">${esc(pergunta.enunciado)}</div>
+      <div class="question-title">${formatarTexto(pergunta.enunciado)}</div>
       ${antes ? '' : imagens}
       <div class="opcoes-quiz">
         ${pergunta.opcoes

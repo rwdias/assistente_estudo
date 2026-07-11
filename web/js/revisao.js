@@ -159,8 +159,8 @@ function renderFlashcardRevisao(card) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7.5 7V6a2 2 0 0 1 2-2H19a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-1"/></svg>
         Flashcard
       </span>
-      <div class="question-title">${esc(card.enunciado)}</div>
-      <div class="fc-verso" id="fc-verso-revisao" style="display:none">${esc(card.verso || '')}</div>
+      <div class="question-title">${formatarTexto(card.enunciado)}</div>
+      <div class="fc-verso" id="fc-verso-revisao" style="display:none">${formatarTexto(card.verso || '')}</div>
       <div class="fc-acoes">
         <button type="button" class="btn btn-primary" id="fc-mostrar-btn">Mostrar resposta</button>
       </div>
