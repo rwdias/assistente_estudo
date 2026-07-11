@@ -284,6 +284,43 @@
             <p class="card-sub">Escolha os filtros e comece a praticar.</p>
           </div>
           <div class="card-body">
+            <div class="tipo-toggle" id="toggle-fonte-simulado">
+              <button type="button" class="ativo" data-fonte="materia">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+                Minhas matérias
+              </button>
+              <button type="button" data-fonte="banco">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>
+                Banco de questões
+              </button>
+            </div>
+
+            <div id="simulado-filtros-banco" style="display:none">
+              <div class="form-grade">
+                <div>
+                  <label>Tipo de prova</label>
+                  <select id="sf-fonte"><option value="">Todos</option></select>
+                </div>
+                <div>
+                  <label>Ano</label>
+                  <select id="sf-ano"><option value="">Todos</option></select>
+                </div>
+                <div>
+                  <label>Área / matéria</label>
+                  <select id="sf-area"><option value="">Todas</option></select>
+                </div>
+                <div>
+                  <label>Prova</label>
+                  <select id="sf-prova"><option value="">Todas</option></select>
+                </div>
+                <div>
+                  <label>Tópico</label>
+                  <select id="sf-topico"><option value="">Todos</option></select>
+                </div>
+              </div>
+              <p class="card-sub" style="margin-top:8px">Simulado do banco é treino livre: o resultado não altera seu cronograma de revisão.</p>
+            </div>
+
             <label>Quantidade de questões</label>
             <input type="number" id="simulado-quantidade" value="5" min="1" max="60" />
             <label class="checkbox-label"><input type="checkbox" id="simulado-embaralhar" checked /> Embaralhar questões</label>

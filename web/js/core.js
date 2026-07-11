@@ -133,7 +133,7 @@ async function mensagemErroFuncao(error) {
 const panelMeta = {
   revisao: { titulo: 'Aprendizado', sub: 'Aprenda o que é novo e revise o que está devido — repetição espaçada' },
   dashboard: { titulo: 'Início', sub: 'Visão geral do seu estudo' },
-  simulado: { titulo: 'Simulado', sub: 'Pratique com as perguntas da matéria atual' },
+  simulado: { titulo: 'Simulado', sub: 'Pratique com suas matérias ou monte pelo banco de questões' },
   perguntas: { titulo: 'Perguntas', sub: 'Cadastre e gerencie o banco de questões' },
   ia: { titulo: 'Adicionar via IA', sub: 'Cole questões e deixe a IA estruturar tudo' },
 };
@@ -244,8 +244,12 @@ function formatarTexto(texto) {
   return html.join('').replace(/\*([^*]{2,220}?)\*/g, '<em class="fonte-enunciado">$1</em>');
 }
 
-// Chip com a origem da questão (nome da matéria — ex.: "ENEM 2023 — Área")
-function renderOrigemQuiz() {
+// Chip com a origem da questão: nome da prova (banco de questões) ou da
+// matéria atual — ex.: "ENEM 2023 — Ciências Humanas".
+function renderOrigemQuiz(pergunta) {
+  if (pergunta?.origem_nome) {
+    return `<div class="question-origem">${esc(pergunta.origem_nome)}</div>`;
+  }
   const materia = Estado.materias.find((m) => m.id === Estado.materiaId);
   return materia ? `<div class="question-origem">${esc(materia.nome)}</div>` : '';
 }
@@ -255,7 +259,7 @@ function renderPerguntaQuizHTML(pergunta, chave) {
   const antes = pergunta.imagens_posicao === 'antes';
   return `
     <div class="question-card" data-chave="${chave}">
-      ${renderOrigemQuiz()}
+      ${renderOrigemQuiz(pergunta)}
       ${antes ? imagens : ''}
       <div class="question-title">${formatarTexto(pergunta.enunciado)}</div>
       ${antes ? '' : imagens}

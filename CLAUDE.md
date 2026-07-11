@@ -59,6 +59,10 @@ fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
   **"reaprendendo"** até acertar (espelho do Anki; lógica em `web/js/revisao.js`).
 - "Madura" = intervalo ≥ 21 dias → oferece reformulação por IA (só perguntas).
 - Simulado usa apenas `tipo='pergunta'`; flashcards vivem no Aprendizado.
+- Simulado tem 2 fontes: "Minhas matérias" e **"Banco de questões"** (monta
+  do catálogo público com filtros combináveis fonte/ano/área/prova/tópico,
+  sem importar). Questão do banco é treino livre — `doBanco:true` NÃO chama
+  `registrar_resposta` (não toca no SM-2). Lógica em `web/js/simulado.js`.
 
 ## Segurança (inegociável)
 
