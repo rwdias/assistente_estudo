@@ -48,12 +48,19 @@ ENEM_URL = "https://download.inep.gov.br/enem/provas_e_gabaritos/{ano}_{tipo}_im
 ENEM_CADERNO_AZUL = {1: 1, 2: 7}
 ENEM_AREAS = {
     # área -> (dia, questão inicial, questão final)
-    "linguagens": (1, 6, 45),   # 1-5 são língua estrangeira (fora do MVP)
+    "ingles": (1, 1, 5),        # 1ª ocorrência das questões 1-5
+    "espanhol": (1, 1, 5),      # 2ª ocorrência das MESMAS numerações
+    "linguagens": (1, 6, 45),
     "humanas": (1, 46, 90),
     "natureza": (2, 91, 135),
     "matematica": (2, 136, 180),
 }
+# As questões de língua estrangeira existem em dobro no caderno (Inglês
+# vem primeiro); a "ocorrência" escolhe qual instância da numeração usar.
+ENEM_OCORRENCIA = {"espanhol": 1}
 ENEM_NOMES = {
+    "ingles": "Língua Inglesa",
+    "espanhol": "Língua Espanhola",
     "linguagens": "Linguagens e Códigos",
     "humanas": "Ciências Humanas",
     "natureza": "Ciências da Natureza",
@@ -87,8 +94,13 @@ def enem_baixar(ano, dia):
     return arquivos
 
 
-def enem_gabarito(ano, dia):
-    """Extrai o mapa questão -> letra do PDF de gabarito (caderno azul)."""
+def enem_gabarito(ano, dia, espanhol=False):
+    """Extrai o mapa questão -> letra do PDF de gabarito (caderno azul).
+
+    Nas questões 1-5 a linha traz as DUAS línguas ("1 B A" = nº, Inglês,
+    Espanhol) — o parse padrão pega a 1ª letra (Inglês); espanhol=True
+    troca 1-5 pela 2ª letra.
+    """
     import pdfplumber
 
     caminho = enem_dir(ano, dia) / "gabarito.pdf"
@@ -102,6 +114,12 @@ def enem_gabarito(ano, dia):
         n = int(numero)
         if 1 <= n <= 180 and n not in mapa:  # 1ª ocorrência = caderno azul
             mapa[n] = letra
+
+    if espanhol:
+        for linha in texto.splitlines():
+            m = re.match(r"\s*([1-5])\s+([A-EX])\s+([A-EX])\b", linha)
+            if m:
+                mapa[int(m.group(1))] = m.group(3)
     return mapa
 
 
@@ -126,7 +144,7 @@ def coluna_de(page, x0, x1=None):
     return 0 if ponto < page.width / 2 else 1
 
 
-def enem_imagens(ano, dia, ini, fim, log=print):
+def enem_imagens(ano, dia, ini, fim, ocorrencia=0, log=print):
     """Extrai as figuras de cada questão do PDF (recorte por posição).
 
     Cada imagem pertence à última questão iniciada acima dela na ordem de
@@ -139,21 +157,29 @@ def enem_imagens(ano, dia, ini, fim, log=print):
     pasta = enem_dir(ano, dia) / "imagens"
     pasta.mkdir(parents=True, exist_ok=True)
 
-    # remove recortes antigos da MESMA faixa (rodada anterior pode ter
-    # atribuído a questões erradas; fora da faixa preserva outras áreas)
+    # remove recortes antigos da MESMA faixa+ocorrência (rodada anterior
+    # pode ter atribuído errado; o resto preserva as outras áreas)
+    sufixo = "e" if ocorrencia == 1 else ""
     for antigo in pasta.glob("q*.png"):
-        m = re.match(r"q(\d+)_", antigo.name)
+        m = re.match(rf"q(\d+){sufixo}_\d+\.png$", antigo.name)
         if m and ini <= int(m.group(1)) <= fim:
             antigo.unlink()
 
     mapa = {}
     with pdfplumber.open(caminho) as pdf:
-        marcadores = []  # (pagina, coluna, top, numero) em ordem de leitura
+        marcadores = []  # (pagina, coluna, top, numero, ocorrência)
+        vistos = {}
         for pi, page in enumerate(pdf.pages):
-            for m in page.search(r"QUEST[ÃA]O\s+\d{1,3}"):
+            achados = sorted(
+                page.search(r"QUEST[ÃA]O\s+\d{1,3}"),
+                key=lambda m: (coluna_de(page, m["x0"]), m["top"]),
+            )
+            for m in achados:
                 numero = int(re.search(r"\d+", m["text"]).group())
-                marcadores.append((pi, coluna_de(page, m["x0"]), m["top"], numero))
-        marcadores.sort()
+                oc = vistos.get(numero, 0)
+                vistos[numero] = oc + 1
+                marcadores.append((pi, coluna_de(page, m["x0"]), m["top"], numero, oc))
+        marcadores.sort(key=lambda m: (m[0], m[1], m[2]))
 
         for pi, page in enumerate(pdf.pages):
             for img in page.images:
@@ -164,14 +190,14 @@ def enem_imagens(ano, dia, ini, fim, log=print):
                 donos = [m for m in marcadores if (m[0], m[1], m[2]) <= chave]
                 if not donos:
                     continue
-                numero = donos[-1][3]
-                if not (ini <= numero <= fim):
+                numero, oc_dono = donos[-1][3], donos[-1][4]
+                if not (ini <= numero <= fim) or oc_dono != ocorrencia:
                     continue
                 bbox = (
                     max(0, img["x0"] - 2), max(0, img["top"] - 2),
                     min(page.width, img["x1"] + 2), min(page.height, img["bottom"] + 2),
                 )
-                arquivo = pasta / f"q{numero}_{len(mapa.get(numero, []))}.png"
+                arquivo = pasta / f"q{numero}{sufixo}_{len(mapa.get(numero, []))}.png"
                 try:
                     page.crop(bbox).to_image(resolution=150).save(arquivo)
                 except Exception as erro:  # noqa: BLE001 — imagem ruim não derruba a prova
@@ -184,20 +210,24 @@ def enem_imagens(ano, dia, ini, fim, log=print):
     return mapa
 
 
-def enem_paginas_questoes(ano, dia):
+def enem_paginas_questoes(ano, dia, ocorrencia=0):
     """Mapa questão -> página (1-based) onde ela começa, p/ o PDF ao lado."""
     import pdfplumber
 
-    paginas = {}
+    listas = {}
     with pdfplumber.open(enem_dir(ano, dia) / "prova.pdf") as pdf:
         for pi, page in enumerate(pdf.pages):
-            for m in page.search(r"QUEST[ÃA]O\s+\d{1,3}"):
+            achados = sorted(
+                page.search(r"QUEST[ÃA]O\s+\d{1,3}"),
+                key=lambda m: (coluna_de(page, m["x0"]), m["top"]),
+            )
+            for m in achados:
                 numero = int(re.search(r"\d+", m["text"]).group())
-                paginas.setdefault(numero, pi + 1)
-    return paginas
+                listas.setdefault(numero, []).append(pi + 1)
+    return {n: pgs[ocorrencia] for n, pgs in listas.items() if len(pgs) > ocorrencia}
 
 
-def enem_blocos_questoes(ano, dia, ini, fim):
+def enem_blocos_questoes(ano, dia, ini, fim, ocorrencia=0):
     """Divide o texto da prova em blocos por questão (via marcador QUESTÃO N).
 
     Em página de 2 colunas o texto é lido coluna a coluna (esquerda depois
@@ -219,12 +249,12 @@ def enem_blocos_questoes(ano, dia, ini, fim):
                 texto += (pagina.extract_text() or "") + "\n"
 
     partes = re.split(r"\bQUEST[ÃA]O\s+(\d{1,3})\b", texto)
-    blocos = {}
+    listas = {}
     for i in range(1, len(partes) - 1, 2):
         n = int(partes[i])
-        if ini <= n <= fim and n not in blocos:
-            blocos[n] = partes[i + 1].strip()[:6000]
-    return blocos
+        if ini <= n <= fim:
+            listas.setdefault(n, []).append(partes[i + 1].strip()[:6000])
+    return {n: blocos[ocorrencia] for n, blocos in listas.items() if len(blocos) > ocorrencia}
 
 
 # =========================================================
@@ -269,12 +299,13 @@ Para cada questão:
 - Liste as 5 alternativas (A a E) na ordem, SEM a letra na frente.
 - Marque depende_de_imagem=true se a questão só faz sentido com figura, gráfico, charge, mapa ou tabela que não está no texto.
 - Em topico, classifique o assunto da questão em 2 a 4 palavras (ex.: "Guerra Fria", "Geografia agrária", "Interpretação de texto").
+- Questões de língua estrangeira (inglês/espanhol): mantenha o texto-base e as alternativas no idioma ORIGINAL — só o comando da questão costuma estar em português.
 - Ignore cabeçalhos, rodapés e instruções da prova misturados no texto.
 
 Responda apenas o JSON no schema pedido."""
 
 
-def chamar_openai(blocos, log=print):
+def chamar_openai(blocos, log=print, tentativa=0):
     chave = ler_env("OPENAI_API_KEY")
     modelo = ler_env("OPENAI_MODEL", obrigatoria=False) or "gpt-4o-mini"
 
@@ -303,28 +334,54 @@ def chamar_openai(blocos, log=print):
         with urllib.request.urlopen(req, timeout=300) as resp:
             dados = json.loads(resp.read().decode())
     except (TimeoutError, urllib.error.URLError) as erro:
-        # lote demorou demais (resposta enorme) — dividir também resolve
+        # lote demorou demais — dividir resolve; lote unitário: tentar de novo
         if len(blocos) == 1:
-            raise ValueError(f"IA não respondeu nem para a questão {blocos[0][0]} sozinha: {erro}") from erro
+            if tentativa < 2:
+                log(f"  questão {blocos[0][0]}: {type(erro).__name__} — tentando de novo ({tentativa + 2}ª vez)")
+                return chamar_openai(blocos, log, tentativa + 1)
+            raise ValueError(f"IA não respondeu para a questão {blocos[0][0]} após 3 tentativas: {erro}") from erro
         meio = len(blocos) // 2
         log(f"  lote lento demais ({type(erro).__name__}) — dividindo "
             f"({blocos[0][0]}-{blocos[meio-1][0]} e {blocos[meio][0]}-{blocos[-1][0]})")
         return chamar_openai(blocos[:meio], log) + chamar_openai(blocos[meio:], log)
 
-    escolha = dados["choices"][0]
-    truncada = escolha.get("finish_reason") == "length"
-    if not truncada:
-        try:
-            return json.loads(escolha["message"]["content"])["questoes"]
-        except json.JSONDecodeError:
-            truncada = True  # JSON cortado no meio = mesmo sintoma
+    def normalizar_questao(q):
+        """Valida/normaliza um item da resposta; None = fora do schema."""
+        if not (isinstance(q, dict) and "numero" in q and "enunciado" in q):
+            return None
+        alts = []
+        for a in q.get("alternativas") or []:
+            if isinstance(a, str):
+                alts.append(a)
+            elif isinstance(a, dict) and isinstance(a.get("texto"), str):
+                alts.append(a["texto"])  # formato {"texto": ...} tolerado
+            else:
+                return None
+        q["alternativas"] = alts
+        return q
 
-    # Resposta estourou o limite de saída (textos-base longos): divide o
-    # lote ao meio e tenta de novo — cada metade gera metade do JSON.
+    escolha = dados["choices"][0]
+    invalida = escolha.get("finish_reason") == "length"
+    if not invalida:
+        try:
+            itens = json.loads(escolha["message"]["content"])["questoes"]
+            normalizados = [normalizar_questao(q) for q in itens] if isinstance(itens, list) else [None]
+            if normalizados and all(q is not None for q in normalizados):
+                return normalizados
+            invalida = True
+        except (json.JSONDecodeError, KeyError, TypeError):
+            invalida = True  # JSON cortado/torto = mesmo remédio
+
+    # Resposta truncada ou fora do schema: divide o lote ao meio e tenta
+    # de novo — lotes menores são mais fáceis de a IA acertar.
     if len(blocos) == 1:
-        raise ValueError(f"resposta da IA truncada até para a questão {blocos[0][0]} sozinha")
+        if tentativa < 2:
+            log(f"  questão {blocos[0][0]}: resposta inválida — tentando de novo ({tentativa + 2}ª vez)")
+            return chamar_openai(blocos, log, tentativa + 1)
+        raise ValueError(f"resposta da IA inválida para a questão {blocos[0][0]} após 3 tentativas")
     meio = len(blocos) // 2
-    log(f"  lote grande demais para a IA — dividindo ({blocos[0][0]}-{blocos[meio-1][0]} e {blocos[meio][0]}-{blocos[-1][0]})")
+    log(f"  resposta da IA inválida/truncada — dividindo o lote "
+        f"({blocos[0][0]}-{blocos[meio-1][0]} e {blocos[meio][0]}-{blocos[-1][0]})")
     return chamar_openai(blocos[:meio], log) + chamar_openai(blocos[meio:], log)
 
 
@@ -344,11 +401,12 @@ def extrair_enem(ano, area, maximo=None, log=print):
         raise ValueError(f"área deve ser uma de: {', '.join(ENEM_AREAS)}")
 
     dia, ini, fim = ENEM_AREAS[area]
+    ocorrencia = ENEM_OCORRENCIA.get(area, 0)
     enem_baixar(ano, dia)
-    gabarito = enem_gabarito(ano, dia)
-    imagens = enem_imagens(ano, dia, ini, fim, log=log)
-    paginas = enem_paginas_questoes(ano, dia)
-    blocos = enem_blocos_questoes(ano, dia, ini, fim)
+    gabarito = enem_gabarito(ano, dia, espanhol=(area == "espanhol"))
+    imagens = enem_imagens(ano, dia, ini, fim, ocorrencia, log=log)
+    paginas = enem_paginas_questoes(ano, dia, ocorrencia)
+    blocos = enem_blocos_questoes(ano, dia, ini, fim, ocorrencia)
     numeros = sorted(blocos)[:maximo] if maximo else sorted(blocos)
     log(f"{len(numeros)} questões localizadas na faixa {ini}-{fim}"
         f" | gabarito com {len(gabarito)} entradas")
@@ -381,8 +439,8 @@ def extrair_enem(ano, area, maximo=None, log=print):
                 (q.get("topico") or "").strip()),
             # questão de imagem só é pré-aprovada se as figuras vieram junto
             "aprovada": len(alternativas) == 5
-            and (not q["depende_de_imagem"] or bool(imagens.get(q["numero"]))),
-            "depende_de_imagem": q["depende_de_imagem"],
+            and (not q.get("depende_de_imagem") or bool(imagens.get(q["numero"]))),
+            "depende_de_imagem": bool(q.get("depende_de_imagem")),
             "imagens": imagens.get(q["numero"], []),
             "imagem_posicao": "depois",
             "pagina": paginas.get(q["numero"]),
