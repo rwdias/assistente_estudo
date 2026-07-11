@@ -292,13 +292,24 @@ def chamar_openai(blocos, log=print):
             "json_schema": {"name": "extracao", "strict": False, "schema": SCHEMA_EXTRACAO},
         },
     }
+    import urllib.error
+
     req = urllib.request.Request(
         "https://api.openai.com/v1/chat/completions",
         data=json.dumps(corpo).encode(),
         headers={"Authorization": f"Bearer {chave}", "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=300) as resp:
-        dados = json.loads(resp.read().decode())
+    try:
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            dados = json.loads(resp.read().decode())
+    except (TimeoutError, urllib.error.URLError) as erro:
+        # lote demorou demais (resposta enorme) — dividir também resolve
+        if len(blocos) == 1:
+            raise ValueError(f"IA não respondeu nem para a questão {blocos[0][0]} sozinha: {erro}") from erro
+        meio = len(blocos) // 2
+        log(f"  lote lento demais ({type(erro).__name__}) — dividindo "
+            f"({blocos[0][0]}-{blocos[meio-1][0]} e {blocos[meio][0]}-{blocos[-1][0]})")
+        return chamar_openai(blocos[:meio], log) + chamar_openai(blocos[meio:], log)
 
     escolha = dados["choices"][0]
     truncada = escolha.get("finish_reason") == "length"
