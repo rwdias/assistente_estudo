@@ -17,7 +17,9 @@ import provas
 
 # caixa-alta que NÃO é matéria (cabeçalhos/rodapés do caderno)
 NAO_MATERIA = {"INSCRIÇÃO TURMA NOME DO CANDIDATO", "ORDEM", "INSTRUÇÕES",
-               "RESPOSTAS", "RESPOS", "STAS", "PROCESSO SELETIVO", "GABARITO", "RASCUNHO"}
+               "RESPOSTAS", "RESPOS", "STAS", "PROCESSO SELETIVO", "GABARITO",
+               "RASCUNHO", "RASCUN", "ONLINE DE ESTUDOS", "ASSINATURA DO CANDIDATO",
+               "ESCLARECIMENTO", "PLATAFORMA"}
 LINGUAS = {"ALEMÃO", "ESPANHOL", "FRANCÊS", "INGLÊS", "ITALIANO", "JAPONÊS", "POLONÊS"}
 
 
