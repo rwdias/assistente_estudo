@@ -24,7 +24,7 @@ async function carregarFiltrosBanco() {
   if (!provasBanco) {
     const { data, error } = await sb
       .from('catalogo_provas')
-      .select('id, fonte, nome, ano, area')
+      .select('id, fonte, nome, ano, area, categoria, nivel')
       .order('ano', { ascending: false });
     if (error) {
       toast(error.message, 'error');
@@ -42,12 +42,15 @@ function opcoesSelect(select, valores, rotuloTodos) {
   if ([...select.options].some((o) => o.value === atual)) select.value = atual;
 }
 
+const ROTULO_NIVEL = { medio: 'Ensino médio', superior: 'Ensino superior', fundamental: 'Ensino fundamental' };
+
 function provasFiltradas() {
-  const fonte = document.getElementById('sf-fonte').value;
-  const ano = document.getElementById('sf-ano').value;
-  const area = document.getElementById('sf-area').value;
-  const prova = document.getElementById('sf-prova').value;
+  const g = (id) => document.getElementById(id).value;
+  const [categoria, nivel, fonte, ano, area, prova] =
+    ['sf-categoria', 'sf-nivel', 'sf-fonte', 'sf-ano', 'sf-area', 'sf-prova'].map(g);
   return provasBanco.filter((p) =>
+    (!categoria || p.categoria === categoria) &&
+    (!nivel || p.nivel === nivel) &&
     (!fonte || p.fonte === fonte) &&
     (!ano || String(p.ano) === ano) &&
     (!area || p.area === area) &&
@@ -57,7 +60,12 @@ function provasFiltradas() {
 async function atualizarFiltrosBanco() {
   const unicos = (lista) => [...new Set(lista.filter(Boolean))];
   const semProva = provasFiltradas();
+  const capitalizar = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
+  opcoesSelect(document.getElementById('sf-categoria'),
+    unicos(provasBanco.map((p) => p.categoria)).sort().map((c) => ({ valor: c, rotulo: capitalizar(c) })), 'Todas');
+  opcoesSelect(document.getElementById('sf-nivel'),
+    unicos(provasBanco.map((p) => p.nivel)).sort().map((n) => ({ valor: n, rotulo: ROTULO_NIVEL[n] || capitalizar(n) })), 'Todos');
   opcoesSelect(document.getElementById('sf-fonte'),
     unicos(provasBanco.map((p) => p.fonte)).sort().map((f) => ({ valor: f, rotulo: f.toUpperCase() })), 'Todos');
   opcoesSelect(document.getElementById('sf-ano'),
@@ -78,7 +86,7 @@ async function atualizarFiltrosBanco() {
     topicos.map((t) => ({ valor: t, rotulo: t })), 'Todos');
 }
 
-['sf-fonte', 'sf-ano', 'sf-area', 'sf-prova'].forEach((id) =>
+['sf-categoria', 'sf-nivel', 'sf-fonte', 'sf-ano', 'sf-area', 'sf-prova'].forEach((id) =>
   document.getElementById(id).addEventListener('change', atualizarFiltrosBanco));
 
 function embaralharLista(lista) {

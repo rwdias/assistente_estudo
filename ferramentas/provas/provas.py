@@ -463,6 +463,9 @@ def extrair_enem(ano, area, maximo=None, log=print):
         "nome": f"ENEM {ano} — {ENEM_NOMES[area]}",
         "ano": ano,
         "area": ENEM_NOMES[area],
+        "categoria": "vestibular",   # ENEM dá acesso ao ensino superior
+        "nivel": "medio",            # questões de nível médio
+
         "metadados": {
             "dia": dia,
             "caderno": f"azul (CD{ENEM_CADERNO_AZUL[dia]})",
@@ -491,6 +494,43 @@ def cmd_extrair(args):
         sys.exit(str(erro))
     print("revise o arquivo (edite textos, ajuste 'aprovada') e rode: "
           f"python provas.py publicar {destino.relative_to(BASE_DIR)}")
+
+
+import unicodedata
+
+
+def chave_topico(t):
+    """Forma normalizada para COMPARAR tópicos (sem acento/artigo/caixa)."""
+    if not t:
+        return ""
+    s = unicodedata.normalize("NFKD", t.strip().lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = re.sub(r"^(a|o|as|os|um|uma|de|do|da|dos|das)\s+", "", s)
+    return re.sub(r"[^a-z0-9]+", " ", s).strip()
+
+
+def canonicalizar_topicos(topicos, conhecidos=None):
+    """Mapa {tópico original -> grafia canônica}.
+
+    Mesma chave normalizada => uma única grafia (reusa a já existente no
+    catálogo quando houver; senão, a 1ª ocorrência com iniciais maiúsculas).
+    """
+    canonico = {}  # chave -> grafia a usar
+    for existente in (conhecidos or []):
+        canonico.setdefault(chave_topico(existente), existente)
+
+    resultado = {}
+    for t in topicos:
+        if not t:
+            continue
+        k = chave_topico(t)
+        if not k:
+            continue
+        if k not in canonico:
+            limpo = re.sub(r"\s+", " ", t.strip())
+            canonico[k] = limpo[:1].upper() + limpo[1:]
+        resultado[t] = canonico[k]
+    return resultado
 
 
 def remover_letras_alternativas(textos):
@@ -588,10 +628,20 @@ def publicar_arquivo(caminho, substituir=False):
                 raise ValueError(f"'{doc['nome']}' já está no catálogo — use substituir para republicar")
             conn.execute("delete from public.catalogo_provas where id=%s", (existente[0],))
 
+        # tópicos canônicos: reusa a grafia já presente no catálogo para não
+        # criar sinônimos ("Guerra Fria" vs "guerra fria" vs "A Guerra Fria")
+        conhecidos = [r[0] for r in conn.execute(
+            "select distinct topico from public.catalogo_questoes where topico is not null"
+        ).fetchall()]
+        mapa_topicos = canonicalizar_topicos(
+            [q.get("topico") for q in aprovadas], conhecidos)
+
         prova_id = conn.execute(
-            "insert into public.catalogo_provas (fonte, nome, ano, area, total_questoes, metadados) "
-            "values (%s,%s,%s,%s,%s,%s) returning id",
-            (doc["fonte"], doc["nome"], doc.get("ano"), doc.get("area"), len(aprovadas),
+            "insert into public.catalogo_provas "
+            "(fonte, nome, ano, area, categoria, nivel, total_questoes, metadados) "
+            "values (%s,%s,%s,%s,%s,%s,%s,%s) returning id",
+            (doc["fonte"], doc["nome"], doc.get("ano"), doc.get("area"),
+             doc.get("categoria"), doc.get("nivel"), len(aprovadas),
              json.dumps(doc.get("metadados")) if doc.get("metadados") else None),
         ).fetchone()[0]
 
@@ -611,7 +661,7 @@ def publicar_arquivo(caminho, substituir=False):
                 "(prova_id, numero, enunciado, topico, metadados, imagens, imagens_posicao) "
                 "values (%s,%s,%s,%s,%s,%s,%s) returning id",
                 (prova_id, q.get("numero"), q["enunciado"].strip(),
-                 (q.get("topico") or "").strip()[:150] or None, json.dumps(meta_q),
+                 (mapa_topicos.get(q.get("topico")) or None), json.dumps(meta_q),
                  json.dumps(imagens_q) if imagens_q else None, posicao),
             ).fetchone()[0]
             for ordem, alt in enumerate(q["alternativas"]):
