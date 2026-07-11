@@ -112,6 +112,21 @@ matéria(area) → tópico**. O gabarito da banca dá as faixas de matéria e as
 respostas oficiais. Layout CESGRANRIO implementado (`concurso.py`); outras
 bancas entram com nova função de gabarito/segmentação no mesmo miolo.
 
+## Vestibular UFPR — adaptador `ufpr`
+
+O caderno "Geral" da UFPR já traz a resposta certa marcada com "►" (não há
+gabarito separado). Curador baixa em `cache/ufpr/<slug>/prova.pdf`:
+
+```bash
+python provas.py ufpr --slug ps2023                       # lista matérias
+python provas.py ufpr --slug ps2023 --ano 2023 --materia "História"
+# línguas estrangeiras (83-90) repetem por idioma -> use --ocorrencia
+python provas.py ufpr --slug ps2023 --ano 2023 --materia "Inglês" --ocorrencia 0
+```
+
+Matérias detectadas genericamente (cabeçalhos em caixa alta); resposta pelo
+►; código em `ufpr.py`.
+
 ## Adicionar uma fonte nova (banca, vestibular, certificação)
 
 Criar um adaptador com as mesmas 3 responsabilidades do ENEM:

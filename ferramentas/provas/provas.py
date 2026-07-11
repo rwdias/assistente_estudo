@@ -722,6 +722,23 @@ def cmd_concurso(args):
     print(f"revise no editor e rode: python provas.py publicar {destino.relative_to(BASE_DIR)}")
 
 
+def cmd_ufpr(args):
+    import ufpr
+
+    if not args.materia:
+        for nome, ocorr, ini, fim in ufpr.listar_materias(args.slug):
+            suf = f" (ocorrência {ocorr})" if ocorr else ""
+            print(f"  {nome}{suf}  (questões {ini}-{fim})")
+        return
+    if not args.ano:
+        sys.exit("informe --ano")
+    try:
+        destino = ufpr.extrair_materia(args.ano, args.materia, args.slug, args.ocorrencia, args.max)
+    except ValueError as erro:
+        sys.exit(str(erro))
+    print(f"revise no editor e rode: python provas.py publicar {destino.relative_to(BASE_DIR)}")
+
+
 def cmd_listar(_args):
     provas = listar_catalogo()
     if not provas:
@@ -759,6 +776,14 @@ def main():
     p.add_argument("--materia", help="matéria do edital (omita p/ listar)")
     p.add_argument("--max", type=int)
     p.set_defaults(fn=cmd_concurso)
+
+    p = sub.add_parser("ufpr", help="extrai matéria do vestibular UFPR (PDF local, resposta ►)")
+    p.add_argument("--slug", required=True, help="pasta em cache/ufpr/<slug>/")
+    p.add_argument("--ano", type=int)
+    p.add_argument("--materia", help="matéria (omita p/ listar)")
+    p.add_argument("--ocorrencia", type=int, default=0, help="idioma repetido: 0,1,2...")
+    p.add_argument("--max", type=int)
+    p.set_defaults(fn=cmd_ufpr)
 
     p = sub.add_parser("publicar", help="JSON revisado -> catálogo no Supabase")
     p.add_argument("arquivo")
