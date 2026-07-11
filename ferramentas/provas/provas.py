@@ -43,9 +43,32 @@ def ler_env(chave, obrigatoria=True):
 # Fonte: ENEM (INEP) — PDFs oficiais e públicos
 # =========================================================
 
-ENEM_URL = "https://download.inep.gov.br/enem/provas_e_gabaritos/{ano}_{tipo}_impresso_D{dia}_CD{cd}.pdf"
-# caderno azul: CD1 no dia 1, CD7 no dia 2
+# O INEP hospeda o ENEM em DUAS eras de URL (verificado 2026-07):
+#   2020+      -> download.inep.gov.br/enem/provas_e_gabaritos/
+#   2014-2019  -> download.inep.gov.br/educacao_basica/enem/{provas,gabaritos}/<ano>/
+# Caderno azul: CD1 no dia 1, CD7 no dia 2 (nas duas eras).
 ENEM_CADERNO_AZUL = {1: 1, 2: 7}
+INEP = "https://download.inep.gov.br"
+
+
+def enem_urls(ano, dia):
+    """(url_prova, [urls_gabarito candidatas]) conforme a era do ano."""
+    cd = ENEM_CADERNO_AZUL[dia]
+    if ano >= 2020:
+        base = f"{INEP}/enem/provas_e_gabaritos"
+        return (f"{base}/{ano}_PV_impresso_D{dia}_CD{cd}.pdf",
+                [f"{base}/{ano}_GB_impresso_D{dia}_CD{cd}.pdf"])
+    # 2014-2019: gabarito com nome descritivo que varia por ano -> candidatas
+    pv = f"{INEP}/educacao_basica/enem/provas/{ano}/{ano}_PV_impresso_D{dia}_CD{cd}.pdf"
+    gb = f"{INEP}/educacao_basica/enem/gabaritos/{ano}"
+    gabs = [
+        f"{gb}/gabarito_{dia}_dia_caderno_{cd}_azul_aplicacao_regular.pdf",
+        f"{gb}/gabarito_{dia}_dia_caderno_{cd}_azul.pdf",
+        f"{gb}/GAB_ENEM_{ano}_DIA_{dia}_AZUL.pdf",
+        f"{gb}/GAB_ENEM_{ano}_DIA_{dia}_Azul.pdf",
+        f"{gb}/{ano}_GB_impresso_D{dia}_CD{cd}.pdf",
+    ]
+    return pv, gabs
 ENEM_AREAS = {
     # área -> (dia, questão inicial, questão final)
     "ingles": (1, 1, 5),        # 1ª ocorrência das questões 1-5
@@ -79,18 +102,27 @@ def enem_baixar(ano, dia):
     import subprocess
 
     enem_dir(ano, dia).mkdir(parents=True, exist_ok=True)
+    url_prova, urls_gab = enem_urls(ano, dia)
     arquivos = {}
-    for tipo, rotulo in (("PV", "prova"), ("GB", "gabarito")):
-        destino = enem_dir(ano, dia) / f"{rotulo}.pdf"
-        if not destino.exists():
-            url = ENEM_URL.format(ano=ano, tipo=tipo, dia=dia, cd=ENEM_CADERNO_AZUL[dia])
-            print(f"baixando {url}")
-            subprocess.run(
-                ["curl", "-sf", "-A", "Mozilla/5.0", "-o", str(destino), url],
-                check=True,
-            )
-        print(f"  ok: {destino.name} ({destino.stat().st_size // 1024} KB)")
-        arquivos[rotulo] = destino
+
+    prova = enem_dir(ano, dia) / "prova.pdf"
+    if not prova.exists():
+        print(f"baixando {url_prova}")
+        subprocess.run(["curl", "-sf", "-A", "Mozilla/5.0", "-o", str(prova), url_prova], check=True)
+    print(f"  ok: prova.pdf ({prova.stat().st_size // 1024} KB)")
+    arquivos["prova"] = prova
+
+    gab = enem_dir(ano, dia) / "gabarito.pdf"
+    if not gab.exists():
+        for url in urls_gab:  # tenta as variantes de nome até uma existir
+            r = subprocess.run(["curl", "-sf", "-A", "Mozilla/5.0", "-o", str(gab), url])
+            if r.returncode == 0 and gab.exists() and gab.stat().st_size > 1000:
+                print(f"baixado gabarito: {url}")
+                break
+        else:
+            raise SystemExit(f"gabarito não encontrado para {ano} dia {dia} — tentei: {urls_gab}")
+    print(f"  ok: gabarito.pdf ({gab.stat().st_size // 1024} KB)")
+    arquivos["gabarito"] = gab
     return arquivos
 
 
