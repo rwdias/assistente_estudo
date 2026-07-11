@@ -48,6 +48,7 @@ function normalizarPergunta(linha) {
     enunciado: linha.enunciado,
     verso: linha.verso,
     imagens: linha.imagens || [],
+    imagens_posicao: linha.imagens_posicao || 'depois',
     dificuldade: linha.dificuldade,
     origem: linha.origem,
     opcoes,
@@ -63,7 +64,7 @@ function normalizarPergunta(linha) {
 }
 
 const SELECT_PERGUNTA = `
-  id, tipo, enunciado, verso, dificuldade, origem, imagens, created_at,
+  id, tipo, enunciado, verso, dificuldade, origem, imagens, imagens_posicao, created_at,
   opcoes ( texto, correta, ordem ),
   revisoes_perguntas ( vezes_respondida, vezes_acertada, ultima_resposta_correta,
                        intervalo_dias, proxima_revisao_em ),
@@ -196,11 +197,21 @@ function renderImagensPergunta(pergunta) {
     .join('')}</div>`;
 }
 
+// Chip com a origem da questão (nome da matéria — ex.: "ENEM 2023 — Área")
+function renderOrigemQuiz() {
+  const materia = Estado.materias.find((m) => m.id === Estado.materiaId);
+  return materia ? `<div class="question-origem">${esc(materia.nome)}</div>` : '';
+}
+
 function renderPerguntaQuizHTML(pergunta, chave) {
+  const imagens = renderImagensPergunta(pergunta);
+  const antes = pergunta.imagens_posicao === 'antes';
   return `
     <div class="question-card" data-chave="${chave}">
+      ${renderOrigemQuiz()}
+      ${antes ? imagens : ''}
       <div class="question-title">${esc(pergunta.enunciado)}</div>
-      ${renderImagensPergunta(pergunta)}
+      ${antes ? '' : imagens}
       <div class="opcoes-quiz">
         ${pergunta.opcoes
           .map(

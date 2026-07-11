@@ -742,3 +742,11 @@ textarea { resize: vertical; }
   max-width: min(520px, 100%); border-radius: 10px;
   border: 1px solid var(--borda); background: #fff;
 }
+
+.question-origem {
+  display: inline-flex; align-items: center;
+  font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--brand-ink);
+  background: var(--brand-light); border-radius: 99px;
+  padding: 3px 12px; margin-bottom: 12px;
+}

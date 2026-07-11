@@ -66,6 +66,23 @@
   .cobertura .ano { font-weight: 700; background: var(--fundo); }
   .cel-btn { background: none; border: 1.5px dashed var(--borda); border-radius: 7px; padding: 4px 10px; font: inherit; font-size: .78rem; color: var(--texto-3); cursor: pointer; }
   .cel-btn:hover { border-color: var(--brand); color: var(--brand-dark); }
+  .editor-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .editor-pdf { position: sticky; top: 12px; height: calc(100vh - 60px); display: flex; flex-direction: column; }
+  .pdf-topo { font-size: .78rem; color: var(--texto-3); padding: 0 2px 6px; }
+  #editor-pdf { width: 100%; flex: 1; border: 1.5px solid var(--borda); border-radius: 10px; background: var(--fundo); }
+  @media (max-width: 1100px) { .editor-split { grid-template-columns: 1fr; } .editor-pdf { position: static; height: 70vh; } }
+  .questao.ativa { border-color: var(--brand); }
+  .q-img-item { position: relative; display: inline-block; }
+  .q-img-remover { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%; border: none; background: var(--erro); color: #fff; font-weight: 700; cursor: pointer; line-height: 1; }
+  .q-ferramentas { display: flex; gap: 10px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .q-ferramentas select { width: auto; font-size: .82rem; padding: 5px 9px; }
+  .alt .alt-remover { border: none; background: none; color: var(--texto-3); cursor: pointer; font-size: 1rem; padding: 2px 6px; }
+  .alt .alt-remover:hover { color: var(--erro); }
+  #picker-overlay { position: fixed; inset: 0; background: rgba(14,19,21,.55); display: flex; align-items: center; justify-content: center; z-index: 50; }
+  .picker { background: var(--superficie); border-radius: 14px; padding: 22px; max-width: 720px; max-height: 80vh; overflow-y: auto; }
+  #picker-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 14px 0; }
+  #picker-grid img { max-width: 200px; max-height: 150px; border: 2px solid var(--borda); border-radius: 8px; cursor: pointer; }
+  #picker-grid img:hover { border-color: var(--brand); }
 </style>
 </head>
 <body>
@@ -103,13 +120,27 @@
 
 <section id="editor-secao" style="display:none">
   <h2 id="editor-titulo">Editor</h2>
-  <div id="editor-questoes"></div>
+  <div class="editor-split">
+    <div id="editor-questoes"></div>
+    <div class="editor-pdf" id="editor-pdf-painel" style="display:none">
+      <div class="pdf-topo">Prova original — clique numa questão para ir à página dela</div>
+      <iframe id="editor-pdf" title="PDF da prova"></iframe>
+    </div>
+  </div>
   <div class="barra-editor">
     <button class="btn" id="salvar-btn">Salvar revisão</button>
     <button class="btn btn-sec" id="fechar-btn">Fechar sem salvar</button>
     <span id="editor-status" style="font-size:.84rem;color:var(--texto-3)"></span>
   </div>
 </section>
+
+<div id="picker-overlay" style="display:none">
+  <div class="picker">
+    <h3>Escolha uma imagem da prova</h3>
+    <div id="picker-grid"></div>
+    <button class="btn btn-sec btn-sm" id="picker-fechar">Cancelar</button>
+  </div>
+</div>
 
 <section>
   <h2>Catálogo publicado (o que os usuários veem no app)</h2>
@@ -256,53 +287,147 @@ async function publicar(arquivo, btn) {
   btn.textContent = 'Publicar';
 }
 
-// --- editor ---
+// --- editor (PDF ao lado + alternativas e imagens editáveis) ---
+let pdfBase = null;
+let pastaProva = null; // ex.: "enem/2023/dia2" (acervo da prova aberta)
+
+function renderAlternativaHTML(i, j, alt) {
+  return `
+    <div class="alt">
+      <input type="radio" name="correta-${i}" ${alt.correta ? 'checked' : ''} title="correta" />
+      <span class="letra"></span>
+      <input type="text" class="q-alt" value="${esc(alt.texto)}" />
+      <button type="button" class="alt-remover" title="Remover alternativa">×</button>
+    </div>`;
+}
+
+function renderImagensQuestao(card, q) {
+  card.querySelector('.q-imagens').innerHTML = (q.imagens || []).map((im, k) => `
+    <span class="q-img-item">
+      <img src="/api/imagem/${esc(im)}" loading="lazy" />
+      <button type="button" class="q-img-remover" data-k="${k}" title="Remover imagem">×</button>
+    </span>`).join('');
+  card.querySelectorAll('.q-img-remover').forEach((btn) =>
+    btn.addEventListener('click', () => {
+      q.imagens.splice(Number(btn.dataset.k), 1);
+      renderImagensQuestao(card, q);
+    }));
+}
+
+function reletrar(card) {
+  card.querySelectorAll('.alt .letra').forEach((el, j) => { el.textContent = 'ABCDE'[j] ?? j + 1; });
+}
+
 async function abrirEditor(arquivo) {
   docAtual = await api('/api/revisao/' + arquivo);
   arquivoAtual = arquivo;
   $('editor-titulo').textContent = `Editor — ${docAtual.nome} (${arquivo})`;
   $('editor-status').textContent = '';
+
+  // PDF ao lado: fonte/ano/dia vêm do próprio documento
+  const dia = docAtual.metadados?.dia;
+  pastaProva = dia ? `${docAtual.fonte}/${docAtual.ano}/dia${dia}` : null;
+  pdfBase = pastaProva ? `/api/pdf/${pastaProva}` : null;
+  $('editor-pdf-painel').style.display = pdfBase ? 'flex' : 'none';
+  if (pdfBase) $('editor-pdf').src = pdfBase;
+
   $('editor-questoes').innerHTML = docAtual.questoes.map((q, i) => `
-    <div class="questao ${q.aprovada ? '' : 'reprovada'}" data-i="${i}">
+    <div class="questao ${q.aprovada ? '' : 'reprovada'}" data-i="${i}" data-pagina="${q.pagina ?? ''}">
       <div class="questao-topo">
         <span class="num">Q${q.numero}</span>
+        ${q.pagina ? `<span class="badge badge-ok">pág. ${q.pagina}</span>` : ''}
         ${q.depende_de_imagem ? '<span class="badge badge-red">depende de imagem</span>' : ''}
-        ${q.alternativas.length !== 5 ? `<span class="badge badge-warn">${q.alternativas.length} alternativas</span>` : ''}
         <input type="text" class="q-topico" value="${esc(q.topico || '')}" placeholder="tópico"
-               style="width:220px;flex:0 0 auto;font-size:.82rem;padding:5px 9px" />
+               style="width:200px;flex:0 0 auto;font-size:.82rem;padding:5px 9px" />
         <label class="aprovar"><input type="checkbox" class="q-aprovada" ${q.aprovada ? 'checked' : ''} /> aprovada</label>
       </div>
-      ${(q.imagens && q.imagens.length)
-        ? `<div class="q-imagens">${q.imagens.map((im) =>
-            `<img src="/api/imagem/${encodeURIComponent(im).replace(/%2F/g, '/')}" loading="lazy" />`).join('')}</div>`
-        : ''}
+      <div class="q-imagens"></div>
+      <div class="q-ferramentas">
+        <button type="button" class="btn btn-sec btn-sm q-add-imagem">+ imagem</button>
+        <label style="margin:0;font-size:.78rem">Imagem aparece
+          <select class="q-posicao">
+            <option value="depois" ${q.imagem_posicao !== 'antes' ? 'selected' : ''}>depois do texto</option>
+            <option value="antes" ${q.imagem_posicao === 'antes' ? 'selected' : ''}>antes do texto</option>
+          </select>
+        </label>
+        <button type="button" class="btn btn-sec btn-sm q-add-alt">+ alternativa</button>
+      </div>
       <textarea class="q-enunciado" rows="4">${esc(q.enunciado)}</textarea>
-      ${q.alternativas.map((a, j) => `
-        <div class="alt">
-          <input type="radio" name="correta-${i}" value="${j}" ${a.correta ? 'checked' : ''} title="correta" />
-          <span class="letra">${'ABCDE'[j] ?? j + 1}</span>
-          <input type="text" class="q-alt" value="${esc(a.texto)}" />
-        </div>`).join('')}
+      <div class="q-alternativas">
+        ${q.alternativas.map((a, j) => renderAlternativaHTML(i, j, a)).join('')}
+      </div>
     </div>`).join('');
+
   $('editor-secao').style.display = 'block';
   $('editor-secao').scrollIntoView({ behavior: 'smooth' });
 
-  document.querySelectorAll('.q-aprovada').forEach((chk) =>
-    chk.addEventListener('change', () =>
-      chk.closest('.questao').classList.toggle('reprovada', !chk.checked)));
+  document.querySelectorAll('#editor-questoes .questao').forEach((card) => {
+    const q = docAtual.questoes[Number(card.dataset.i)];
+    renderImagensQuestao(card, q);
+    reletrar(card);
+
+    // clique na questão -> PDF pula para a página dela (e destaca o card)
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.questao.ativa').forEach((c) => c.classList.remove('ativa'));
+      card.classList.add('ativa');
+      if (pdfBase && card.dataset.pagina) {
+        const alvo = `${pdfBase}#page=${card.dataset.pagina}`;
+        if ($('editor-pdf').src.split('/').pop() !== alvo.split('/').pop()) $('editor-pdf').src = alvo;
+      }
+    });
+
+    card.querySelector('.q-aprovada').addEventListener('change', (e) =>
+      card.classList.toggle('reprovada', !e.target.checked));
+
+    card.querySelector('.q-add-alt').addEventListener('click', () => {
+      const i = Number(card.dataset.i);
+      card.querySelector('.q-alternativas').insertAdjacentHTML(
+        'beforeend', renderAlternativaHTML(i, 99, { texto: '', correta: false }));
+      wireRemocaoAlts(card);
+      reletrar(card);
+    });
+
+    card.querySelector('.q-add-imagem').addEventListener('click', () => abrirPicker(card, q));
+    wireRemocaoAlts(card);
+  });
 }
+
+function wireRemocaoAlts(card) {
+  card.querySelectorAll('.alt-remover').forEach((btn) => {
+    btn.onclick = () => { btn.closest('.alt').remove(); reletrar(card); };
+  });
+}
+
+// picker de imagens do acervo da prova
+async function abrirPicker(card, q) {
+  if (!pastaProva) return;
+  const disponiveis = await api('/api/imagens-disponiveis/' + pastaProva);
+  $('picker-grid').innerHTML = disponiveis.length === 0
+    ? '<p style="font-size:.85rem;color:var(--texto-3)">Nenhuma imagem extraída desta prova.</p>'
+    : disponiveis.map((im) => `<img src="/api/imagem/${esc(im)}" data-rel="${esc(im)}" loading="lazy" />`).join('');
+  $('picker-overlay').style.display = 'flex';
+  $('picker-grid').querySelectorAll('img').forEach((img) =>
+    img.addEventListener('click', () => {
+      q.imagens = q.imagens || [];
+      q.imagens.push(img.dataset.rel);
+      renderImagensQuestao(card, q);
+      $('picker-overlay').style.display = 'none';
+    }));
+}
+$('picker-fechar').addEventListener('click', () => { $('picker-overlay').style.display = 'none'; });
 
 $('salvar-btn').addEventListener('click', async () => {
   document.querySelectorAll('#editor-questoes .questao').forEach((card) => {
     const q = docAtual.questoes[Number(card.dataset.i)];
     q.aprovada = card.querySelector('.q-aprovada').checked;
     q.topico = card.querySelector('.q-topico').value.trim() || null;
+    q.imagem_posicao = card.querySelector('.q-posicao').value;
     q.enunciado = card.querySelector('.q-enunciado').value.trim();
-    const correta = Number(card.querySelector('input[type=radio]:checked')?.value ?? -1);
-    card.querySelectorAll('.q-alt').forEach((inp, j) => {
-      q.alternativas[j].texto = inp.value.trim();
-      q.alternativas[j].correta = j === correta;
-    });
+    q.alternativas = Array.from(card.querySelectorAll('.q-alternativas .alt')).map((linha) => ({
+      texto: linha.querySelector('.q-alt').value.trim(),
+      correta: linha.querySelector('input[type=radio]').checked,
+    }));
+    // q.imagens já foi mantido em dia pelas ações de adicionar/remover
   });
   try {
     await api('/api/revisao/' + arquivoAtual, {

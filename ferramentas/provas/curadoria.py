@@ -78,6 +78,25 @@ class Handler(BaseHTTPRequestHandler):
                 if not caminho.is_relative_to(base) or caminho.suffix != ".png":
                     raise ValueError("imagem inválida")
                 self.responder(caminho.read_bytes(), tipo="image/png")
+            elif self.path.startswith("/api/pdf/"):
+                import urllib.parse
+
+                rel = urllib.parse.unquote(self.path.split("/api/pdf/", 1)[1])
+                base = provas.CACHE.resolve()
+                caminho = (base / rel / "prova.pdf").resolve()
+                if not caminho.is_relative_to(base):
+                    raise ValueError("pdf inválido")
+                self.responder(caminho.read_bytes(), tipo="application/pdf")
+            elif self.path.startswith("/api/imagens-disponiveis/"):
+                import urllib.parse
+
+                rel = urllib.parse.unquote(self.path.split("/api/imagens-disponiveis/", 1)[1])
+                base = provas.CACHE.resolve()
+                pasta = (base / rel / "imagens").resolve()
+                if not pasta.is_relative_to(base):
+                    raise ValueError("pasta inválida")
+                arquivos = sorted(pasta.glob("*.png")) if pasta.is_dir() else []
+                self.responder([str(a.relative_to(base)) for a in arquivos])
             elif self.path == "/api/job":
                 self.responder(JOB)
             elif self.path == "/api/revisoes":

@@ -177,6 +177,19 @@ def enem_imagens(ano, dia, ini, fim, log=print):
     return mapa
 
 
+def enem_paginas_questoes(ano, dia):
+    """Mapa questão -> página (1-based) onde ela começa, p/ o PDF ao lado."""
+    import pdfplumber
+
+    paginas = {}
+    with pdfplumber.open(enem_dir(ano, dia) / "prova.pdf") as pdf:
+        for pi, page in enumerate(pdf.pages):
+            for m in page.search(r"QUEST[ÃA]O\s+\d{1,3}"):
+                numero = int(re.search(r"\d+", m["text"]).group())
+                paginas.setdefault(numero, pi + 1)
+    return paginas
+
+
 def enem_blocos_questoes(ano, dia, ini, fim):
     """Divide o texto da prova em blocos por questão (via marcador QUESTÃO N).
 
@@ -295,6 +308,7 @@ def extrair_enem(ano, area, maximo=None, log=print):
     enem_baixar(ano, dia)
     gabarito = enem_gabarito(ano, dia)
     imagens = enem_imagens(ano, dia, ini, fim, log=log)
+    paginas = enem_paginas_questoes(ano, dia)
     blocos = enem_blocos_questoes(ano, dia, ini, fim)
     numeros = sorted(blocos)[:maximo] if maximo else sorted(blocos)
     log(f"{len(numeros)} questões localizadas na faixa {ini}-{fim}"
@@ -316,14 +330,7 @@ def extrair_enem(ano, area, maximo=None, log=print):
             continue
         idx = "ABCDE".index(letra)
         textos = [t.strip() for t in q["alternativas"]]
-        # Se TODAS as alternativas vierem com a própria letra na frente
-        # ("A reduz...", "B aumenta..."), remove — padrão do PDF que a IA
-        # às vezes preserva. Só quando o conjunto inteiro bate (seguro).
-        if len(textos) == 5 and all(
-            t[:1].upper() == l and len(t) > 2 and t[1] == " "
-            for t, l in zip(textos, "ABCDE")
-        ):
-            textos = [t[2:].strip() for t in textos]
+        textos = remover_letras_alternativas(textos)
         alternativas = [
             {"texto": t, "correta": j == idx} for j, t in enumerate(textos)
         ]
@@ -338,6 +345,8 @@ def extrair_enem(ano, area, maximo=None, log=print):
             and (not q["depende_de_imagem"] or bool(imagens.get(q["numero"]))),
             "depende_de_imagem": q["depende_de_imagem"],
             "imagens": imagens.get(q["numero"], []),
+            "imagem_posicao": "depois",
+            "pagina": paginas.get(q["numero"]),
         })
 
     REVISAO.mkdir(exist_ok=True)
@@ -384,6 +393,24 @@ def cmd_extrair(args):
         sys.exit(str(erro))
     print("revise o arquivo (edite textos, ajuste 'aprovada') e rode: "
           f"python provas.py publicar {destino.relative_to(BASE_DIR)}")
+
+
+def remover_letras_alternativas(textos):
+    """Remove a letra da alternativa colada no início do texto.
+
+    O glifo de letra circulada do PDF pode virar "A" (simples) ou "AA"
+    (glifo + letra), gerando "A Violeta." / "AA Violeta.". Só remove quando
+    TODAS as 5 alternativas casam com a própria letra esperada — seguro
+    contra textos que começam legitimamente com "E ..." etc.
+    """
+    if len(textos) != 5:
+        return textos
+    casamentos = [
+        re.match(rf"^{l}{{1,2}}[.)\-–:]?\s+", t) for t, l in zip(textos, "ABCDE")
+    ]
+    if all(casamentos):
+        return [t[m.end():].strip() for t, m in zip(textos, casamentos)]
+    return textos
 
 
 SUPABASE_URL = "https://scafgcpxjsimzaaviean.supabase.co"
@@ -473,13 +500,14 @@ def publicar_arquivo(caminho, substituir=False):
         for q in aprovadas:
             meta_q = {"numero_original": q.get("numero")}
             imagens_q = [urls_imagens[im] for im in q.get("imagens", []) if im in urls_imagens]
+            posicao = q.get("imagem_posicao") if q.get("imagem_posicao") in ("antes", "depois") else "depois"
             questao_id = conn.execute(
                 "insert into public.catalogo_questoes "
-                "(prova_id, numero, enunciado, topico, metadados, imagens) "
-                "values (%s,%s,%s,%s,%s,%s) returning id",
+                "(prova_id, numero, enunciado, topico, metadados, imagens, imagens_posicao) "
+                "values (%s,%s,%s,%s,%s,%s,%s) returning id",
                 (prova_id, q.get("numero"), q["enunciado"].strip(),
                  (q.get("topico") or "").strip()[:150] or None, json.dumps(meta_q),
-                 json.dumps(imagens_q) if imagens_q else None),
+                 json.dumps(imagens_q) if imagens_q else None, posicao),
             ).fetchone()[0]
             for ordem, alt in enumerate(q["alternativas"]):
                 conn.execute(
