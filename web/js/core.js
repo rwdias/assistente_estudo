@@ -47,6 +47,7 @@ function normalizarPergunta(linha) {
       : null,
     enunciado: linha.enunciado,
     verso: linha.verso,
+    imagens: linha.imagens || [],
     dificuldade: linha.dificuldade,
     origem: linha.origem,
     opcoes,
@@ -62,7 +63,7 @@ function normalizarPergunta(linha) {
 }
 
 const SELECT_PERGUNTA = `
-  id, tipo, enunciado, verso, dificuldade, origem, created_at,
+  id, tipo, enunciado, verso, dificuldade, origem, imagens, created_at,
   opcoes ( texto, correta, ordem ),
   revisoes_perguntas ( vezes_respondida, vezes_acertada, ultima_resposta_correta,
                        intervalo_dias, proxima_revisao_em ),
@@ -182,10 +183,24 @@ document.querySelectorAll('[data-fechar-modal]').forEach((btn) => {
 // --- renderização compartilhada de uma pergunta em modo quiz ---
 const LETRAS = 'ABCDEFGH';
 
+// Imagens fazem parte da pergunta (provas do catálogo). Só renderiza URLs
+// do Storage do projeto — qualquer outra origem é descartada (e a CSP
+// bloquearia de toda forma).
+function renderImagensPergunta(pergunta) {
+  const seguras = (pergunta.imagens || []).filter((u) =>
+    typeof u === 'string' && u.startsWith(`${SUPABASE_CONFIG.url}/storage/v1/object/public/`)
+  );
+  if (seguras.length === 0) return '';
+  return `<div class="pergunta-imagens">${seguras
+    .map((u) => `<img src="${esc(u)}" alt="Figura da questão" loading="lazy" />`)
+    .join('')}</div>`;
+}
+
 function renderPerguntaQuizHTML(pergunta, chave) {
   return `
     <div class="question-card" data-chave="${chave}">
       <div class="question-title">${esc(pergunta.enunciado)}</div>
+      ${renderImagensPergunta(pergunta)}
       <div class="opcoes-quiz">
         ${pergunta.opcoes
           .map(

@@ -44,6 +44,11 @@ scraping de fontes oficiais + revisão em JSON + publicação via pooler).
 Usuário importa com `rpc('importar_prova_catalogo')` (SECURITY INVOKER —
 cópia passa pelo RLS dele; idempotente por enunciado). UI: seção "Banco
 de provas" no Início (`carregarCatalogo` em `web/js/materias.js`).
+**Imagens das questões**: bucket público `provas` no Storage (upload SÓ
+pela curadoria com service key; sem política de escrita); URLs em
+`imagens jsonb` (catálogo e `perguntas` — a importação copia a URL, não
+o arquivo). Render: `renderImagensPergunta` em core.js, que descarta URLs
+fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
 
 ### SM-2 / Aprendizado (conceitos centrais)
 - Acerto = q5, erro = q2; EF piso 1.3; progressão 1 → 6 → round(i×EF) dias;

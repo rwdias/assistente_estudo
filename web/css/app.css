@@ -735,3 +735,10 @@ textarea { resize: vertical; }
 }
 .card-prova-icone svg { width: 20px; height: 20px; }
 .card-prova .importar-prova-btn { align-self: flex-start; }
+
+/* Figuras que fazem parte da pergunta (provas do catálogo) */
+.pergunta-imagens { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 14px; }
+.pergunta-imagens img {
+  max-width: min(520px, 100%); border-radius: 10px;
+  border: 1px solid var(--borda); background: #fff;
+}

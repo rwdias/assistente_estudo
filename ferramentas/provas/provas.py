@@ -304,7 +304,9 @@ def extrair_enem(ano, area, maximo=None, log=print):
             "alternativas": alternativas,
             "topico": (lambda t: None if t.lower() in ("", "none", "null") else t)(
                 (q.get("topico") or "").strip()),
-            "aprovada": not q["depende_de_imagem"] and len(alternativas) == 5,
+            # questão de imagem só é pré-aprovada se as figuras vieram junto
+            "aprovada": len(alternativas) == 5
+            and (not q["depende_de_imagem"] or bool(imagens.get(q["numero"]))),
             "depende_de_imagem": q["depende_de_imagem"],
             "imagens": imagens.get(q["numero"], []),
         })
@@ -355,6 +357,41 @@ def cmd_extrair(args):
           f"python provas.py publicar {destino.relative_to(BASE_DIR)}")
 
 
+SUPABASE_URL = "https://scafgcpxjsimzaaviean.supabase.co"
+
+
+def subir_imagens(rels):
+    """Sobe imagens do acervo ao bucket público 'provas' (upsert).
+
+    Retorna {caminho_relativo: url_publica}. O upload usa a service key —
+    o bucket não tem política de escrita para usuários do app.
+    """
+    import urllib.error
+
+    service = ler_env("SUPABASE_SERVICE_ROLE_KEY")
+    urls = {}
+    for rel in rels:
+        arquivo = CACHE / rel
+        if not arquivo.exists():
+            raise ValueError(f"imagem não encontrada no acervo: {rel}")
+        req = urllib.request.Request(
+            f"{SUPABASE_URL}/storage/v1/object/provas/{rel}",
+            data=arquivo.read_bytes(), method="POST",
+            headers={"Authorization": f"Bearer {service}", "apikey": service,
+                     "Content-Type": "image/png", "x-upsert": "true",
+                     "User-Agent": "curl/8.6.0"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=120):
+                pass
+        except urllib.error.HTTPError as erro:
+            raise ValueError(
+                f"upload de {rel} falhou: {erro.code} {erro.read().decode()[:150]}"
+            ) from erro
+        urls[rel] = f"{SUPABASE_URL}/storage/v1/object/public/provas/{rel}"
+    return urls
+
+
 def validar_questao(q):
     if not q.get("enunciado", "").strip():
         return "enunciado vazio"
@@ -382,6 +419,10 @@ def publicar_arquivo(caminho, substituir=False):
         detalhe = "; ".join(f"questão {n}: {e}" for n, e in invalidas)
         raise ValueError(f"corrija (ou marque aprovada=false): {detalhe}")
 
+    # sobe as imagens das questões aprovadas ANTES de tocar no banco
+    rels = sorted({im for q in aprovadas for im in q.get("imagens", [])})
+    urls_imagens = subir_imagens(rels) if rels else {}
+
     conninfo = POOLER.format(senha=ler_env("SUPABASE_DB_PASSWORD"))
     with psycopg.connect(conninfo) as conn:
         existente = conn.execute(
@@ -402,13 +443,14 @@ def publicar_arquivo(caminho, substituir=False):
 
         for q in aprovadas:
             meta_q = {"numero_original": q.get("numero")}
-            if q.get("imagens"):
-                meta_q["imagens_locais"] = len(q["imagens"])
+            imagens_q = [urls_imagens[im] for im in q.get("imagens", []) if im in urls_imagens]
             questao_id = conn.execute(
-                "insert into public.catalogo_questoes (prova_id, numero, enunciado, topico, metadados) "
-                "values (%s,%s,%s,%s,%s) returning id",
+                "insert into public.catalogo_questoes "
+                "(prova_id, numero, enunciado, topico, metadados, imagens) "
+                "values (%s,%s,%s,%s,%s,%s) returning id",
                 (prova_id, q.get("numero"), q["enunciado"].strip(),
-                 (q.get("topico") or "").strip()[:150] or None, json.dumps(meta_q)),
+                 (q.get("topico") or "").strip()[:150] or None, json.dumps(meta_q),
+                 json.dumps(imagens_q) if imagens_q else None),
             ).fetchone()[0]
             for ordem, alt in enumerate(q["alternativas"]):
                 conn.execute(
