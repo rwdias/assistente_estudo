@@ -434,6 +434,7 @@ def extrair_enem(ano, area, maximo=None, log=print):
         saida.append({
             "numero": q["numero"],
             "enunciado": q["enunciado"].strip(),
+            "gabarito_oficial": letra,
             "alternativas": alternativas,
             "topico": (lambda t: None if t.lower() in ("", "none", "null") else t)(
                 (q.get("topico") or "").strip()),
@@ -594,8 +595,15 @@ def publicar_arquivo(caminho, substituir=False):
              json.dumps(doc.get("metadados")) if doc.get("metadados") else None),
         ).fetchone()[0]
 
+        divergentes = []
         for q in aprovadas:
             meta_q = {"numero_original": q.get("numero")}
+            if q.get("gabarito_oficial"):
+                meta_q["gabarito_oficial"] = q["gabarito_oficial"]
+                marcada = next(
+                    ("ABCDE"[i] for i, a in enumerate(q["alternativas"]) if a.get("correta")), None)
+                if marcada and marcada != q["gabarito_oficial"]:
+                    divergentes.append(f"Q{q.get('numero')} (marcada {marcada}, oficial {q['gabarito_oficial']})")
             imagens_q = [urls_imagens[im] for im in q.get("imagens", []) if im in urls_imagens]
             posicao = q.get("imagem_posicao") if q.get("imagem_posicao") in ("antes", "depois") else "depois"
             questao_id = conn.execute(
@@ -613,7 +621,11 @@ def publicar_arquivo(caminho, substituir=False):
                     (questao_id, alt["texto"].strip(), bool(alt.get("correta")), ordem),
                 )
 
-    return {"prova_id": prova_id, "nome": doc["nome"], "questoes": len(aprovadas)}
+    resultado = {"prova_id": prova_id, "nome": doc["nome"], "questoes": len(aprovadas)}
+    if divergentes:
+        resultado["aviso"] = ("resposta marcada diverge do gabarito oficial em: "
+                              + ", ".join(divergentes))
+    return resultado
 
 
 def cmd_publicar(args):

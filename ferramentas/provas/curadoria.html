@@ -320,7 +320,8 @@ async function publicar(arquivo, btn) {
       body: JSON.stringify({ arquivo, substituir }),
     });
     aviso.className = 'aviso ok';
-    aviso.textContent = `Publicada: "${r.nome}" com ${r.questoes} questões (id ${r.prova_id}).`;
+    aviso.textContent = `Publicada: "${r.nome}" com ${r.questoes} questões (id ${r.prova_id}).`
+      + (r.aviso ? ` ATENÇÃO: ${r.aviso}` : '');
     await carregarCatalogo();
   } catch (erro) {
     aviso.className = 'aviso erro';
@@ -379,6 +380,7 @@ async function abrirEditor(arquivo) {
       <div class="questao-topo">
         <span class="num">Q${q.numero}</span>
         ${q.pagina ? `<span class="badge badge-ok">pág. ${q.pagina}</span>` : ''}
+        ${q.gabarito_oficial ? `<span class="badge badge-ok" title="Resposta do gabarito oficial">gabarito: ${esc(q.gabarito_oficial)}</span>` : ''}
         ${q.depende_de_imagem ? '<span class="badge badge-red">depende de imagem</span>' : ''}
         <input type="text" class="q-topico" value="${esc(q.topico || '')}" placeholder="tópico"
                style="width:200px;flex:0 0 auto;font-size:.82rem;padding:5px 9px" />
