@@ -105,12 +105,33 @@ def enem_gabarito(ano, dia):
     return mapa
 
 
+def eh_duas_colunas(page):
+    """Detecta o layout DA PÁGINA: 2 colunas têm um vão central sem palavras.
+
+    O ENEM mistura páginas de coluna única e dupla na mesma prova — assumir
+    um layout fixo atribui texto/figura à questão errada.
+    """
+    palavras = page.extract_words()
+    if len(palavras) < 40:
+        return False
+    centro = page.width / 2
+    cruzam = sum(1 for w in palavras if w["x0"] < centro - 6 and w["x1"] > centro + 6)
+    return cruzam <= max(3, len(palavras) * 0.01)
+
+
+def coluna_de(page, x0, x1=None):
+    if not eh_duas_colunas(page):
+        return 0
+    ponto = x0 if x1 is None else (x0 + x1) / 2
+    return 0 if ponto < page.width / 2 else 1
+
+
 def enem_imagens(ano, dia, ini, fim, log=print):
     """Extrai as figuras de cada questão do PDF (recorte por posição).
 
-    A prova é diagramada em 2 colunas: cada imagem pertence à última questão
-    iniciada acima dela na MESMA página+coluna (ordem de leitura). Figuras
-    vetoriais (desenhadas, não embutidas) não são capturadas.
+    Cada imagem pertence à última questão iniciada acima dela na ordem de
+    leitura (página → coluna, quando houver → altura). Figuras vetoriais
+    (desenhadas, não embutidas) não são capturadas.
     """
     import pdfplumber
 
@@ -122,19 +143,16 @@ def enem_imagens(ano, dia, ini, fim, log=print):
     with pdfplumber.open(caminho) as pdf:
         marcadores = []  # (pagina, coluna, top, numero) em ordem de leitura
         for pi, page in enumerate(pdf.pages):
-            meio = page.width / 2
             for m in page.search(r"QUEST[ÃA]O\s+\d{1,3}"):
                 numero = int(re.search(r"\d+", m["text"]).group())
-                col = 0 if m["x0"] < meio else 1
-                marcadores.append((pi, col, m["top"], numero))
+                marcadores.append((pi, coluna_de(page, m["x0"]), m["top"], numero))
         marcadores.sort()
 
         for pi, page in enumerate(pdf.pages):
-            meio = page.width / 2
             for img in page.images:
                 if img["x1"] - img["x0"] < 45 or img["bottom"] - img["top"] < 45:
                     continue  # logotipos/ícones
-                col = 0 if (img["x0"] + img["x1"]) / 2 < meio else 1
+                col = coluna_de(page, img["x0"], img["x1"])
                 chave = (pi, col, img["top"])
                 donos = [m for m in marcadores if (m[0], m[1], m[2]) <= chave]
                 if not donos:
@@ -160,14 +178,25 @@ def enem_imagens(ano, dia, ini, fim, log=print):
 
 
 def enem_blocos_questoes(ano, dia, ini, fim):
-    """Divide o texto da prova em blocos por questão (via marcador QUESTÃO N)."""
+    """Divide o texto da prova em blocos por questão (via marcador QUESTÃO N).
+
+    Em página de 2 colunas o texto é lido coluna a coluna (esquerda depois
+    direita) — ler a página inteira intercalaria linhas das duas colunas e
+    misturaria questões vizinhas.
+    """
     import pdfplumber
 
     caminho = enem_dir(ano, dia) / "prova.pdf"
     texto = ""
     with pdfplumber.open(caminho) as pdf:
         for pagina in pdf.pages:
-            texto += (pagina.extract_text() or "") + "\n"
+            if eh_duas_colunas(pagina):
+                meio = pagina.width / 2
+                esq = pagina.crop((0, 0, meio, pagina.height)).extract_text() or ""
+                dir_ = pagina.crop((meio, 0, pagina.width, pagina.height)).extract_text() or ""
+                texto += esq + "\n" + dir_ + "\n"
+            else:
+                texto += (pagina.extract_text() or "") + "\n"
 
     partes = re.split(r"\bQUEST[ÃA]O\s+(\d{1,3})\b", texto)
     blocos = {}
