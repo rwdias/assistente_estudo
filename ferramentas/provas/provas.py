@@ -754,6 +754,18 @@ def cmd_concurso(args):
     print(f"revise no editor e rode: python provas.py publicar {destino.relative_to(BASE_DIR)}")
 
 
+def cmd_enem_antigo(args):
+    import enem_antigo
+
+    if not (1998 <= args.ano <= 2008):
+        sys.exit("enem-antigo cobre 1998-2008; para 2009+ use enem-api ou extrair")
+    try:
+        destino = enem_antigo.extrair(args.ano, args.max)
+    except ValueError as erro:
+        sys.exit(str(erro))
+    print(f"revise no editor e rode: python provas.py publicar {destino.relative_to(BASE_DIR)}")
+
+
 def cmd_enem_api(args):
     import enem_api
 
@@ -822,6 +834,11 @@ def main():
     p.add_argument("--materia", help="matéria do edital (omita p/ listar)")
     p.add_argument("--max", type=int)
     p.set_defaults(fn=cmd_concurso)
+
+    p = sub.add_parser("enem-antigo", help="ENEM 1998-2008 (63 questões; prova INEP + gabarito Objetivo)")
+    p.add_argument("--ano", type=int, required=True)
+    p.add_argument("--max", type=int)
+    p.set_defaults(fn=cmd_enem_antigo)
 
     p = sub.add_parser("enem-api", help="importa ENEM 2009-2023 da API enem.dev (sem IA)")
     p.add_argument("--ano", type=int, required=True)

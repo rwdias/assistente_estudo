@@ -34,14 +34,27 @@ independente (2023 humanas Q46=C, Q50=E...).
 (as duas eras de URL estão em `enem_urls`). Use quando o ano não estiver
 na enem.dev.
 
-## Pré-2009 (1998–2008) — pendente
+## Pré-2009 (1998–2008): comando `enem-antigo`
 
-ENEM antigo: prova ÚNICA (~63 questões + redação), sem as 4 áreas nem 2
-dias. Não está na enem.dev nem no extrator atual. Precisaria de fonte e
-adaptador próprios — esforço à parte.
+ENEM antigo: prova ÚNICA de 63 questões interdisciplinares (sem áreas).
 
-## Resumo
+```bash
+python provas.py enem-antigo --ano 2000   # uma prova por ano
+```
 
-- **2009–2023: 15 anos prontos** via `enem-api` (imediato, oficial).
-- **2024: pronto** via extrator de PDF.
-- **1998–2008: pendente** (formato antigo).
+- Prova: INEP `provas/<ano>/<ano>_amarela.pdf` (baixa sozinho).
+- Gabarito: tabela do **Curso Objetivo** (`ENEM<ano>_gabarito.pdf`), coluna
+  AMARELA — casa com a prova amarela. Validado: 2000 Q1-10 = 10/10.
+- Cada ano vira UMA prova (`area = "Interdisciplinar"`). Muitas questões
+  são charges/gráficos (revisar no editor; imagem entra manualmente).
+- Código em `enem_antigo.py`.
+
+## Resumo — cobertura COMPLETA 1998–2024
+
+| Anos | Comando | Método |
+|---|---|---|
+| 1998–2008 | `enem-antigo --ano N` | prova INEP + gabarito Objetivo |
+| 2009–2023 | `enem-api --ano N [--area X]` | API enem.dev (sem IA, oficial) |
+| 2024+ | `extrair enem --ano N --area X` | PDF INEP (IA + gabarito) |
+
+Todas as 27 edições do ENEM (1998–2024) são extraíveis.
