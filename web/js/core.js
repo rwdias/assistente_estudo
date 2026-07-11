@@ -241,7 +241,13 @@ function formatarTexto(texto) {
   fecharTabela();
   fecharCitacao();
 
-  return html.join('').replace(/\*([^*]{2,220}?)\*/g, '<em class="fonte-enunciado">$1</em>');
+  return html.join('')
+    // fonte explícita marcada com *...*
+    .replace(/\*([^*]{2,240}?)\*/g, '<em class="fonte-enunciado">$1</em>')
+    // fonte entre parênteses que a IA não marcou (linha bibliográfica:
+    // ano de 4 dígitos ou "Disponível em") — vira itálico discreto
+    .replace(/(?:^|<br>)(\([^()<]{6,240}?(?:\b\d{4}\b|Disponível em)[^()<]*?\))(?=<br>|$)/g,
+      '<em class="fonte-enunciado">$1</em>');
 }
 
 // Chip com a origem da questão: nome da prova (banco de questões) ou da

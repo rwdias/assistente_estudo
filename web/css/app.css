@@ -478,7 +478,8 @@ textarea { resize: vertical; }
   padding: 22px; margin-bottom: 16px; box-shadow: var(--shadow);
 }
 .question-title {
-  font-weight: 700; margin-bottom: 14px; font-size: 1rem; color: var(--texto);
+  font-weight: 400; margin-bottom: 14px; font-size: 1rem; color: var(--texto);
+  line-height: 1.6;
 }
 .opcao-quiz {
   display: flex; align-items: center; gap: 12px;

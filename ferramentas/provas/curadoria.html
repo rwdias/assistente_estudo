@@ -193,7 +193,10 @@ function formatarTexto(texto) {
   }
   fecharTabela();
   fecharCitacao();
-  return html.join('').replace(/\*([^*]{2,220}?)\*/g, '<em class="fonte-previa">$1</em>');
+  return html.join('')
+    .replace(/\*([^*]{2,240}?)\*/g, '<em class="fonte-previa">$1</em>')
+    .replace(/(?:^|<br>)(\([^()<]{6,240}?(?:\b\d{4}\b|Disponível em)[^()<]*?\))(?=<br>|$)/g,
+      '<em class="fonte-previa">$1</em>');
 }
 
 const api = async (rota, opcoes) => {

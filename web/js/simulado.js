@@ -44,52 +44,63 @@ function opcoesSelect(select, valores, rotuloTodos) {
 
 const ROTULO_NIVEL = { medio: 'Ensino médio', superior: 'Ensino superior', fundamental: 'Ensino fundamental' };
 
-function provasFiltradas() {
-  const g = (id) => document.getElementById(id).value;
-  const [categoria, nivel, fonte, orgao, cargo, ano, area, prova] =
-    ['sf-categoria', 'sf-nivel', 'sf-fonte', 'sf-orgao', 'sf-cargo', 'sf-ano', 'sf-area', 'sf-prova'].map(g);
+const CAMPOS_FILTRO = {
+  categoria: (p) => p.categoria,
+  nivel: (p) => p.nivel,
+  fonte: (p) => p.fonte,
+  orgao: (p) => p.orgao,
+  cargo: (p) => p.cargo,
+  ano: (p) => (p.ano == null ? '' : String(p.ano)),
+  area: (p) => p.area,
+  prova: (p) => String(p.id),
+};
+
+function valorFiltro(campo) {
+  return document.getElementById('sf-' + campo).value;
+}
+
+// provas que casam com todos os filtros, opcionalmente ignorando um campo
+// (para computar as opções daquele campo — busca facetada de verdade)
+function provasFiltradas(ignorar = null) {
   return provasBanco.filter((p) =>
-    (!categoria || p.categoria === categoria) &&
-    (!nivel || p.nivel === nivel) &&
-    (!fonte || p.fonte === fonte) &&
-    (!orgao || p.orgao === orgao) &&
-    (!cargo || p.cargo === cargo) &&
-    (!ano || String(p.ano) === ano) &&
-    (!area || p.area === area) &&
-    (!prova || String(p.id) === prova));
+    Object.entries(CAMPOS_FILTRO).every(([campo, ler]) => {
+      if (campo === ignorar) return true;
+      const v = valorFiltro(campo);
+      return !v || ler(p) === v;
+    }));
 }
 
 async function atualizarFiltrosBanco() {
-  const unicos = (lista) => [...new Set(lista.filter(Boolean))];
-  const semProva = provasFiltradas();
+  const unicos = (lista) => [...new Set(lista.filter((x) => x !== null && x !== undefined && x !== ''))];
   const capitalizar = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
+  // cada facet lista só valores presentes nas provas compatíveis com as
+  // OUTRAS seleções (ignorando a própria) -> vestibular não mostra cesgranrio
+  const disp = (campo) => unicos(provasFiltradas(campo).map(CAMPOS_FILTRO[campo]));
+
   opcoesSelect(document.getElementById('sf-categoria'),
-    unicos(provasBanco.map((p) => p.categoria)).sort().map((c) => ({ valor: c, rotulo: capitalizar(c) })), 'Todas');
+    disp('categoria').sort().map((c) => ({ valor: c, rotulo: capitalizar(c) })), 'Todas');
   opcoesSelect(document.getElementById('sf-nivel'),
-    unicos(provasBanco.map((p) => p.nivel)).sort().map((n) => ({ valor: n, rotulo: ROTULO_NIVEL[n] || capitalizar(n) })), 'Todos');
+    disp('nivel').sort().map((n) => ({ valor: n, rotulo: ROTULO_NIVEL[n] || capitalizar(n) })), 'Todos');
   opcoesSelect(document.getElementById('sf-fonte'),
-    unicos(provasBanco.map((p) => p.fonte)).sort().map((f) => ({ valor: f, rotulo: f.toUpperCase() })), 'Todas');
-  // órgão e cargo só fazem sentido para a categoria selecionada (concurso)
-  const catSel = document.getElementById('sf-categoria').value;
-  const naCategoria = provasBanco.filter((p) => !catSel || p.categoria === catSel);
-  const orgaos = unicos(naCategoria.map((p) => p.orgao));
-  const cargos = unicos(naCategoria.map((p) => p.cargo));
+    disp('fonte').sort().map((f) => ({ valor: f, rotulo: f.toUpperCase() })), 'Todas');
+
+  const orgaos = disp('orgao');
+  const cargos = disp('cargo');
   document.getElementById('sf-orgao').closest('div').style.display = orgaos.length ? '' : 'none';
   document.getElementById('sf-cargo').closest('div').style.display = cargos.length ? '' : 'none';
-  opcoesSelect(document.getElementById('sf-orgao'),
-    orgaos.sort().map((o) => ({ valor: o, rotulo: o })), 'Todos');
-  opcoesSelect(document.getElementById('sf-cargo'),
-    cargos.sort().map((c) => ({ valor: c, rotulo: c })), 'Todos');
-  opcoesSelect(document.getElementById('sf-ano'),
-    unicos(provasBanco.map((p) => p.ano)).sort((a, b) => b - a).map((a) => ({ valor: a, rotulo: a })), 'Todos');
-  opcoesSelect(document.getElementById('sf-area'),
-    unicos(provasBanco.map((p) => p.area)).sort().map((a) => ({ valor: a, rotulo: a })), 'Todas');
-  opcoesSelect(document.getElementById('sf-prova'),
-    semProva.map((p) => ({ valor: p.id, rotulo: p.nome })), 'Todas');
+  opcoesSelect(document.getElementById('sf-orgao'), orgaos.sort().map((o) => ({ valor: o, rotulo: o })), 'Todos');
+  opcoesSelect(document.getElementById('sf-cargo'), cargos.sort().map((c) => ({ valor: c, rotulo: c })), 'Todos');
 
-  // tópicos existentes dentro das provas filtradas
-  const ids = semProva.map((p) => p.id);
+  opcoesSelect(document.getElementById('sf-ano'),
+    disp('ano').sort((a, b) => b - a).map((a) => ({ valor: a, rotulo: a })), 'Todos');
+  opcoesSelect(document.getElementById('sf-area'),
+    disp('area').sort().map((a) => ({ valor: a, rotulo: a })), 'Todas');
+  opcoesSelect(document.getElementById('sf-prova'),
+    provasFiltradas('prova').map((p) => ({ valor: p.id, rotulo: p.nome })), 'Todas');
+
+  // tópicos existentes dentro das provas compatíveis com os outros filtros
+  const ids = provasFiltradas('topico').map((p) => p.id);
   let topicos = [];
   if (ids.length > 0) {
     const { data } = await sb.from('catalogo_questoes').select('topico').in('prova_id', ids);

@@ -292,8 +292,8 @@ PROMPT_EXTRACAO = """Você recebe blocos de questões extraídos de um PDF de pr
 Para cada questão:
 - Reconstrua fielmente o enunciado (incluindo o texto-base/citações que o acompanham), consertando quebras de linha e hifenização. NÃO invente nem resuma conteúdo. O enunciado NUNCA deve conter as alternativas — elas vão exclusivamente no campo alternativas.
 - Estruture o enunciado com esta convenção (vale para qualquer prova), SEM inventar nada:
-  * Só marque como citação (linhas iniciadas por "> ") um trecho de texto-base REALMENTE citado (poema, obra, notícia, fala). O comando/pergunta da questão NÃO é citação.
-  * Só inclua uma linha de fonte entre asteriscos (*AUTOR, obra, ano...*) se a referência aparecer LITERALMENTE no texto. Nunca crie uma fonte que não exista.
+  * Marque como citação (linhas iniciadas por "> ") TODO trecho de texto-base citado (poema, obra, notícia, fala, excerto de autor). O comando/pergunta da questão NÃO é citação.
+  * A referência bibliográfica (autor, obra, jornal, ano, "Disponível em") vai SEMPRE numa linha própria entre asteriscos: *SCHWARCZ, Lilia. Nexo Jornal, 2022.* — mesmo que no original apareça entre parênteses. Nunca invente uma fonte que não exista.
   * Tabelas de dados viram tabelas Markdown: cada linha como | célula | célula |, com a primeira linha de cabeçalho.
   * Separe blocos (texto-base, comando da questão) com uma linha em branco.
 - Liste as 5 alternativas (A a E) na ordem, SEM a letra na frente.
