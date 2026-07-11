@@ -93,6 +93,25 @@ O editor tem botão "Prévia da formatação" por questão, atualizando ao
 digitar. Fontes novas (PDF ou HTML) devem produzir a MESMA convenção —
 o render no app é um só.
 
+## Concursos (bancas) — adaptador `concurso`
+
+Concurso não baixa sozinho (sem URL previsível): o curador coloca os PDFs em
+`cache/<banca>/<slug>/prova.pdf` e `gabarito.pdf`, e roda por matéria:
+
+```bash
+# lista as matérias do edital (lidas do gabarito):
+python provas.py concurso --banca cesgranrio --slug bb-2023-agente-comercial
+# extrai uma matéria:
+python provas.py concurso --banca cesgranrio --slug bb-2023-agente-comercial \
+  --orgao "Banco do Brasil" --ano 2023 --cargo "Escriturário Agente Comercial" \
+  --nivel medio --materia "Língua Inglesa"
+```
+
+Estrutura: **categoria=concurso → banca(fonte) → órgão → cargo(→nível) →
+matéria(area) → tópico**. O gabarito da banca dá as faixas de matéria e as
+respostas oficiais. Layout CESGRANRIO implementado (`concurso.py`); outras
+bancas entram com nova função de gabarito/segmentação no mesmo miolo.
+
 ## Adicionar uma fonte nova (banca, vestibular, certificação)
 
 Criar um adaptador com as mesmas 3 responsabilidades do ENEM:

@@ -41,6 +41,10 @@ Toda FK tem `ON DELETE CASCADE`. Ids são `bigint identity`.
 leitura para todo `authenticated`, **nenhuma política de escrita** — a
 curadoria roda fora do app (`ferramentas/provas/`, ver README de lá:
 scraping de fontes oficiais + revisão em JSON + publicação via pooler).
+Hierarquia do catálogo: `nivel` → `categoria` (vestibular/concurso) →
+`fonte` (banca/instituição) → `orgao`+`cargo` (só concurso) → `area`
+(matéria) → `topico` (canônico, sem sinônimos). Fontes: ENEM em
+`ferramentas/provas/provas.py`, concursos (CESGRANRIO) em `concurso.py`.
 Usuário importa com `rpc('importar_prova_catalogo')` (SECURITY INVOKER —
 cópia passa pelo RLS dele; idempotente por enunciado). UI: seção "Banco
 de provas" no Início (`carregarCatalogo` em `web/js/materias.js`).

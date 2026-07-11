@@ -291,9 +291,9 @@ PROMPT_EXTRACAO = """Você recebe blocos de questões extraídos de um PDF de pr
 
 Para cada questão:
 - Reconstrua fielmente o enunciado (incluindo o texto-base/citações que o acompanham), consertando quebras de linha e hifenização. NÃO invente nem resuma conteúdo. O enunciado NUNCA deve conter as alternativas — elas vão exclusivamente no campo alternativas.
-- Estruture o enunciado com esta convenção (vale para qualquer prova):
-  * Texto-base citado (trecho de obra, poema, notícia, fala) vira linhas iniciadas por "> " (citação).
-  * A referência/fonte da citação (AUTOR, obra, site, ano, "adaptado") vai numa linha própria entre asteriscos: *SOUSA, M. Disponível em: ... (adaptado).*
+- Estruture o enunciado com esta convenção (vale para qualquer prova), SEM inventar nada:
+  * Só marque como citação (linhas iniciadas por "> ") um trecho de texto-base REALMENTE citado (poema, obra, notícia, fala). O comando/pergunta da questão NÃO é citação.
+  * Só inclua uma linha de fonte entre asteriscos (*AUTOR, obra, ano...*) se a referência aparecer LITERALMENTE no texto. Nunca crie uma fonte que não exista.
   * Tabelas de dados viram tabelas Markdown: cada linha como | célula | célula |, com a primeira linha de cabeçalho.
   * Separe blocos (texto-base, comando da questão) com uma linha em branco.
 - Liste as 5 alternativas (A a E) na ordem, SEM a letra na frente.
@@ -638,11 +638,11 @@ def publicar_arquivo(caminho, substituir=False):
 
         prova_id = conn.execute(
             "insert into public.catalogo_provas "
-            "(fonte, nome, ano, area, categoria, nivel, total_questoes, metadados) "
-            "values (%s,%s,%s,%s,%s,%s,%s,%s) returning id",
+            "(fonte, nome, ano, area, categoria, nivel, orgao, cargo, total_questoes, metadados) "
+            "values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning id",
             (doc["fonte"], doc["nome"], doc.get("ano"), doc.get("area"),
-             doc.get("categoria"), doc.get("nivel"), len(aprovadas),
-             json.dumps(doc.get("metadados")) if doc.get("metadados") else None),
+             doc.get("categoria"), doc.get("nivel"), doc.get("orgao"), doc.get("cargo"),
+             len(aprovadas), json.dumps(doc.get("metadados")) if doc.get("metadados") else None),
         ).fetchone()[0]
 
         divergentes = []
@@ -701,6 +701,27 @@ def listar_catalogo():
     ]
 
 
+def cmd_concurso(args):
+    import concurso
+
+    if not args.materia:
+        materias = concurso.listar_materias(args.banca, args.slug)
+        print("matérias disponíveis (do gabarito):")
+        for nome, ini, fim in materias:
+            print(f"  {nome}  (questões {ini}-{fim})")
+        return
+    faltando = [c for c in ("orgao", "ano", "cargo", "nivel") if not getattr(args, c)]
+    if faltando:
+        sys.exit(f"informe: {', '.join('--' + c for c in faltando)}")
+    try:
+        destino = concurso.extrair_materia(
+            args.banca, args.orgao, args.ano, args.cargo, args.nivel,
+            args.materia, args.slug, args.max)
+    except ValueError as erro:
+        sys.exit(str(erro))
+    print(f"revise no editor e rode: python provas.py publicar {destino.relative_to(BASE_DIR)}")
+
+
 def cmd_listar(_args):
     provas = listar_catalogo()
     if not provas:
@@ -727,6 +748,17 @@ def main():
     p.add_argument("--area", required=True)
     p.add_argument("--max", type=int, help="limita nº de questões (testes)")
     p.set_defaults(fn=cmd_extrair)
+
+    p = sub.add_parser("concurso", help="extrai matéria de prova de concurso (PDF local)")
+    p.add_argument("--banca", required=True, help="ex.: cesgranrio")
+    p.add_argument("--slug", required=True, help="pasta em cache/<banca>/<slug>/")
+    p.add_argument("--orgao", help="ex.: Banco do Brasil")
+    p.add_argument("--ano", type=int)
+    p.add_argument("--cargo", help="ex.: Escriturário Agente Comercial")
+    p.add_argument("--nivel", help="medio | superior (vem do cargo)")
+    p.add_argument("--materia", help="matéria do edital (omita p/ listar)")
+    p.add_argument("--max", type=int)
+    p.set_defaults(fn=cmd_concurso)
 
     p = sub.add_parser("publicar", help="JSON revisado -> catálogo no Supabase")
     p.add_argument("arquivo")
