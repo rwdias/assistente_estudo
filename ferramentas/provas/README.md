@@ -34,6 +34,22 @@ $venv provas.py publicar revisao/enem_2023_humanas.json   # --substituir para re
 $venv provas.py listar
 ```
 
+## Cobertura, imagens e metadados
+
+- A UI tem um **mapa de cobertura** (ano × área): publicada / em revisão /
+  botão "extrair" para o que falta — é o checklist do que já foi feito.
+- A extração **recorta as figuras de cada questão** do PDF (por posição na
+  página, 2 colunas) para `cache/imagens/` e as mostra no editor — é assim
+  que se confirma questões marcadas "depende de imagem". Figuras vetoriais
+  (desenhadas no PDF, não embutidas) não são capturadas. As imagens ainda
+  NÃO vão para o app (próxima etapa: Supabase Storage).
+- Metadados gravados no catálogo (`metadados jsonb`): URLs oficiais dos
+  PDFs, dia, caderno, data da extração, modelo de IA; por questão: número
+  original e contagem de imagens locais. A IA também classifica o
+  **tópico** de cada questão (vira subdivisão na importação do usuário).
+- Reextrair uma área NÃO clobbera a revisão: o arquivo antigo vira
+  `.bak-<timestamp>.json`.
+
 ## O que a extração faz (e o que exige revisão)
 
 - Baixa prova + gabarito oficiais do INEP (caderno azul/CD1) via curl

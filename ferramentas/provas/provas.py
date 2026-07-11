@@ -43,7 +43,9 @@ def ler_env(chave, obrigatoria=True):
 # Fonte: ENEM (INEP) — PDFs oficiais e públicos
 # =========================================================
 
-ENEM_URL = "https://download.inep.gov.br/enem/provas_e_gabaritos/{ano}_{tipo}_impresso_D{dia}_CD1.pdf"
+ENEM_URL = "https://download.inep.gov.br/enem/provas_e_gabaritos/{ano}_{tipo}_impresso_D{dia}_CD{cd}.pdf"
+# caderno azul: CD1 no dia 1, CD7 no dia 2
+ENEM_CADERNO_AZUL = {1: 1, 2: 7}
 ENEM_AREAS = {
     # área -> (dia, questão inicial, questão final)
     "linguagens": (1, 6, 45),   # 1-5 são língua estrangeira (fora do MVP)
@@ -69,7 +71,7 @@ def enem_baixar(ano, dia):
     for tipo, rotulo in (("PV", "prova"), ("GB", "gabarito")):
         destino = CACHE / f"enem_{ano}_d{dia}_{rotulo}.pdf"
         if not destino.exists():
-            url = ENEM_URL.format(ano=ano, tipo=tipo, dia=dia)
+            url = ENEM_URL.format(ano=ano, tipo=tipo, dia=dia, cd=ENEM_CADERNO_AZUL[dia])
             print(f"baixando {url}")
             subprocess.run(
                 ["curl", "-sf", "-A", "Mozilla/5.0", "-o", str(destino), url],
@@ -95,6 +97,60 @@ def enem_gabarito(ano, dia):
         n = int(numero)
         if 1 <= n <= 180 and n not in mapa:  # 1ª ocorrência = caderno azul
             mapa[n] = letra
+    return mapa
+
+
+def enem_imagens(ano, dia, ini, fim, log=print):
+    """Extrai as figuras de cada questão do PDF (recorte por posição).
+
+    A prova é diagramada em 2 colunas: cada imagem pertence à última questão
+    iniciada acima dela na MESMA página+coluna (ordem de leitura). Figuras
+    vetoriais (desenhadas, não embutidas) não são capturadas.
+    """
+    import pdfplumber
+
+    caminho = CACHE / f"enem_{ano}_d{dia}_prova.pdf"
+    pasta = CACHE / "imagens" / f"enem_{ano}_d{dia}"
+    pasta.mkdir(parents=True, exist_ok=True)
+
+    mapa = {}
+    with pdfplumber.open(caminho) as pdf:
+        marcadores = []  # (pagina, coluna, top, numero) em ordem de leitura
+        for pi, page in enumerate(pdf.pages):
+            meio = page.width / 2
+            for m in page.search(r"QUEST[ÃA]O\s+\d{1,3}"):
+                numero = int(re.search(r"\d+", m["text"]).group())
+                col = 0 if m["x0"] < meio else 1
+                marcadores.append((pi, col, m["top"], numero))
+        marcadores.sort()
+
+        for pi, page in enumerate(pdf.pages):
+            meio = page.width / 2
+            for img in page.images:
+                if img["x1"] - img["x0"] < 45 or img["bottom"] - img["top"] < 45:
+                    continue  # logotipos/ícones
+                col = 0 if (img["x0"] + img["x1"]) / 2 < meio else 1
+                chave = (pi, col, img["top"])
+                donos = [m for m in marcadores if (m[0], m[1], m[2]) <= chave]
+                if not donos:
+                    continue
+                numero = donos[-1][3]
+                if not (ini <= numero <= fim):
+                    continue
+                bbox = (
+                    max(0, img["x0"] - 2), max(0, img["top"] - 2),
+                    min(page.width, img["x1"] + 2), min(page.height, img["bottom"] + 2),
+                )
+                arquivo = pasta / f"q{numero}_{len(mapa.get(numero, []))}.png"
+                try:
+                    page.crop(bbox).to_image(resolution=150).save(arquivo)
+                except Exception as erro:  # noqa: BLE001 — imagem ruim não derruba a prova
+                    log(f"  aviso: falha ao recortar imagem da Q{numero}: {erro}")
+                    continue
+                mapa.setdefault(numero, []).append(f"{pasta.name}/{arquivo.name}")
+
+    log(f"imagens extraídas: {sum(len(v) for v in mapa.values())} "
+        f"(questões com figura: {len(mapa)})")
     return mapa
 
 
@@ -136,8 +192,9 @@ SCHEMA_EXTRACAO = {
                         "items": {"type": "string"},
                     },
                     "depende_de_imagem": {"type": "boolean"},
+                    "topico": {"type": "string"},
                 },
-                "required": ["numero", "enunciado", "alternativas", "depende_de_imagem"],
+                "required": ["numero", "enunciado", "alternativas", "depende_de_imagem", "topico"],
                 "additionalProperties": False,
             },
         }
@@ -152,6 +209,7 @@ Para cada questão:
 - Reconstrua fielmente o enunciado (incluindo o texto-base/citações que o acompanham), consertando quebras de linha e hifenização. NÃO invente nem resuma conteúdo.
 - Liste as 5 alternativas (A a E) na ordem, SEM a letra na frente.
 - Marque depende_de_imagem=true se a questão só faz sentido com figura, gráfico, charge, mapa ou tabela que não está no texto.
+- Em topico, classifique o assunto da questão em 2 a 4 palavras (ex.: "Guerra Fria", "Geografia agrária", "Interpretação de texto").
 - Ignore cabeçalhos, rodapés e instruções da prova misturados no texto.
 
 Responda apenas o JSON no schema pedido."""
@@ -202,6 +260,7 @@ def extrair_enem(ano, area, maximo=None, log=print):
     dia, ini, fim = ENEM_AREAS[area]
     enem_baixar(ano, dia)
     gabarito = enem_gabarito(ano, dia)
+    imagens = enem_imagens(ano, dia, ini, fim, log=log)
     blocos = enem_blocos_questoes(ano, dia, ini, fim)
     numeros = sorted(blocos)[:maximo] if maximo else sorted(blocos)
     log(f"{len(numeros)} questões localizadas na faixa {ini}-{fim}"
@@ -222,26 +281,54 @@ def extrair_enem(ano, area, maximo=None, log=print):
             sem_gabarito += 1
             continue
         idx = "ABCDE".index(letra)
+        textos = [t.strip() for t in q["alternativas"]]
+        # Se TODAS as alternativas vierem com a própria letra na frente
+        # ("A reduz...", "B aumenta..."), remove — padrão do PDF que a IA
+        # às vezes preserva. Só quando o conjunto inteiro bate (seguro).
+        if len(textos) == 5 and all(
+            t[:1].upper() == l and len(t) > 2 and t[1] == " "
+            for t, l in zip(textos, "ABCDE")
+        ):
+            textos = [t[2:].strip() for t in textos]
         alternativas = [
-            {"texto": t.strip(), "correta": j == idx}
-            for j, t in enumerate(q["alternativas"])
+            {"texto": t, "correta": j == idx} for j, t in enumerate(textos)
         ]
         saida.append({
             "numero": q["numero"],
             "enunciado": q["enunciado"].strip(),
             "alternativas": alternativas,
-            "topico": None,
+            "topico": (lambda t: None if t.lower() in ("", "none", "null") else t)(
+                (q.get("topico") or "").strip()),
             "aprovada": not q["depende_de_imagem"] and len(alternativas) == 5,
             "depende_de_imagem": q["depende_de_imagem"],
+            "imagens": imagens.get(q["numero"], []),
         })
 
     REVISAO.mkdir(exist_ok=True)
     destino = REVISAO / f"enem_{ano}_{area}.json"
+    if destino.exists():  # nunca clobberar uma revisão em andamento
+        from datetime import datetime
+
+        backup = destino.with_suffix(f".bak-{datetime.now():%Y%m%d%H%M%S}.json")
+        destino.rename(backup)
+        log(f"aviso: {destino.name} já existia — backup em {backup.name}")
+
+    from datetime import datetime, timezone
+
     doc = {
         "fonte": "enem",
         "nome": f"ENEM {ano} — {ENEM_NOMES[area]}",
         "ano": ano,
         "area": ENEM_NOMES[area],
+        "metadados": {
+            "dia": dia,
+            "caderno": f"azul (CD{ENEM_CADERNO_AZUL[dia]})",
+            "url_prova": ENEM_URL.format(ano=ano, tipo="PV", dia=dia, cd=ENEM_CADERNO_AZUL[dia]),
+            "url_gabarito": ENEM_URL.format(ano=ano, tipo="GB", dia=dia, cd=ENEM_CADERNO_AZUL[dia]),
+            "extraida_em": datetime.now(timezone.utc).isoformat(),
+            "modelo_ia": ler_env("OPENAI_MODEL", obrigatoria=False) or "gpt-4o-mini",
+            "gabarito_oficial": True,
+        },
         "questoes": saida,
     }
     destino.write_text(json.dumps(doc, ensure_ascii=False, indent=2))
@@ -302,16 +389,21 @@ def publicar_arquivo(caminho, substituir=False):
             conn.execute("delete from public.catalogo_provas where id=%s", (existente[0],))
 
         prova_id = conn.execute(
-            "insert into public.catalogo_provas (fonte, nome, ano, area, total_questoes) "
-            "values (%s,%s,%s,%s,%s) returning id",
-            (doc["fonte"], doc["nome"], doc.get("ano"), doc.get("area"), len(aprovadas)),
+            "insert into public.catalogo_provas (fonte, nome, ano, area, total_questoes, metadados) "
+            "values (%s,%s,%s,%s,%s,%s) returning id",
+            (doc["fonte"], doc["nome"], doc.get("ano"), doc.get("area"), len(aprovadas),
+             json.dumps(doc.get("metadados")) if doc.get("metadados") else None),
         ).fetchone()[0]
 
         for q in aprovadas:
+            meta_q = {"numero_original": q.get("numero")}
+            if q.get("imagens"):
+                meta_q["imagens_locais"] = len(q["imagens"])
             questao_id = conn.execute(
-                "insert into public.catalogo_questoes (prova_id, numero, enunciado, topico) "
-                "values (%s,%s,%s,%s) returning id",
-                (prova_id, q.get("numero"), q["enunciado"].strip(), q.get("topico")),
+                "insert into public.catalogo_questoes (prova_id, numero, enunciado, topico, metadados) "
+                "values (%s,%s,%s,%s,%s) returning id",
+                (prova_id, q.get("numero"), q["enunciado"].strip(),
+                 (q.get("topico") or "").strip()[:150] or None, json.dumps(meta_q)),
             ).fetchone()[0]
             for ordem, alt in enumerate(q["alternativas"]):
                 conn.execute(

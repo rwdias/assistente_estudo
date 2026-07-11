@@ -66,14 +66,26 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path == "/api/config":
                 self.responder({
                     "fontes": {"enem": {"areas": list(provas.ENEM_AREAS),
-                                        "nomes": provas.ENEM_NOMES}},
+                                        "nomes": provas.ENEM_NOMES,
+                                        "anos": list(range(2024, 2016, -1))}},
                 })
+            elif self.path.startswith("/api/imagem/"):
+                import urllib.parse
+
+                rel = urllib.parse.unquote(self.path.split("/api/imagem/", 1)[1])
+                base = (provas.CACHE / "imagens").resolve()
+                caminho = (base / rel).resolve()
+                if not caminho.is_relative_to(base) or caminho.suffix != ".png":
+                    raise ValueError("imagem inválida")
+                self.responder(caminho.read_bytes(), tipo="image/png")
             elif self.path == "/api/job":
                 self.responder(JOB)
             elif self.path == "/api/revisoes":
                 provas.REVISAO.mkdir(exist_ok=True)
                 arquivos = []
                 for f in sorted(provas.REVISAO.glob("*.json")):
+                    if ".bak-" in f.name:
+                        continue
                     doc = json.loads(f.read_text())
                     qs = doc.get("questoes", [])
                     arquivos.append({

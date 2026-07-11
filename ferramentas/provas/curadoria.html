@@ -58,6 +58,14 @@
   .check-inline { display: flex; align-items: center; gap: 6px; font-size: .84rem; }
   .check-inline input { width: auto; accent-color: var(--brand); }
   svg { width: 15px; height: 15px; }
+  .q-imagens { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0 4px; }
+  .q-imagens img { max-width: 300px; max-height: 220px; border: 1.5px solid var(--borda); border-radius: 8px; }
+  .cobertura { border-collapse: collapse; width: 100%; font-size: .85rem; }
+  .cobertura th, .cobertura td { border: 1px solid var(--borda); padding: 7px 10px; text-align: center; }
+  .cobertura th { background: var(--fundo); font-weight: 700; }
+  .cobertura .ano { font-weight: 700; background: var(--fundo); }
+  .cel-btn { background: none; border: 1.5px dashed var(--borda); border-radius: 7px; padding: 4px 10px; font: inherit; font-size: .78rem; color: var(--texto-3); cursor: pointer; }
+  .cel-btn:hover { border-color: var(--brand); color: var(--brand-dark); }
 </style>
 </head>
 <body>
@@ -80,6 +88,11 @@
     <div style="flex:0"><button class="btn" id="ex-btn">Extrair</button></div>
   </div>
   <div class="log" id="ex-log"></div>
+</section>
+
+<section>
+  <h2>Cobertura — o que já foi feito e o que falta</h2>
+  <div style="overflow-x:auto"><table class="cobertura" id="cobertura"></table></div>
 </section>
 
 <section>
@@ -118,13 +131,44 @@ const api = async (rota, opcoes) => {
 
 let docAtual = null;
 let arquivoAtual = null;
+let cfgEnem = null;
+let cacheCatalogo = [];
+let cacheRevisoes = [];
 
 // --- config (áreas por fonte) ---
 async function carregarConfig() {
   const cfg = await api('/api/config');
-  const areas = cfg.fontes.enem;
-  $('ex-area').innerHTML = areas.areas
-    .map((a) => `<option value="${a}">${esc(areas.nomes[a])}</option>`).join('');
+  cfgEnem = cfg.fontes.enem;
+  $('ex-area').innerHTML = cfgEnem.areas
+    .map((a) => `<option value="${a}">${esc(cfgEnem.nomes[a])}</option>`).join('');
+  renderCobertura();
+}
+
+// --- mapa de cobertura (ano × área): publicada / em revisão / a fazer ---
+function renderCobertura() {
+  if (!cfgEnem) return;
+  const publicadas = new Set(cacheCatalogo.map((p) => p.nome));
+  const emRevisao = new Set(cacheRevisoes.map((r) => r.arquivo));
+
+  $('cobertura').innerHTML = `
+    <tr><th>ENEM</th>${cfgEnem.areas.map((a) => `<th>${esc(cfgEnem.nomes[a])}</th>`).join('')}</tr>
+    ${cfgEnem.anos.map((ano) => `
+      <tr><td class="ano">${ano}</td>
+      ${cfgEnem.areas.map((area) => {
+        const nome = `ENEM ${ano} — ${cfgEnem.nomes[area]}`;
+        if (publicadas.has(nome)) return '<td><span class="badge badge-ok">publicada</span></td>';
+        if (emRevisao.has(`enem_${ano}_${area}.json`)) return '<td><span class="badge badge-warn">em revisão</span></td>';
+        return `<td><button class="cel-btn" data-ano="${ano}" data-area="${area}">extrair</button></td>`;
+      }).join('')}</tr>`).join('')}`;
+
+  document.querySelectorAll('.cel-btn').forEach((b) =>
+    b.addEventListener('click', () => {
+      $('ex-ano').value = b.dataset.ano;
+      $('ex-area').value = b.dataset.area;
+      $('ex-max').value = '';
+      $('ex-btn').click();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }));
 }
 
 // --- extração com polling do job ---
@@ -165,6 +209,8 @@ async function acompanharJob() {
 // --- lista de revisões ---
 async function carregarRevisoes() {
   const arquivos = await api('/api/revisoes');
+  cacheRevisoes = arquivos;
+  renderCobertura();
   $('revisoes-lista').innerHTML = arquivos.length === 0
     ? '<span style="color:var(--texto-3);font-size:.85rem">Nenhum arquivo de revisão ainda — extraia uma prova acima.</span>'
     : arquivos.map((a) => `
@@ -222,8 +268,14 @@ async function abrirEditor(arquivo) {
         <span class="num">Q${q.numero}</span>
         ${q.depende_de_imagem ? '<span class="badge badge-red">depende de imagem</span>' : ''}
         ${q.alternativas.length !== 5 ? `<span class="badge badge-warn">${q.alternativas.length} alternativas</span>` : ''}
+        <input type="text" class="q-topico" value="${esc(q.topico || '')}" placeholder="tópico"
+               style="width:220px;flex:0 0 auto;font-size:.82rem;padding:5px 9px" />
         <label class="aprovar"><input type="checkbox" class="q-aprovada" ${q.aprovada ? 'checked' : ''} /> aprovada</label>
       </div>
+      ${(q.imagens && q.imagens.length)
+        ? `<div class="q-imagens">${q.imagens.map((im) =>
+            `<img src="/api/imagem/${encodeURIComponent(im).replace(/%2F/g, '/')}" loading="lazy" />`).join('')}</div>`
+        : ''}
       <textarea class="q-enunciado" rows="4">${esc(q.enunciado)}</textarea>
       ${q.alternativas.map((a, j) => `
         <div class="alt">
@@ -244,6 +296,7 @@ $('salvar-btn').addEventListener('click', async () => {
   document.querySelectorAll('#editor-questoes .questao').forEach((card) => {
     const q = docAtual.questoes[Number(card.dataset.i)];
     q.aprovada = card.querySelector('.q-aprovada').checked;
+    q.topico = card.querySelector('.q-topico').value.trim() || null;
     q.enunciado = card.querySelector('.q-enunciado').value.trim();
     const correta = Number(card.querySelector('input[type=radio]:checked')?.value ?? -1);
     card.querySelectorAll('.q-alt').forEach((inp, j) => {
@@ -272,6 +325,8 @@ $('fechar-btn').addEventListener('click', () => {
 // --- catálogo ---
 async function carregarCatalogo() {
   const provas = await api('/api/catalogo');
+  cacheCatalogo = provas;
+  renderCobertura();
   $('catalogo-lista').innerHTML = provas.length === 0
     ? '<span style="color:var(--texto-3);font-size:.85rem">Catálogo vazio.</span>'
     : provas.map((p) => `
