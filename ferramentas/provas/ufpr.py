@@ -85,7 +85,9 @@ def mapear(pdf_path):
             m[3] = num
             continue
         if chave_atual is not None:
-            mr = re.match(r"^►\s*([a-e])\)", s)
+            # resposta marcada com ► — alternativas em minúsculas (2023) ou
+            # maiúsculas (2025/2026); o ► pode vir colado ou com espaço
+            mr = re.match(r"^►\s*([a-eA-E])\)", s)
             if mr:
                 respostas[chave_atual] = mr.group(1).upper()
             buffer.append(s)
