@@ -261,7 +261,10 @@ textarea { resize: vertical; }
 
 /* seletor de matéria no header — dropdown próprio (o popup do <select>
    nativo não aceita estilo) */
-.materia-dropdown { margin-left: auto; position: relative; }
+.materia-dropdown {
+  margin-left: auto; position: relative;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+}
 .materia-dropdown-btn {
   display: inline-flex; align-items: center; gap: 9px;
   padding: 8px 14px; border-radius: 10px; max-width: 320px;
@@ -272,7 +275,7 @@ textarea { resize: vertical; }
 .materia-dropdown-btn:hover { border-color: var(--brand); }
 .materia-rotulo {
   font-size: .66rem; font-weight: 800; text-transform: uppercase;
-  letter-spacing: .07em; color: var(--texto-3);
+  letter-spacing: .07em; color: var(--texto-3); line-height: 1;
 }
 #materia-atual-nome {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
