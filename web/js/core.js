@@ -206,6 +206,7 @@ function formatarTexto(texto) {
   const html = [];
   let tabela = [];
   let citacao = [];
+  let paragrafo = [];
 
   const fecharTabela = () => {
     if (tabela.length === 0) return;
@@ -229,21 +230,34 @@ function formatarTexto(texto) {
     html.push(`<blockquote class="citacao-enunciado">${citacao.join('<br>')}</blockquote>`);
     citacao = [];
   };
+  const fecharParagrafo = () => {
+    if (paragrafo.length === 0) return;
+    html.push(`${paragrafo.join(' ')}<br>`);
+    paragrafo = [];
+  };
 
   for (const linha of linhas) {
     const t = linha.trim();
-    if (/^\|.*\|$/.test(t)) { fecharCitacao(); tabela.push(t); continue; }
+    if (/^\|.*\|$/.test(t)) { fecharParagrafo(); fecharCitacao(); tabela.push(t); continue; }
     fecharTabela();
-    if (t.startsWith('&gt;')) { citacao.push(t.replace(/^&gt;\s?/, '')); continue; }
+    if (t.startsWith('&gt;')) { fecharParagrafo(); citacao.push(t.replace(/^&gt;\s?/, '')); continue; }
     fecharCitacao();
-    html.push(t === '' ? '<span class="quebra"></span>' : `${t}<br>`);
+    if (t === '') {
+      fecharParagrafo();
+      html.push('<span class="quebra"></span>');
+    } else {
+      paragrafo.push(t);
+    }
   }
+  fecharParagrafo();
   fecharTabela();
   fecharCitacao();
 
   return html.join('')
+    // negrito inline marcado com **...**
+    .replace(/\*\*([^*]{2,240}?)\*\*/g, '<strong>$1</strong>')
     // fonte explícita marcada com *...*
-    .replace(/\*([^*]{2,240}?)\*/g, '<em class="fonte-enunciado">$1</em>')
+    .replace(/(^|[^*])\*([^*]{2,240}?)\*(?!\*)/g, '$1<em class="fonte-enunciado">$2</em>')
     // fonte entre parênteses que a IA não marcou (linha bibliográfica:
     // ano de 4 dígitos ou "Disponível em") — vira itálico discreto
     .replace(/(?:^|<br>)(\([^()<]{6,240}?(?:\b\d{4}\b|Disponível em)[^()<]*?\))(?=<br>|$)/g,

@@ -3,6 +3,44 @@ let revisaoIndice = 0;
 let revisaoAcertos = 0;
 let revisaoErros = 0;
 let filtroRevisao = 'tudo'; // 'tudo' | 'pergunta' | 'flashcard'
+let revisaoReaprendendoIds = new Set();
+
+function chaveSessaoRevisao() {
+  const hoje = new Date().toISOString().slice(0, 10);
+  return `revisaoSessao:${Estado.materiaId || 'sem-materia'}:${hoje}`;
+}
+
+function carregarSessaoRevisao() {
+  revisaoAcertos = 0;
+  revisaoErros = 0;
+  revisaoReaprendendoIds = new Set();
+
+  if (!Estado.materiaId) return;
+
+  try {
+    const salvo = JSON.parse(localStorage.getItem(chaveSessaoRevisao()) || '{}');
+    revisaoAcertos = Number(salvo.acertos || 0);
+    revisaoErros = Number(salvo.erros || 0);
+    revisaoReaprendendoIds = new Set((salvo.reaprendendoIds || []).map(Number).filter(Boolean));
+  } catch (_) {
+    localStorage.removeItem(chaveSessaoRevisao());
+  }
+}
+
+function salvarSessaoRevisao() {
+  if (!Estado.materiaId) return;
+  localStorage.setItem(chaveSessaoRevisao(), JSON.stringify({
+    acertos: revisaoAcertos,
+    erros: revisaoErros,
+    reaprendendoIds: [...revisaoReaprendendoIds],
+  }));
+}
+
+function limparSessaoRevisaoSeConcluida() {
+  if (revisaoFila.length > 0 && revisaoIndice < revisaoFila.length) return;
+  revisaoReaprendendoIds.clear();
+  salvarSessaoRevisao();
+}
 
 // Reaprendizagem estilo Anki: um item respondido errado volta para o fim
 // da fila da MESMA sessão (como o passo de 10min do Anki, com "learn
@@ -10,6 +48,7 @@ let filtroRevisao = 'tudo'; // 'tudo' | 'pergunta' | 'flashcard'
 // SM-2 já reagendou para +10min a cada erro; o acerto seguinte gradua o
 // item para 1 dia.
 function reenfileirarErrado(pergunta) {
+  revisaoReaprendendoIds.add(Number(pergunta.id));
   revisaoFila.push({ ...pergunta, novo: false, reaprendendo: true });
 }
 
@@ -18,9 +57,19 @@ document.querySelectorAll('#tipo-toggle-revisao button').forEach((btn) => {
     document.querySelectorAll('#tipo-toggle-revisao button').forEach((b) => b.classList.remove('ativo'));
     btn.classList.add('ativo');
     filtroRevisao = btn.dataset.filtro;
+    localStorage.setItem('filtroRevisao', filtroRevisao);
     carregarRevisao();
   });
 });
+
+(function restaurarFiltroRevisao() {
+  const salvo = localStorage.getItem('filtroRevisao');
+  if (!['tudo', 'pergunta', 'flashcard'].includes(salvo)) return;
+  filtroRevisao = salvo;
+  document.querySelectorAll('#tipo-toggle-revisao button').forEach((b) =>
+    b.classList.toggle('ativo', b.dataset.filtro === filtroRevisao)
+  );
+})();
 
 // Cache por dia da versão reformulada (mesma semântica do backend antigo):
 // evita gastar quota re-reformulando a mesma pergunta em reloads.
@@ -49,11 +98,17 @@ async function carregarRevisao() {
   // Estilo Anki: itens nunca respondidos são "a aprender" (novos) e vêm
   // primeiro; os já respondidos e vencidos são "a revisar". Ambos passam
   // pelo mesmo SM-2 ao serem respondidos.
+  carregarSessaoRevisao();
   const agora = new Date();
+  const porId = new Map(perguntas.map((p) => [Number(p.id), p]));
+  const idsNaFila = new Set();
   revisaoFila = perguntas
     .filter((p) => filtroRevisao === 'tudo' || p.tipo === filtroRevisao)
     .filter((p) => p.proxima_revisao_em === null || new Date(p.proxima_revisao_em) <= agora)
-    .map((p) => ({ ...p, novo: p.vezes_respondida === 0 }))
+    .map((p) => {
+      idsNaFila.add(Number(p.id));
+      return { ...p, novo: p.vezes_respondida === 0 };
+    })
     .sort((a, b) => {
       if (a.novo !== b.novo) return a.novo ? -1 : 1;
       if (a.proxima_revisao_em === null) return -1;
@@ -61,9 +116,19 @@ async function carregarRevisao() {
       return new Date(a.proxima_revisao_em) - new Date(b.proxima_revisao_em);
     });
 
+  revisaoReaprendendoIds.forEach((id) => {
+    if (idsNaFila.has(id)) return;
+    const pergunta = porId.get(id);
+    if (!pergunta) {
+      revisaoReaprendendoIds.delete(id);
+      return;
+    }
+    if (filtroRevisao !== 'tudo' && pergunta.tipo !== filtroRevisao) return;
+    revisaoFila.push({ ...pergunta, novo: false, reaprendendo: true });
+  });
+
   revisaoIndice = 0;
-  revisaoAcertos = 0;
-  revisaoErros = 0;
+  salvarSessaoRevisao();
   renderRevisaoAtual();
 }
 
@@ -99,6 +164,7 @@ function renderRevisaoAtual() {
   const ICONE_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.1V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
 
   if (revisaoIndice >= revisaoFila.length) {
+    limparSessaoRevisaoSeConcluida();
     container.innerHTML =
       revisaoFila.length === 0
         ? `<p class="fim-sessao">${ICONE_OK} Nada para aprender ou revisar agora.</p>`
@@ -188,10 +254,12 @@ function renderFlashcardRevisao(card) {
     document.getElementById('fc-avaliacao').style.display = 'none';
     if (correta) {
       revisaoAcertos += 1;
+      revisaoReaprendendoIds.delete(Number(card.id));
     } else {
       revisaoErros += 1;
       reenfileirarErrado(card);
     }
+    salvarSessaoRevisao();
     renderResumoRevisao();
     document.getElementById('revisao-proxima-btn').style.display = 'inline-flex';
 
@@ -220,10 +288,12 @@ function renderPerguntaRevisao(pergunta) {
   wirePerguntaQuiz(pergunta, 'revisao-atual', async (correta) => {
     if (correta) {
       revisaoAcertos += 1;
+      revisaoReaprendendoIds.delete(Number(pergunta.id));
     } else {
       revisaoErros += 1;
       reenfileirarErrado(pergunta);
     }
+    salvarSessaoRevisao();
     renderResumoRevisao();
     document.getElementById('revisao-proxima-btn').style.display = 'inline-flex';
 
