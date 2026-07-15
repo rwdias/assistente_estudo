@@ -763,5 +763,6 @@ textarea { resize: vertical; }
   margin: 10px 0; padding: 8px 14px; border-left: 3px solid var(--brand);
   background: var(--superficie-2); font-weight: 400; border-radius: 0 8px 8px 0;
 }
+.enfase-enunciado { font-style: italic; }
 .fonte-enunciado { display: block; font-size: .78rem; color: var(--texto-3); font-style: italic; margin: 4px 0 8px; }
 .question-title .quebra { display: block; height: 10px; }

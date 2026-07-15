@@ -199,9 +199,10 @@ function renderImagensPergunta(pergunta) {
 
 // Formatação SEGURA de enunciados/versos (Markdown restrito, válido para
 // qualquer fonte de prova): tabelas (linhas "| a | b |"), citações (linhas
-// iniciadas por "> ") e fonte/referência em itálico (*...*).
+// iniciadas por "> "), ênfase inline (*...* / **...**) e referências.
 // O texto é SEMPRE escapado antes — nenhuma tag vinda do dado sobrevive.
-function formatarTexto(texto) {
+function formatarTexto(texto, opcoes = {}) {
+  const compacto = Boolean(opcoes.compacto);
   const linhas = esc(texto ?? '').split('\n');
   const html = [];
   let tabela = [];
@@ -232,9 +233,13 @@ function formatarTexto(texto) {
   };
   const fecharParagrafo = () => {
     if (paragrafo.length === 0) return;
-    html.push(`${paragrafo.join(' ')}<br>`);
+    html.push(`${compacto ? paragrafo.join(' ') : paragrafo.join('<br>')}<br>`);
     paragrafo = [];
   };
+  const fonteMarcada = (t) =>
+    /^\*[^*]{6,240}?(?:\b\d{4}\b|Disponível em|Adaptado de|Fonte:)[^*]*\*$/.test(t);
+  const fonteEntreParenteses = (t) =>
+    /^\([^()<]{6,240}?(?:\b\d{4}\b|Disponível em)[^()<]*?\)$/.test(t);
 
   for (const linha of linhas) {
     const t = linha.trim();
@@ -242,24 +247,48 @@ function formatarTexto(texto) {
     fecharTabela();
     if (t.startsWith('&gt;')) { fecharParagrafo(); citacao.push(t.replace(/^&gt;\s?/, '')); continue; }
     fecharCitacao();
+    if (fonteMarcada(t)) {
+      fecharParagrafo();
+      html.push(`<em class="fonte-enunciado">${t.slice(1, -1)}</em>`);
+      continue;
+    }
+    if (fonteEntreParenteses(t)) {
+      fecharParagrafo();
+      html.push(`<em class="fonte-enunciado">${t}</em>`);
+      continue;
+    }
     if (t === '') {
       fecharParagrafo();
       html.push('<span class="quebra"></span>');
-    } else {
+    } else if (compacto) {
       paragrafo.push(t);
+    } else {
+      html.push(`${t}<br>`);
     }
   }
   fecharParagrafo();
   fecharTabela();
   fecharCitacao();
 
-  return html.join('')
-    // negrito inline marcado com **...**
-    .replace(/\*\*([^*]{2,240}?)\*\*/g, '<strong>$1</strong>')
-    // fonte explícita marcada com *...*
-    .replace(/(^|[^*])\*([^*]{2,240}?)\*(?!\*)/g, '$1<em class="fonte-enunciado">$2</em>')
-    // fonte entre parênteses que a IA não marcou (linha bibliográfica:
-    // ano de 4 dígitos ou "Disponível em") — vira itálico discreto
+  const saida = html.join('');
+  if (compacto) {
+    return saida
+      // negrito inline marcado com **...**
+      .replace(/\*\*([^*]{2,240}?)\*\*/g, '<strong>$1</strong>')
+      // fonte explícita marcada com *...* em linha própria
+      .replace(/(?:^|<br>)\*([^*]{6,240}?(?:\b\d{4}\b|Disponível em|Adaptado de|Fonte:)[^*]*?)\*(?=<br>|$)/g,
+        '<em class="fonte-enunciado">$1</em>')
+      // ênfase inline comum
+      .replace(/(^|[^*])\*([^*]{1,240}?)\*(?!\*)/g, '$1<em class="enfase-enunciado">$2</em>')
+      // fonte entre parênteses que a IA não marcou (linha bibliográfica:
+      // ano de 4 dígitos ou "Disponível em") — vira itálico discreto
+      .replace(/(?:^|<br>)(\([^()<]{6,240}?(?:\b\d{4}\b|Disponível em)[^()<]*?\))(?=<br>|$)/g,
+        '<em class="fonte-enunciado">$1</em>');
+  }
+
+  return saida
+    // comportamento histórico de questões/simulados: *...* vira referência em bloco
+    .replace(/\*([^*]{2,240}?)\*/g, '<em class="fonte-enunciado">$1</em>')
     .replace(/(?:^|<br>)(\([^()<]{6,240}?(?:\b\d{4}\b|Disponível em)[^()<]*?\))(?=<br>|$)/g,
       '<em class="fonte-enunciado">$1</em>');
 }
