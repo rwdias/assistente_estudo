@@ -18,6 +18,17 @@ async function carregarMaterias() {
   renderMateriaDropdown();
 }
 
+let materiaParaRemover = null;
+
+function abrirConfirmacaoRemoverMateria(materiaId) {
+  const materia = Estado.materias.find((m) => m.id === materiaId);
+  if (!materia) return;
+
+  materiaParaRemover = materia;
+  document.getElementById('modal-delete-materia-nome').textContent = materia.nome;
+  openModal('modal-delete-materia');
+}
+
 // --- dropdown de matérias no header ---
 
 function painelAtivo() {
@@ -165,6 +176,9 @@ async function carregarDashboard() {
           <button type="button" class="card-acao-btn acao-config" data-id="${m.id}" title="Configurações da matéria">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
           </button>
+          <button type="button" class="card-acao-btn acao-remover" data-id="${m.id}" title="Remover matéria da minha conta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+          </button>
         </div>
         <div class="nome">${esc(m.nome)}</div>
         <div class="metricas">
@@ -203,7 +217,41 @@ async function carregarDashboard() {
       abrirAbaManual('config');
     });
   });
+
+  container.querySelectorAll('.acao-remover').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      abrirConfirmacaoRemoverMateria(Number(btn.dataset.id));
+    });
+  });
 }
+
+document.getElementById('modal-delete-materia-confirm').addEventListener('click', async () => {
+  if (!materiaParaRemover) return;
+
+  const btn = document.getElementById('modal-delete-materia-confirm');
+  const materiaId = materiaParaRemover.id;
+  const nome = materiaParaRemover.nome;
+
+  btn.disabled = true;
+  btn.textContent = 'Removendo...';
+
+  const { error } = await sb.from('materias').delete().eq('id', materiaId);
+
+  btn.disabled = false;
+  btn.textContent = 'Remover da minha conta';
+
+  if (error) {
+    toast(error.message, 'error');
+    return;
+  }
+
+  closeModal('modal-delete-materia');
+  materiaParaRemover = null;
+  if (Estado.materiaId === materiaId) definirMateriaAtual(null);
+  await carregarDashboard();
+  toast(`"${nome}" removida da sua conta.`);
+});
 
 // --- Banco de provas (catálogo público, curado fora do app) ---
 

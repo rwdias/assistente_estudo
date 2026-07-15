@@ -349,7 +349,7 @@ textarea { resize: vertical; }
   position: relative;
 }
 .card-materia:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--brand); }
-.card-materia .nome { font-family: 'Sora', sans-serif; font-weight: 700; font-size: .95rem; margin-bottom: 10px; padding-right: 76px; }
+.card-materia .nome { font-family: 'Sora', sans-serif; font-weight: 700; font-size: .95rem; margin-bottom: 10px; padding-right: 112px; }
 .card-materia .metricas { display: flex; gap: 12px; font-size: .8rem; color: var(--texto-2); flex-wrap: wrap; align-items: center; }
 .card-materia .metricas b { color: var(--texto); }
 .card-materia-acoes { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; }
@@ -361,6 +361,7 @@ textarea { resize: vertical; }
   transition: border-color .13s, color .13s;
 }
 .card-acao-btn:hover { border-color: var(--brand); color: var(--brand-ink); }
+.card-acao-btn.acao-remover:hover { border-color: var(--erro); color: var(--erro); }
 .card-acao-btn svg { width: 15px; height: 15px; }
 .empty-state {
   text-align: center; padding: 48px 24px; color: var(--texto-3);

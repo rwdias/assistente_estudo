@@ -114,7 +114,11 @@ user `postgres.scafgcpxjsimzaaviean`, senha no `.env`. (O host direto
 - Enunciados/versos aceitam **Markdown restrito** (convenção válida para
   toda fonte de prova): tabelas `| a | b |`, citações `> linha`, fonte
   `*REF...*`. Renderização SÓ via `formatarTexto()` (core.js), que escapa
-  antes de formatar — nunca interpretar HTML vindo de dado.
+  antes de formatar — nunca interpretar HTML vindo de dado. Chamadas padrão
+  preservam o comportamento histórico das questões/simulados, incluindo
+  quebras de linha e `*...*` como referência em bloco; flashcards usam
+  `formatarTexto(texto, { compacto: true })`, juntando quebras "moles" e
+  mantendo `**negrito**`/`*ênfase*` inline.
 - Sidebar é rail (72px) que expande no hover, com pin persistido; seletor de
   matéria é dropdown próprio no header (select nativo não aceita estilo).
 
