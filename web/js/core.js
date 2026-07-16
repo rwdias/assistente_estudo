@@ -49,6 +49,7 @@ function normalizarPergunta(linha) {
     verso: linha.verso,
     imagens: linha.imagens || [],
     imagens_posicao: linha.imagens_posicao || 'depois',
+    saber_mais: Array.isArray(linha.saber_mais) ? linha.saber_mais : [],
     dificuldade: linha.dificuldade,
     origem: linha.origem,
     opcoes,
@@ -64,7 +65,7 @@ function normalizarPergunta(linha) {
 }
 
 const SELECT_PERGUNTA = `
-  id, tipo, enunciado, verso, dificuldade, origem, imagens, imagens_posicao, created_at,
+  id, tipo, enunciado, verso, dificuldade, origem, imagens, imagens_posicao, saber_mais, created_at,
   opcoes ( texto, correta, ordem ),
   revisoes_perguntas ( vezes_respondida, vezes_acertada, ultima_resposta_correta,
                        intervalo_dias, proxima_revisao_em ),
@@ -330,6 +331,7 @@ function renderPerguntaQuizHTML(pergunta, chave) {
           )
           .join('')}
       </div>
+      <div class="saber-mais" data-saber-mais hidden></div>
     </div>
   `;
 }
@@ -351,9 +353,104 @@ function wirePerguntaQuiz(pergunta, chave, aoResponder) {
       });
       el.classList.add(opcaoEscolhida.correta ? 'correta' : 'incorreta', 'selecionada');
 
+      montarSaberMais(card, pergunta);
+
       await aoResponder(opcaoEscolhida.correta);
     });
   });
+}
+
+// --- "Saber mais": aprofundamento por IA com cache de até 3 complementos ---
+// Modelo padrão das consultas de aprofundamento (não há seletor na tela de
+// estudo). O texto é cacheado na própria pergunta (perguntas.saber_mais).
+const SABER_MAIS_MAX = 3;
+const SABER_MAIS_MODELO = 'ChatGPT';
+
+// Questão do banco público (doBanco) não pertence à conta: não há onde
+// cachear, então o recurso fica restrito às perguntas do próprio usuário.
+function podeSaberMais(pergunta) {
+  return !pergunta.doBanco && pergunta.id != null && pergunta.tipo !== 'flashcard';
+}
+
+// Preenche/atualiza o bloco de "Saber mais" do card já respondido: exibe os
+// complementos cacheados e, se houver menos de 3, o botão para pedir mais.
+function montarSaberMais(card, pergunta) {
+  const bloco = card.querySelector('[data-saber-mais]');
+  if (!bloco || !podeSaberMais(pergunta)) return;
+
+  const complementos = pergunta.saber_mais || [];
+  const restantes = SABER_MAIS_MAX - complementos.length;
+
+  bloco.hidden = false;
+  bloco.innerHTML = `
+    ${complementos
+      .map(
+        (t, i) => `
+        <div class="saber-mais-item">
+          <div class="saber-mais-rotulo">Saber mais ${i + 1}</div>
+          <div class="saber-mais-texto">${formatarTexto(t, { compacto: true })}</div>
+        </div>`
+      )
+      .join('')}
+    ${
+      restantes > 0
+        ? `<button type="button" class="btn btn-secondary btn-sm saber-mais-btn">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+             ${complementos.length === 0 ? 'Saber mais' : 'Aprofundar mais'}
+           </button>`
+        : ''
+    }
+  `;
+
+  const btn = bloco.querySelector('.saber-mais-btn');
+  if (btn) btn.addEventListener('click', () => pedirSaberMais(card, pergunta, btn));
+}
+
+async function pedirSaberMais(card, pergunta, btn) {
+  const conteudoOriginal = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = 'Consultando IA...';
+
+  try {
+    const { data, error } = await sb.functions.invoke('saber_mais', {
+      body: {
+        modelo: SABER_MAIS_MODELO,
+        pergunta: {
+          enunciado: pergunta.enunciado,
+          opcoes: pergunta.opcoes.map((o) => ({ texto: o.texto, correta: o.correta })),
+        },
+        anteriores: pergunta.saber_mais || [],
+      },
+    });
+
+    if (error) {
+      toast(await mensagemErroFuncao(error), 'error');
+      btn.disabled = false;
+      btn.innerHTML = conteudoOriginal;
+      return;
+    }
+
+    // Persiste na pergunta (RLS do dono + teto de 3 na função SQL) e recebe o
+    // array atualizado, fonte de verdade do cache.
+    const { data: novo, error: erroPersist } = await sb.rpc('adicionar_saber_mais', {
+      p_pergunta_id: pergunta.id,
+      p_texto: data.saber_mais,
+    });
+
+    if (erroPersist) {
+      toast(erroPersist.message, 'error');
+      btn.disabled = false;
+      btn.innerHTML = conteudoOriginal;
+      return;
+    }
+
+    pergunta.saber_mais = Array.isArray(novo) ? novo : [...(pergunta.saber_mais || []), data.saber_mais];
+    montarSaberMais(card, pergunta);
+  } catch (erro) {
+    toast(erro.message || 'Falha ao consultar a IA.', 'error');
+    btn.disabled = false;
+    btn.innerHTML = conteudoOriginal;
+  }
 }
 
 // --- tema claro/escuro ---

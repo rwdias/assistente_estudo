@@ -125,6 +125,49 @@ export const FLASHCARDS_SCHEMA = {
   additionalProperties: false,
 };
 
+export const SABER_MAIS_SCHEMA = {
+  type: "object",
+  properties: {
+    saber_mais: { type: "string" },
+  },
+  required: ["saber_mais"],
+  additionalProperties: false,
+};
+
+export function promptSaberMais(pergunta: PerguntaIA, anteriores: string[]): string {
+  const opcoesTexto = pergunta.opcoes
+    .map((o) => `- ${o.texto} (${o.correta ? "CORRETA" : "incorreta"})`)
+    .join("\n");
+
+  const blocoAnteriores = anteriores.length
+    ? "\n\nComplementos que JÁ foram dados antes (NÃO repita nada deles; " +
+      "traga um ângulo/conteúdo novo e mais profundo):\n-----\n" +
+      anteriores.map((t, i) => `(${i + 1}) ${t}`).join("\n\n") +
+      "\n-----\n"
+    : "";
+
+  return (
+    "Você é um tutor de estudos. Dada a questão de múltipla escolha abaixo, " +
+    "escreva um complemento de aprofundamento (\"Saber mais\") em português " +
+    "do Brasil, claro e didático, para quem está estudando o tema.\n\n" +
+    "O complemento deve:\n" +
+    "- explicar o conceito central por trás da questão;\n" +
+    "- justificar por que a alternativa correta é a certa e por que as " +
+    "outras não servem;\n" +
+    "- trazer contexto adicional útil (exemplos, quando usar, comparações, " +
+    "pegadinhas comuns).\n\n" +
+    "Regras de formatação: use Markdown enxuto — **negrito** para termos-chave, " +
+    "listas com \"- \" e, se ajudar, uma tabela `| a | b |`. Não use títulos " +
+    "com # nem blocos de código. Seja objetivo (algo entre 1 e 4 parágrafos)." +
+    blocoAnteriores +
+    "\n\nQuestão:\n" +
+    `Enunciado: ${pergunta.enunciado}\n` +
+    "Alternativas:\n" +
+    `${opcoesTexto}\n\n` +
+    "Responda apenas com o JSON pedido, sem texto adicional."
+  );
+}
+
 export function promptExtracao(
   assunto: string,
   dificuldadePadrao: string,

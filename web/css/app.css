@@ -507,6 +507,23 @@ textarea { resize: vertical; }
 .opcao-quiz.desabilitada:not(.correta):not(.incorreta) { opacity: .55; }
 .reformulado-aviso { display: inline-block; margin-bottom: 10px; font-size: .78rem; color: var(--destaque); font-weight: 700; }
 
+/* "Saber mais": aprofundamento por IA, revelado após responder */
+.saber-mais { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--borda); }
+.saber-mais-item {
+  background: var(--superficie-2); border: 1px solid var(--borda);
+  border-left: 3px solid var(--brand); border-radius: var(--radius-sm);
+  padding: 12px 14px; margin-bottom: 10px;
+}
+.saber-mais-rotulo {
+  font-family: 'Sora', sans-serif; font-size: .72rem; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase; color: var(--brand-dark);
+  margin-bottom: 6px;
+}
+.saber-mais-texto { font-size: .92rem; line-height: 1.6; color: var(--texto); }
+.saber-mais-texto strong { font-weight: 700; }
+.saber-mais-btn { display: inline-flex; align-items: center; gap: 7px; }
+.saber-mais-btn svg { width: 15px; height: 15px; }
+
 /* ============ MODAL / TOAST ============ */
 .modal-overlay {
   display: none; position: fixed; inset: 0; background: rgba(7,20,18,.55);
