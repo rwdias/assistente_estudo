@@ -125,6 +125,11 @@ input:focus, select:focus, textarea:focus {
   outline: none; border-color: var(--brand);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
 }
+/* Radio/checkbox não podem esticar para 100% (regra acima): isso espremia
+   o texto das alternativas no preview da extração para fora da tela. */
+input[type=radio], input[type=checkbox] {
+  width: auto; padding: 0; border: 0; accent-color: var(--brand);
+}
 textarea { resize: vertical; }
 ::placeholder { color: var(--texto-3); }
 .checkbox-label { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--texto-2); margin: 16px 0; }
