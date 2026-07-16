@@ -155,27 +155,31 @@ export function promptSaberMais(pergunta: PerguntaIA, anteriores: string[]): str
     .map((o) => `- ${o.texto} (${o.correta ? "CORRETA" : "incorreta"})`)
     .join("\n");
 
-  const blocoAnteriores = anteriores.length
-    ? "\n\nComplementos que JÁ foram dados antes (NÃO repita nada deles; " +
-      "traga um ângulo/conteúdo novo e mais profundo):\n-----\n" +
-      anteriores.map((t, i) => `(${i + 1}) ${t}`).join("\n\n") +
-      "\n-----\n"
+  const continuacao = anteriores.length
+    ? "\n\nATENÇÃO — isto é uma CONTINUAÇÃO. A pessoa já leu a(s) explicação(ões) " +
+      "abaixo e disse \"ainda não entendi\". Continue de onde parou: reexplique " +
+      "de OUTRO jeito, mais simples e concreto (outra analogia, um exemplo passo " +
+      "a passo, ou quebrando em partes menores). NÃO repita o que já foi dito e " +
+      "NÃO comece recapitulando; emende naturalmente, como quem continua a " +
+      "conversa. Não use rótulos, números nem títulos como \"Complemento 2\".\n" +
+      "-----\n" + anteriores.join("\n\n") + "\n-----\n"
     : "";
 
   return (
-    "Você é um tutor de estudos. Dada a questão de múltipla escolha abaixo, " +
-    "escreva um complemento de aprofundamento (\"Saber mais\") em português " +
-    "do Brasil, claro e didático, para quem está estudando o tema.\n\n" +
-    "O complemento deve:\n" +
-    "- explicar o conceito central por trás da questão;\n" +
-    "- justificar por que a alternativa correta é a certa e por que as " +
+    "Você é um tutor de estudos conversando com um aluno. Dada a questão de " +
+    "múltipla escolha abaixo, escreva uma explicação (\"Saber mais\") em " +
+    "português do Brasil, clara e didática, como se estivesse falando com a " +
+    "pessoa.\n\n" +
+    "A explicação deve:\n" +
+    "- esclarecer o conceito central por trás da questão;\n" +
+    "- deixar claro por que a alternativa correta é a certa e por que as " +
     "outras não servem;\n" +
-    "- trazer contexto adicional útil (exemplos, quando usar, comparações, " +
-    "pegadinhas comuns).\n\n" +
+    "- trazer contexto útil (exemplos, quando usar, comparações, pegadinhas).\n\n" +
     "Regras de formatação: use Markdown enxuto — **negrito** para termos-chave, " +
     "listas com \"- \" e, se ajudar, uma tabela `| a | b |`. Não use títulos " +
-    "com # nem blocos de código. Seja objetivo (algo entre 1 e 4 parágrafos)." +
-    blocoAnteriores +
+    "com # nem blocos de código. Escreva um texto corrido e contínuo (sem " +
+    "numeração ou rótulo de seção). Seja objetivo (1 a 4 parágrafos)." +
+    continuacao +
     "\n\nQuestão:\n" +
     `Enunciado: ${pergunta.enunciado}\n` +
     "Alternativas:\n" +
@@ -227,24 +231,27 @@ export function promptSaberMaisFlashcard(
   verso: string,
   anteriores: string[],
 ): string {
-  const blocoAnteriores = anteriores.length
-    ? "\n\nComplementos que JÁ foram dados antes (NÃO repita nada deles; " +
-      "traga um ângulo/conteúdo novo e mais profundo):\n-----\n" +
-      anteriores.map((t, i) => `(${i + 1}) ${t}`).join("\n\n") +
-      "\n-----\n"
+  const continuacao = anteriores.length
+    ? "\n\nATENÇÃO — isto é uma CONTINUAÇÃO. A pessoa já leu a(s) explicação(ões) " +
+      "abaixo e disse \"ainda não entendi\". Continue de onde parou: reexplique " +
+      "de OUTRO jeito, mais simples e concreto (outra analogia, exemplo passo a " +
+      "passo, ou quebrando em partes menores). NÃO repita o que já foi dito e " +
+      "NÃO comece recapitulando; emende naturalmente. Não use rótulos, números " +
+      "nem títulos.\n-----\n" + anteriores.join("\n\n") + "\n-----\n"
     : "";
 
   return (
-    "Você é um tutor de estudos. Dado o flashcard abaixo (frente e verso), " +
-    "escreva um complemento de aprofundamento (\"Saber mais\") em português " +
-    "do Brasil, claro e didático.\n\n" +
-    "O complemento deve explicar melhor o conceito da resposta, dar contexto " +
-    "útil, exemplos, comparações e pegadinhas comuns — sem apenas repetir o " +
-    "verso.\n\n" +
+    "Você é um tutor de estudos conversando com um aluno. Dado o flashcard " +
+    "abaixo (frente e verso), escreva uma explicação (\"Saber mais\") em " +
+    "português do Brasil, clara e didática, como se estivesse falando com a " +
+    "pessoa.\n\n" +
+    "Explique melhor o conceito da resposta, com contexto útil, exemplos, " +
+    "comparações e pegadinhas comuns — sem apenas repetir o verso.\n\n" +
     "Regras de formatação: use Markdown enxuto — **negrito** para termos-chave, " +
     "listas com \"- \" e, se ajudar, uma tabela `| a | b |`. Não use títulos " +
-    "com # nem blocos de código. Seja objetivo (1 a 4 parágrafos)." +
-    blocoAnteriores +
+    "com # nem blocos de código. Texto corrido e contínuo (sem numeração ou " +
+    "rótulo de seção). Seja objetivo (1 a 4 parágrafos)." +
+    continuacao +
     "\n\nFlashcard:\n" +
     `Frente: ${frente}\n` +
     `Verso: ${verso}\n\n` +

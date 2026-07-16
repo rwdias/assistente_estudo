@@ -374,7 +374,9 @@ function podeSaberMais(pergunta) {
 }
 
 // Preenche/atualiza o bloco de "Saber mais" do card já respondido: exibe os
-// complementos cacheados e, se houver menos de 3, o botão para pedir mais.
+// complementos cacheados como um texto contínuo (sem numeração) e, se houver
+// menos de 3, o botão "Ainda não entendi" para pedir uma nova explicação que
+// continua de onde a anterior parou.
 function montarSaberMais(card, pergunta) {
   const bloco = card.querySelector('[data-saber-mais]');
   if (!bloco || !podeSaberMais(pergunta)) return;
@@ -384,20 +386,18 @@ function montarSaberMais(card, pergunta) {
 
   bloco.hidden = false;
   bloco.innerHTML = `
-    ${complementos
-      .map(
-        (t, i) => `
-        <div class="saber-mais-item">
-          <div class="saber-mais-rotulo">Saber mais ${i + 1}</div>
-          <div class="saber-mais-texto">${formatarTexto(t, { compacto: true })}</div>
-        </div>`
-      )
-      .join('')}
+    ${complementos.length
+      ? `<div class="saber-mais-item">
+           ${complementos
+             .map((t) => `<div class="saber-mais-texto">${formatarTexto(t, { compacto: true })}</div>`)
+             .join('')}
+         </div>`
+      : ''}
     ${
       restantes > 0
         ? `<button type="button" class="btn btn-secondary btn-sm saber-mais-btn">
              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-             ${complementos.length === 0 ? 'Saber mais' : 'Aprofundar mais'}
+             ${complementos.length === 0 ? 'Saber mais' : 'Ainda não entendi'}
            </button>`
         : ''
     }
