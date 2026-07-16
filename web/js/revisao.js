@@ -240,14 +240,19 @@ function renderFlashcardRevisao(card) {
           Acertei
         </button>
       </div>
+      <div class="saber-mais" data-saber-mais hidden></div>
     </div>
     <button type="button" class="btn btn-primary" id="revisao-proxima-btn" style="display:none">Próxima pergunta</button>
   `;
+
+  const cardEl = container.querySelector('.question-card');
 
   document.getElementById('fc-mostrar-btn').addEventListener('click', () => {
     document.getElementById('fc-verso-revisao').style.display = 'block';
     document.getElementById('fc-mostrar-btn').style.display = 'none';
     document.getElementById('fc-avaliacao').style.display = 'flex';
+    // "Saber mais" aparece junto com o verso (cache + botão de aprofundar)
+    montarSaberMais(cardEl, card);
   });
 
   async function avaliar(correta) {

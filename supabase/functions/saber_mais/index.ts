@@ -12,6 +12,7 @@ import {
   ErroProvedorIA,
   type PerguntaIA,
   promptSaberMais,
+  promptSaberMaisFlashcard,
   respostaJson,
   SABER_MAIS_SCHEMA,
   usuarioAutenticado,
@@ -20,6 +21,7 @@ import {
 const MAX_ENUNCIADO = 4_000;
 const MAX_OPCAO = 1_000;
 const MAX_OPCOES = 8;
+const MAX_VERSO = 4_000;
 const MAX_ANTERIORES = 3;
 const MAX_ANTERIOR = 6_000;
 
@@ -43,27 +45,24 @@ Deno.serve(async (req) => {
   }
 
   const modelo = String(corpo.modelo ?? "");
-  const perguntaBruta = corpo.pergunta as PerguntaIA | undefined;
+  const perguntaBruta = (corpo.pergunta ?? {}) as {
+    enunciado?: unknown;
+    verso?: unknown;
+    opcoes?: unknown;
+    topico?: unknown;
+  };
   const anterioresBrutas = Array.isArray(corpo.anteriores) ? corpo.anteriores : [];
 
-  if (
-    !perguntaBruta ||
-    typeof perguntaBruta.enunciado !== "string" ||
-    !Array.isArray(perguntaBruta.opcoes)
-  ) {
+  if (typeof perguntaBruta.enunciado !== "string" || !perguntaBruta.enunciado.trim()) {
     return respostaJson(req, { erro: "Pergunta inválida." }, 400);
   }
-
-  if (
-    perguntaBruta.enunciado.length > MAX_ENUNCIADO ||
-    perguntaBruta.opcoes.length < 2 ||
-    perguntaBruta.opcoes.length > MAX_OPCOES ||
-    perguntaBruta.opcoes.some(
-      (o) => typeof o.texto !== "string" || o.texto.length > MAX_OPCAO,
-    )
-  ) {
+  if (perguntaBruta.enunciado.length > MAX_ENUNCIADO) {
     return respostaJson(req, { erro: "Pergunta fora dos limites aceitos." }, 400);
   }
+
+  // Flashcard (frente/verso) x pergunta de múltipla escolha (opções).
+  const ehFlashcard = typeof perguntaBruta.verso === "string" &&
+    !Array.isArray(perguntaBruta.opcoes);
 
   const anteriores = anterioresBrutas
     .filter((t): t is string => typeof t === "string" && t.trim() !== "")
@@ -78,15 +77,34 @@ Deno.serve(async (req) => {
     );
   }
 
-  const pergunta: PerguntaIA = {
-    enunciado: perguntaBruta.enunciado,
-    dificuldade: "Média",
-    opcoes: perguntaBruta.opcoes.map((o) => ({
-      texto: o.texto,
-      correta: Boolean(o.correta),
-    })),
-    topico: perguntaBruta.topico ?? null,
-  };
+  let prompt: string;
+
+  if (ehFlashcard) {
+    const verso = perguntaBruta.verso as string;
+    if (!verso.trim() || verso.length > MAX_VERSO) {
+      return respostaJson(req, { erro: "Flashcard fora dos limites aceitos." }, 400);
+    }
+    prompt = promptSaberMaisFlashcard(perguntaBruta.enunciado, verso, anteriores);
+  } else {
+    const opcoes = perguntaBruta.opcoes;
+    if (
+      !Array.isArray(opcoes) ||
+      opcoes.length < 2 ||
+      opcoes.length > MAX_OPCOES ||
+      opcoes.some(
+        (o) => !o || typeof o.texto !== "string" || o.texto.length > MAX_OPCAO,
+      )
+    ) {
+      return respostaJson(req, { erro: "Pergunta fora dos limites aceitos." }, 400);
+    }
+    const pergunta: PerguntaIA = {
+      enunciado: perguntaBruta.enunciado,
+      dificuldade: "Média",
+      opcoes: opcoes.map((o) => ({ texto: o.texto, correta: Boolean(o.correta) })),
+      topico: (perguntaBruta.topico as string | null) ?? null,
+    };
+    prompt = promptSaberMais(pergunta, anteriores);
+  }
 
   if (!(await consumirQuota(req))) {
     return respostaJson(
@@ -100,7 +118,7 @@ Deno.serve(async (req) => {
     const dados = (await chamarProvedor(
       modelo,
       null,
-      promptSaberMais(pergunta, anteriores),
+      prompt,
       SABER_MAIS_SCHEMA,
       "saber_mais",
     )) as { saber_mais: string };

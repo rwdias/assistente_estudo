@@ -171,6 +171,10 @@ async function inserirPergunta(materiaId, dados) {
       verso: dados.verso ?? null,
       dificuldade: dados.dificuldade,
       origem: dados.origem,
+      // explicação já vinda do texto colado (extração) vira o 1º "saber mais"
+      ...(Array.isArray(dados.saber_mais) && dados.saber_mais.length
+        ? { saber_mais: dados.saber_mais.slice(0, 3) }
+        : {}),
     })
     .select('id')
     .single();

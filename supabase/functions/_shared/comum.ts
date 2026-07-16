@@ -95,10 +95,26 @@ export const PERGUNTA_SCHEMA = {
   additionalProperties: false,
 };
 
+// Igual ao PERGUNTA_SCHEMA, mais o "saber_mais": a explicação/justificativa
+// que já vem no texto colado (por que a correta é certa e as outras não).
+// Fica separado para não afetar o schema da reformulação.
+const PERGUNTA_EXTRACAO_SCHEMA = {
+  type: "object",
+  properties: {
+    enunciado: { type: "string" },
+    dificuldade: { type: "string", enum: DIFICULDADES },
+    opcoes: { type: "array", items: OPCAO_SCHEMA },
+    topico: { type: ["string", "null"] },
+    saber_mais: { type: ["string", "null"] },
+  },
+  required: ["enunciado", "dificuldade", "opcoes", "topico", "saber_mais"],
+  additionalProperties: false,
+};
+
 export const EXTRACAO_SCHEMA = {
   type: "object",
   properties: {
-    perguntas: { type: "array", items: PERGUNTA_SCHEMA },
+    perguntas: { type: "array", items: PERGUNTA_EXTRACAO_SCHEMA },
   },
   required: ["perguntas"],
   additionalProperties: false,
@@ -194,8 +210,44 @@ export function promptExtracao(
     `possível inferir, use "${dificuldadePadrao}".\n` +
     `- "topico": um subtópico curto dentro de "${assunto}" (ex.: "IAM", ` +
     '"Redes", "Regressão Linear"), ou null se não for possível ' +
-    "determinar.\n\n" +
+    "determinar.\n" +
+    '- "saber_mais": se o texto original trouxer explicação/comentário/' +
+    "gabarito comentado sobre a questão (por que a alternativa correta é " +
+    "certa e/ou por que as outras estão erradas), copie esse conteúdo aqui, " +
+    "organizado e sem cortar informação relevante. Se o texto NÃO trouxer " +
+    "nenhuma explicação, use null. Não invente: só preencha com o que estiver " +
+    "no texto.\n\n" +
     `Assunto geral das perguntas: ${assunto}.\n` +
+    "Responda apenas com o JSON pedido, sem texto adicional."
+  );
+}
+
+export function promptSaberMaisFlashcard(
+  frente: string,
+  verso: string,
+  anteriores: string[],
+): string {
+  const blocoAnteriores = anteriores.length
+    ? "\n\nComplementos que JÁ foram dados antes (NÃO repita nada deles; " +
+      "traga um ângulo/conteúdo novo e mais profundo):\n-----\n" +
+      anteriores.map((t, i) => `(${i + 1}) ${t}`).join("\n\n") +
+      "\n-----\n"
+    : "";
+
+  return (
+    "Você é um tutor de estudos. Dado o flashcard abaixo (frente e verso), " +
+    "escreva um complemento de aprofundamento (\"Saber mais\") em português " +
+    "do Brasil, claro e didático.\n\n" +
+    "O complemento deve explicar melhor o conceito da resposta, dar contexto " +
+    "útil, exemplos, comparações e pegadinhas comuns — sem apenas repetir o " +
+    "verso.\n\n" +
+    "Regras de formatação: use Markdown enxuto — **negrito** para termos-chave, " +
+    "listas com \"- \" e, se ajudar, uma tabela `| a | b |`. Não use títulos " +
+    "com # nem blocos de código. Seja objetivo (1 a 4 parágrafos)." +
+    blocoAnteriores +
+    "\n\nFlashcard:\n" +
+    `Frente: ${frente}\n` +
+    `Verso: ${verso}\n\n` +
     "Responda apenas com o JSON pedido, sem texto adicional."
   );
 }

@@ -367,9 +367,10 @@ const SABER_MAIS_MAX = 3;
 const SABER_MAIS_MODELO = 'ChatGPT';
 
 // Questão do banco público (doBanco) não pertence à conta: não há onde
-// cachear, então o recurso fica restrito às perguntas do próprio usuário.
+// cachear, então o recurso fica restrito aos itens do próprio usuário
+// (perguntas E flashcards).
 function podeSaberMais(pergunta) {
-  return !pergunta.doBanco && pergunta.id != null && pergunta.tipo !== 'flashcard';
+  return !pergunta.doBanco && pergunta.id != null;
 }
 
 // Preenche/atualiza o bloco de "Saber mais" do card já respondido: exibe os
@@ -412,13 +413,18 @@ async function pedirSaberMais(card, pergunta, btn) {
   btn.textContent = 'Consultando IA...';
 
   try {
+    // Flashcard manda frente/verso; pergunta manda enunciado/opções.
+    const corpoPergunta = pergunta.tipo === 'flashcard'
+      ? { enunciado: pergunta.enunciado, verso: pergunta.verso || '' }
+      : {
+          enunciado: pergunta.enunciado,
+          opcoes: (pergunta.opcoes || []).map((o) => ({ texto: o.texto, correta: o.correta })),
+        };
+
     const { data, error } = await sb.functions.invoke('saber_mais', {
       body: {
         modelo: SABER_MAIS_MODELO,
-        pergunta: {
-          enunciado: pergunta.enunciado,
-          opcoes: pergunta.opcoes.map((o) => ({ texto: o.texto, correta: o.correta })),
-        },
+        pergunta: corpoPergunta,
         anteriores: pergunta.saber_mais || [],
       },
     });

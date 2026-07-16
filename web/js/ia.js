@@ -209,6 +209,9 @@ function renderIaItemHTML(pergunta, indice) {
 
       <label>Tópico (opcional)</label>
       <input type="text" class="ia-topico" value="${esc(pergunta.topico || '')}" />
+
+      <label>Saber mais — explicação do texto (opcional)</label>
+      <textarea class="ia-saber-mais" rows="3" placeholder="Vazio se o texto não trouxe explicação.">${esc(pergunta.saber_mais || '')}</textarea>
     </div>
   `;
 }
@@ -236,9 +239,11 @@ async function salvarExtracao() {
     } else {
       const textos = Array.from(card.querySelectorAll('.ia-opcao-texto')).map((i) => i.value.trim());
       const indiceCorreto = Number(card.querySelector('.ia-correta-radio:checked')?.value ?? 0);
+      const saberMais = card.querySelector('.ia-saber-mais')?.value.trim();
       selecionadas.push({
         ...base,
         opcoes: textos.map((texto, j) => ({ texto, correta: j === indiceCorreto })),
+        saber_mais: saberMais ? [saberMais] : [],
       });
     }
   });
