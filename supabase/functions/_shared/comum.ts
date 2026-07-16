@@ -137,7 +137,11 @@ export function promptExtracao(
     "marcada, com ou sem numeração, texto de prova real colado sem " +
     "formatação, etc).\n\n" +
     `Para cada questão encontrada, no máximo ${maxPerguntas}, produza:\n` +
-    '- "enunciado": o texto da pergunta, sem as alternativas.\n' +
+    '- "enunciado": o enunciado COMPLETO da questão. Preserve TODO o texto ' +
+    "que antecede a pergunta (o cenário/caso, dados, requisitos e contexto) " +
+    "exatamente como está — NÃO resuma, encurte nem reescreva. Remova apenas " +
+    "as alternativas e as marcações de gabarito/explicação. O enunciado deve " +
+    "conter o parágrafo de contexto seguido da frase final da pergunta.\n" +
     '- "opcoes": lista das alternativas, cada uma com "texto" e ' +
     '"correta" (true/false). Você deve decidir qual alternativa é a ' +
     "correta usando seu conhecimento sobre o assunto, mesmo que o texto " +
