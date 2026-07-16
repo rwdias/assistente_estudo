@@ -31,13 +31,20 @@ function atualizarModoIa() {
   document.getElementById('ia-preview').innerHTML = '';
 }
 
+// Fixa o modo do painel (pergunta/flashcard), sincronizando a variável, o
+// botão ativo do toggle e os textos. Chamado pelo toggle e pelas entradas
+// separadas da sidebar (goPanel), garantindo que o modo nunca fique "grudado"
+// do último uso — perguntas e flashcards são fluxos distintos.
+function definirModoIa(modo) {
+  tipoIa = modo === 'flashcard' ? 'flashcard' : 'pergunta';
+  document
+    .querySelectorAll('#tipo-toggle-ia button')
+    .forEach((b) => b.classList.toggle('ativo', b.dataset.tipo === tipoIa));
+  atualizarModoIa();
+}
+
 document.querySelectorAll('#tipo-toggle-ia button').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#tipo-toggle-ia button').forEach((b) => b.classList.remove('ativo'));
-    btn.classList.add('ativo');
-    tipoIa = btn.dataset.tipo;
-    atualizarModoIa();
-  });
+  btn.addEventListener('click', () => definirModoIa(btn.dataset.tipo));
 });
 
 // Chamado pelo goPanel ao abrir o painel de IA: carrega o contexto salvo

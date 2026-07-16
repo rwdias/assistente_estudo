@@ -138,12 +138,14 @@ const panelMeta = {
   ia: { titulo: 'Adicionar via IA', sub: 'Cole questões e deixe a IA estruturar tudo' },
 };
 
-function goPanel(id) {
+function goPanel(id, sbItem) {
   document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
   document.querySelectorAll('.sb-item').forEach((i) => i.classList.remove('active'));
 
   document.getElementById('panel-' + id)?.classList.add('active');
-  document.querySelector(`.sb-item[data-panel="${id}"]`)?.classList.add('active');
+  // Quando há mais de um item para o mesmo painel (ex.: as duas entradas de
+  // IA), destaca o realmente clicado; senão, cai no primeiro do painel.
+  (sbItem || document.querySelector(`.sb-item[data-panel="${id}"]`))?.classList.add('active');
 
   const meta = panelMeta[id] || { titulo: id, sub: '' };
   document.getElementById('topbar-title').textContent = meta.titulo;
@@ -158,7 +160,12 @@ function goPanel(id) {
 }
 
 document.querySelectorAll('.sb-item').forEach((item) => {
-  item.addEventListener('click', () => goPanel(item.dataset.panel));
+  item.addEventListener('click', () => {
+    // Entradas de IA carregam o modo desejado (perguntas x flashcards);
+    // fixá-lo antes de abrir evita herdar o modo do último uso.
+    if (item.dataset.modoIa) definirModoIa(item.dataset.modoIa);
+    goPanel(item.dataset.panel, item);
+  });
 });
 
 // --- toast ---
