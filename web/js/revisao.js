@@ -5,6 +5,40 @@ let revisaoErros = 0;
 let filtroRevisao = 'tudo'; // 'tudo' | 'pergunta' | 'flashcard'
 let revisaoReaprendendoIds = new Set();
 
+// Atalhos de teclado do fluxo de flashcard no Aprendizado:
+//   Enter     -> "Mostrar resposta" (se a resposta está oculta) ou "Acertei".
+//   Backspace -> "Errei" (só com a avaliação visível).
+// Aciona os próprios botões (.click()), então funciona a cada re-render sem
+// precisar recriar o listener. Não interfere em perguntas (os botões de
+// flashcard não existem) nem quando se digita num campo.
+(function atalhosFlashcard() {
+  const visivel = (el) => el && el.offsetParent !== null;
+
+  document.addEventListener('keydown', (e) => {
+    if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key !== 'Enter' && e.key !== 'Backspace') return;
+
+    const painel = document.getElementById('panel-revisao');
+    if (!painel || !painel.classList.contains('active')) return;
+
+    // Se um botão está focado, o próprio navegador o aciona no Enter — não
+    // duplicar. Também não sequestrar teclas enquanto se digita.
+    const alvo = e.target;
+    if (alvo && ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(alvo.tagName)) return;
+
+    const mostrar = document.getElementById('fc-mostrar-btn');
+    const acertei = document.getElementById('fc-acertei-btn');
+    const errei = document.getElementById('fc-errei-btn');
+
+    if (e.key === 'Enter') {
+      if (visivel(mostrar)) { e.preventDefault(); mostrar.click(); }
+      else if (visivel(acertei)) { e.preventDefault(); acertei.click(); }
+    } else if (e.key === 'Backspace') {
+      if (visivel(errei)) { e.preventDefault(); errei.click(); }
+    }
+  });
+})();
+
 function chaveSessaoRevisao() {
   const hoje = new Date().toISOString().slice(0, 10);
   return `revisaoSessao:${Estado.materiaId || 'sem-materia'}:${hoje}`;
