@@ -242,7 +242,6 @@ function renderFlashcardRevisao(card) {
       </div>
       <div class="saber-mais" data-saber-mais hidden></div>
     </div>
-    <button type="button" class="btn btn-primary" id="revisao-proxima-btn" style="display:none">Próxima pergunta</button>
   `;
 
   const cardEl = container.querySelector('.question-card');
@@ -255,7 +254,7 @@ function renderFlashcardRevisao(card) {
     montarSaberMais(cardEl, card);
   });
 
-  async function avaliar(correta) {
+  function avaliar(correta) {
     document.getElementById('fc-avaliacao').style.display = 'none';
     if (correta) {
       revisaoAcertos += 1;
@@ -265,23 +264,18 @@ function renderFlashcardRevisao(card) {
       reenfileirarErrado(card);
     }
     salvarSessaoRevisao();
-    renderResumoRevisao();
-    document.getElementById('revisao-proxima-btn').style.display = 'inline-flex';
 
-    const { error } = await sb.rpc('registrar_resposta', {
-      p_pergunta_id: card.id,
-      p_correta: correta,
-    });
-    if (error) toast(error.message, 'error');
+    // Registra o SM-2 em segundo plano (não bloqueia o avanço).
+    sb.rpc('registrar_resposta', { p_pergunta_id: card.id, p_correta: correta })
+      .then(({ error }) => { if (error) toast(error.message, 'error'); });
+
+    // Acertei/Errei já avança direto para o próximo item.
+    revisaoIndice += 1;
+    renderRevisaoAtual();
   }
 
   document.getElementById('fc-errei-btn').addEventListener('click', () => avaliar(false));
   document.getElementById('fc-acertei-btn').addEventListener('click', () => avaliar(true));
-
-  document.getElementById('revisao-proxima-btn').addEventListener('click', () => {
-    revisaoIndice += 1;
-    renderRevisaoAtual();
-  });
 }
 
 function renderPerguntaRevisao(pergunta) {
