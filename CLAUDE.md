@@ -83,7 +83,10 @@ fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
 - Edge Functions: o projeto usa API keys novas (`sb_publishable_`/`sb_secret_`),
   então o gateway NÃO valida JWT — a validação é **dentro da função**
   (`usuarioAutenticado()` em `_shared/comum.ts`). CORS restrito à origem do
-  Pages. Quota (`IA_QUOTA_DIARIA`, padrão 20/dia) consumida ANTES do provedor.
+  Pages. Quota consumida ANTES do provedor: limite padrão em `IA_QUOTA_DIARIA`
+  (secret; hoje 3/dia) com override por usuário em `perfis.ia_limite_diario`
+  (admin-only, sem grant de UPDATE ao usuário; NULL = usa o padrão). O dono do
+  projeto tem override alto (ilimitado). Lógica em `consumir_quota_ia`.
 - Função `SECURITY DEFINER` sempre com `SET search_path = ''`.
 - Mudança de schema: escrever `supabase/migrations/NNNN_*.sql`, aplicar via
   psycopg com a connection string, **testando antes contra cópia quando
