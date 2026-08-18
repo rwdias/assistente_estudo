@@ -19,6 +19,9 @@ function definirMateriaAtual(id) {
 const MATURIDADE_DIAS = 21;
 const TAXA_ACERTO_FACIL = 0.75;
 const TAXA_ACERTO_MEDIA = 0.4;
+// Acertos consecutivos a partir dos quais a pergunta vira candidata a ganhar
+// versões reformuladas: acertou 3 vezes seguidas = o formato já é conhecido.
+const ACERTOS_PARA_VARIAR = 3;
 
 function dificuldadePessoal(estatica, vezesRespondida, vezesAcertada, ultimaCorreta) {
   if (!vezesRespondida) return estatica;
@@ -29,19 +32,73 @@ function dificuldadePessoal(estatica, vezesRespondida, vezesAcertada, ultimaCorr
   return 'Difícil';
 }
 
+// --- embaralhamento das alternativas ---
+// A correta ficava numa posição FIXA para sempre em cada pergunta, então
+// bastava decorar "é a terceira". O embaralhamento usa semente derivada de
+// (id, vezes_respondida): a ordem é estável dentro da mesma tentativa
+// (sobrevive a reload e ao "Voltar" do flashcard) e muda a cada resposta.
+
+// PRNG determinístico (mulberry32): mesma semente, mesma ordem.
+function geradorAleatorio(semente) {
+  let a = semente >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Alternativas que se referem à POSIÇÃO das outras ("todas as anteriores",
+// "apenas I e II", "as alternativas A e C") perdem o sentido embaralhadas —
+// nesses casos a ordem original da prova é preservada.
+const RE_OPCAO_POSICIONAL = new RegExp(
+  [
+    '\\b(todas|nenhuma|ambas)\\s+(as|das|os|dos)\\s+(alternativas?|op[çc][õo]es|anteriores|afirma[çc][õo]es|assertivas?|senten[çc]as?)',
+    '\\banteriores?\\b',
+    '\\b(acima|abaixo)\\b',
+    '\\balternativas?\\s+[a-e]\\b',
+    '\\bapenas\\s+[ivx]+\\b',
+    '\\b[ivx]+\\s*(,|\\se\\s)\\s*[ivx]+\\b',
+    '\\bn\\.?\\s?d\\.?\\s?a\\b',
+  ].join('|'),
+  'i',
+);
+
+function embaralharOpcoes(opcoes, semente) {
+  if (opcoes.length < 2) return opcoes;
+  if (opcoes.some((o) => RE_OPCAO_POSICIONAL.test(o.texto || ''))) return opcoes;
+
+  const sortear = geradorAleatorio(semente);
+  const lista = opcoes.slice();
+  for (let i = lista.length - 1; i > 0; i--) {
+    const j = Math.floor(sortear() * (i + 1));
+    [lista[i], lista[j]] = [lista[j], lista[i]];
+  }
+  return lista;
+}
+
 // Converte a linha aninhada do PostgREST para o formato que a UI consome.
 function normalizarPergunta(linha) {
   const rev = Array.isArray(linha.revisoes_perguntas)
     ? linha.revisoes_perguntas[0]
     : linha.revisoes_perguntas;
 
-  const opcoes = (linha.opcoes || []).slice().sort((a, b) => a.ordem - b.ordem);
   const vezesRespondida = rev?.vezes_respondida ?? 0;
   const vezesAcertada = rev?.vezes_acertada ?? 0;
+  const opcoes = embaralharOpcoes(
+    (linha.opcoes || []).slice().sort((a, b) => a.ordem - b.ordem),
+    Number(linha.id) * 97 + vezesRespondida,
+  );
+
+  const variantes = (linha.pergunta_variantes || []).filter((v) => !v.descartada);
+  const acertosSeguidos = rev?.acertos_seguidos ?? 0;
+  const madura = (rev?.intervalo_dias ?? 0) >= MATURIDADE_DIAS;
+  const tipo = linha.tipo || 'pergunta';
 
   return {
     id: linha.id,
-    tipo: linha.tipo || 'pergunta',
+    tipo,
     topico: linha.subdivisoes?.nome && linha.subdivisoes.nome !== 'Geral'
       ? linha.subdivisoes.nome
       : null,
@@ -53,9 +110,17 @@ function normalizarPergunta(linha) {
     dificuldade: linha.dificuldade,
     origem: linha.origem,
     opcoes,
+    variantes,
     vezes_respondida: vezesRespondida,
     vezes_acertada: vezesAcertada,
-    madura: (rev?.intervalo_dias ?? 0) >= MATURIDADE_DIAS,
+    acertos_seguidos: acertosSeguidos,
+    madura,
+    // Pronta para ganhar versões: já dominada e ainda sem nenhuma variante.
+    // Flashcard fica de fora (o recall ali já é ativo por natureza).
+    pode_variar:
+      tipo === 'pergunta' &&
+      variantes.length === 0 &&
+      (acertosSeguidos >= ACERTOS_PARA_VARIAR || madura),
     dificuldade_pessoal: dificuldadePessoal(
       linha.dificuldade, vezesRespondida, vezesAcertada,
       rev?.ultima_resposta_correta ?? null,
@@ -64,11 +129,41 @@ function normalizarPergunta(linha) {
   };
 }
 
+// Rotação de apresentações: o original e as variantes ativas se revezam a
+// cada resposta — `vezes_respondida % (1 + nº de variantes)`. É determinístico
+// de propósito: a mesma tentativa mostra sempre a mesma versão (sobrevive a
+// reload e ao "Voltar"), e a revisão seguinte cai na próxima versão. O
+// original nunca sai da roleta — em questão de prova a redação da banca é o
+// que você vai encontrar no exame.
+function aplicarVariante(pergunta) {
+  const ativas = pergunta.variantes || [];
+  if (ativas.length === 0) return pergunta;
+
+  const indice = pergunta.vezes_respondida % (ativas.length + 1);
+  if (indice === 0) return pergunta;
+
+  const variante = ativas[indice - 1];
+  return {
+    ...pergunta,
+    enunciado: variante.enunciado,
+    opcoes: embaralharOpcoes(
+      variante.opcoes || [],
+      Number(variante.id) * 97 + pergunta.vezes_respondida,
+    ),
+    variante_id: variante.id,
+    // guarda a versão original desta rodada: se o usuário descartar a
+    // variante, dá para voltar a ela sem remontar a fila (o que faria ele
+    // perder o lugar na sessão).
+    original: { enunciado: pergunta.enunciado, opcoes: pergunta.opcoes },
+  };
+}
+
 const SELECT_PERGUNTA = `
   id, tipo, enunciado, verso, dificuldade, origem, imagens, imagens_posicao, saber_mais, created_at,
   opcoes ( texto, correta, ordem ),
+  pergunta_variantes ( id, enunciado, opcoes, descartada ),
   revisoes_perguntas ( vezes_respondida, vezes_acertada, ultima_resposta_correta,
-                       intervalo_dias, proxima_revisao_em ),
+                       intervalo_dias, proxima_revisao_em, acertos_seguidos ),
   subdivisoes!inner ( materia_id, nome )
 `;
 

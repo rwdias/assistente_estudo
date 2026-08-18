@@ -187,7 +187,12 @@ async function buscarQuestoesDoBanco() {
     imagens: q.imagens || [],
     imagens_posicao: q.imagens_posicao || 'depois',
     origem_nome: nomes[q.prova_id] || 'Banco de questões',
-    opcoes: (q.catalogo_alternativas || []).slice().sort((a, b) => a.ordem - b.ordem),
+    // questão do banco é treino livre (não tem histórico de SM-2): semente
+    // aleatória, então a ordem muda a cada simulado montado
+    opcoes: embaralharOpcoes(
+      (q.catalogo_alternativas || []).slice().sort((a, b) => a.ordem - b.ordem),
+      Math.floor(Math.random() * 2 ** 31),
+    ),
   }));
 }
 

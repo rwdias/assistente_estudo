@@ -31,7 +31,10 @@ auth.users (Supabase)
         └── perguntas (tipo 'pergunta'|'flashcard'; frente=enunciado, verso;
             │          dificuldade existe mas é INTERNA — nunca exibir na UI)
             ├── opcoes             (só tipo 'pergunta'; exatamente 1 correta)
-            └── revisoes_perguntas (estado SM-2: 1:1 com pergunta)
+            ├── revisoes_perguntas (estado SM-2: 1:1 com pergunta)
+            └── pergunta_variantes (versões reformuladas por IA do MESMO
+                                    conceito; `opcoes` jsonb; soft-delete via
+                                    `descartada`. NÃO tem SM-2 próprio)
 ```
 
 Toda FK tem `ON DELETE CASCADE`. Ids são `bigint identity`.
@@ -61,7 +64,19 @@ fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
 - Item nunca respondido = **"a aprender"** (novo); respondido e vencido =
   **"a revisar"**. Errou na sessão → volta ao fim da fila como
   **"reaprendendo"** até acertar (espelho do Anki; lógica em `web/js/revisao.js`).
-- "Madura" = intervalo ≥ 21 dias → oferece reformulação por IA (só perguntas).
+- "Madura" = intervalo ≥ 21 dias.
+- **Alternativas são embaralhadas** na exibição (`embaralharOpcoes` em
+  core.js), com semente `(id, vezes_respondida)`: ordem estável dentro da
+  mesma tentativa (sobrevive a reload e ao "Voltar") e diferente na próxima.
+  Alternativas que citam posição ("todas as anteriores", "apenas I e II")
+  são detectadas por `RE_OPCAO_POSICIONAL` e mantêm a ordem original.
+- **Variantes** (só perguntas): `acertos_seguidos ≥ 3` OU madura, e sem
+  variante ainda → badge + botão "Gerar versões". 1 chamada de IA grava 3
+  variantes (`reformular` com `quantidade`), que depois se revezam com o
+  original de graça: `vezes_respondida % (1 + nº de variantes)`. O SM-2
+  continua na pergunta-pai — variante é só apresentação, não entra na fila
+  como item novo. Botão "Descartar esta versão" (soft-delete) para quando a
+  IA errar a mão.
 - Simulado usa apenas `tipo='pergunta'`; flashcards vivem no Aprendizado.
 - Simulado tem 2 fontes: "Minhas matérias" e **"Banco de questões"** (monta
   do catálogo público com filtros combináveis fonte/ano/área/prova/tópico,
@@ -72,7 +87,9 @@ fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
 
 - **RLS deny-by-default**: `anon` não tem NENHUM privilégio; `authenticated`
   só acessa as próprias linhas, com `WITH CHECK` em toda a cadeia
-  materia→subdivisão→pergunta→opção/revisão (bloqueia IDOR de leitura E escrita).
+  materia→subdivisão→pergunta→opção/revisão/variante (bloqueia IDOR de
+  leitura E escrita). Tabela nova precisa repetir o hardening de 0012 — o
+  `revoke ... on all tables` de lá só valeu para as que existiam na época.
 - A anon key do front (`web/js/config.js`) é **pública por design** — a
   barreira é o RLS. As chaves sensíveis ficam:
   - `.env` local (git-ignorado): `SUPABASE_DB_PASSWORD`,

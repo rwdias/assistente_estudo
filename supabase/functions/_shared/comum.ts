@@ -120,6 +120,28 @@ export const EXTRACAO_SCHEMA = {
   additionalProperties: false,
 };
 
+// Variantes: várias reescritas do MESMO conceito numa única chamada. A quota
+// é de poucas chamadas por dia, então 1 chamada precisa render várias versões
+// — elas ficam gravadas em pergunta_variantes e giram de graça depois.
+const VARIANTE_SCHEMA = {
+  type: "object",
+  properties: {
+    enunciado: { type: "string" },
+    opcoes: { type: "array", items: OPCAO_SCHEMA },
+  },
+  required: ["enunciado", "opcoes"],
+  additionalProperties: false,
+};
+
+export const VARIANTES_SCHEMA = {
+  type: "object",
+  properties: {
+    variantes: { type: "array", items: VARIANTE_SCHEMA },
+  },
+  required: ["variantes"],
+  additionalProperties: false,
+};
+
 const FLASHCARD_SCHEMA = {
   type: "object",
   properties: {
@@ -327,6 +349,44 @@ export function promptReformulacao(pergunta: PerguntaIA): string {
     `- Mantenha a mesma dificuldade ("${pergunta.dificuldade}") e o ` +
     `mesmo tópico ("${pergunta.topico ?? "geral"}").\n\n` +
     "Pergunta original:\n" +
+    `Enunciado: ${pergunta.enunciado}\n` +
+    "Alternativas:\n" +
+    `${opcoesTexto}\n\n` +
+    "Responda apenas com o JSON pedido, sem texto adicional."
+  );
+}
+
+// Gera N reescritas do mesmo conceito numa única chamada. Cada variante deve
+// atacar o conceito por um ângulo diferente — se as N forem paráfrases quase
+// iguais, o efeito de "desacostumar o cérebro" se perde.
+export function promptVariantes(pergunta: PerguntaIA, quantidade: number): string {
+  const opcoesTexto = pergunta.opcoes
+    .map((o) => `- ${o.texto} (${o.correta ? "CORRETA" : "incorreta"})`)
+    .join("\n");
+  const numCorretas = pergunta.opcoes.filter((o) => o.correta).length;
+
+  return (
+    `Gere ${quantidade} VERSÕES DIFERENTES da questão de múltipla escolha ` +
+    "abaixo. O objetivo é treinar a mesma pessoa que já acertou a questão " +
+    "original várias vezes: ela precisa recuperar o CONCEITO, e não " +
+    "reconhecer o formato decorado.\n\n" +
+    "Regras:\n" +
+    "- Todas as versões testam EXATAMENTE o mesmo conceito e mantêm os " +
+    "mesmos fatos como corretos. Não mude o que é verdadeiro.\n" +
+    `- Cada versão deve ter ${pergunta.opcoes.length} alternativas, sendo ` +
+    `${numCorretas} correta(s) — o mesmo que o original.\n` +
+    "- Varie o ÂNGULO entre as versões, não só as palavras. Por exemplo: uma " +
+    "versão como caso prático/cenário aplicado; outra invertendo a pergunta " +
+    "(pedir a exceção, o que NÃO se aplica — deixando isso explícito no " +
+    "enunciado); outra trocando o exemplo/contexto por um equivalente.\n" +
+    "- Não copie o enunciado nem as alternativas originais literalmente.\n" +
+    "- Os distratores devem ser plausíveis e errados pelo mesmo motivo " +
+    "conceitual dos distratores originais.\n" +
+    "- NÃO cite letras nem posições ('a alternativa A', 'todas as " +
+    "anteriores'): a ordem é embaralhada na hora de exibir.\n" +
+    `- Mantenha a dificuldade ("${pergunta.dificuldade}") e o tópico ` +
+    `("${pergunta.topico ?? "geral"}").\n\n` +
+    "Questão original:\n" +
     `Enunciado: ${pergunta.enunciado}\n` +
     "Alternativas:\n" +
     `${opcoesTexto}\n\n` +

@@ -1,6 +1,11 @@
 // Edge Function: reescreve uma pergunta "dominada" para forçar recall ativo.
-// Entrada:  { modelo, pergunta: { enunciado, dificuldade, opcoes, topico? } }
-// Saída:    { enunciado, dificuldade, opcoes, topico }
+// Entrada:  { modelo, pergunta: { enunciado, dificuldade, opcoes, topico? },
+//             quantidade? }
+// Saída:    quantidade > 1 -> { variantes: [{ enunciado, opcoes }] }
+//           caso contrário -> { enunciado, dificuldade, opcoes, topico }
+//
+// O modo "variantes" existe pela quota: 1 chamada devolve várias versões, que
+// o app grava em pergunta_variantes e passa a girar sem custo.
 
 import {
   chamarProvedor,
@@ -11,13 +16,16 @@ import {
   PERGUNTA_SCHEMA,
   type PerguntaIA,
   promptReformulacao,
+  promptVariantes,
   respostaJson,
   usuarioAutenticado,
+  VARIANTES_SCHEMA,
 } from "../_shared/comum.ts";
 
 const MAX_ENUNCIADO = 4_000;
 const MAX_OPCAO = 1_000;
 const MAX_OPCOES = 8;
+const MAX_VARIANTES = 3;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -40,6 +48,11 @@ Deno.serve(async (req) => {
 
   const modelo = String(corpo.modelo ?? "");
   const perguntaBruta = corpo.pergunta as PerguntaIA | undefined;
+  // quantidade > 1 = modo variantes (grava várias versões de uma vez)
+  const quantidade = Math.min(
+    Math.max(Math.trunc(Number(corpo.quantidade ?? 1)) || 1, 1),
+    MAX_VARIANTES,
+  );
 
   if (
     !perguntaBruta ||
@@ -81,6 +94,39 @@ Deno.serve(async (req) => {
   }
 
   try {
+    if (quantidade > 1) {
+      const dados = (await chamarProvedor(
+        modelo,
+        null,
+        promptVariantes(pergunta, quantidade),
+        VARIANTES_SCHEMA,
+        "variantes_pergunta",
+      )) as { variantes: { enunciado: string; opcoes: PerguntaIA["opcoes"] }[] };
+
+      // Guarda-corpo: a variante só serve se preservar a estrutura da questão
+      // (mesmo nº de alternativas e mesmo nº de corretas). Variante fora disso
+      // ensinaria coisa errada — melhor descartar do que gravar.
+      const nCorretas = pergunta.opcoes.filter((o) => o.correta).length;
+      const validas = (dados.variantes ?? []).filter((v) =>
+        typeof v.enunciado === "string" &&
+        v.enunciado.trim().length > 0 &&
+        Array.isArray(v.opcoes) &&
+        v.opcoes.length === pergunta.opcoes.length &&
+        v.opcoes.every((o) => typeof o.texto === "string" && o.texto.trim()) &&
+        v.opcoes.filter((o) => o.correta === true).length === nCorretas
+      );
+
+      if (validas.length === 0) {
+        return respostaJson(
+          req,
+          { erro: "A IA não gerou variantes válidas. Tente outro modelo." },
+          502,
+        );
+      }
+
+      return respostaJson(req, { variantes: validas.slice(0, quantidade) });
+    }
+
     const dados = await chamarProvedor(
       modelo,
       null,
