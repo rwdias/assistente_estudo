@@ -206,10 +206,15 @@ export function promptExtracao(
     "as alternativas e as marcações de gabarito/explicação. O enunciado deve " +
     "conter o parágrafo de contexto seguido da frase final da pergunta.\n" +
     '- "opcoes": lista das alternativas, cada uma com "texto" e ' +
-    '"correta" (true/false). Você deve decidir qual alternativa é a ' +
-    "correta usando seu conhecimento sobre o assunto, mesmo que o texto " +
+    '"correta" (true/false). Você deve decidir quais alternativas são ' +
+    "corretas usando seu conhecimento sobre o assunto, mesmo que o texto " +
     "original não indique isso explicitamente ou indique errado. " +
-    'Exatamente uma alternativa deve ter "correta": true.\n' +
+    "Na grande maioria das questões, EXATAMENTE UMA alternativa é " +
+    "correta — mas se o enunciado deixar claro que aceita mais de uma " +
+    'resposta (ex.: "assinale a(s) alternativa(s) correta(s)", "marque ' +
+    'todas as afirmações verdadeiras", "quais das opções abaixo estão ' +
+    'certas"), marque "correta": true em TODAS as alternativas ' +
+    "realmente corretas — pode ser mais de uma.\n" +
     '- "dificuldade": "Fácil", "Média" ou "Difícil". Se não for ' +
     `possível inferir, use "${dificuldadePadrao}".\n` +
     `- "topico": um subtópico curto dentro de "${assunto}" (ex.: "IAM", ` +
@@ -299,6 +304,15 @@ export function promptReformulacao(pergunta: PerguntaIA): string {
   const opcoesTexto = pergunta.opcoes
     .map((o) => `- ${o.texto} (${o.correta ? "CORRETA" : "incorreta"})`)
     .join("\n");
+  const numCorretas = pergunta.opcoes.filter((o) => o.correta).length;
+  const regraCorretas = numCorretas > 1
+    ? `- Esta questão tem mais de uma alternativa correta: exatamente ` +
+      `${numCorretas} alternativas devem ter "correta": true, testando os ` +
+      "mesmos conceitos que eram as respostas corretas originais — não " +
+      "troque quais fatos são corretos.\n"
+    : '- Exatamente uma alternativa deve ter "correta": true, e ela deve ' +
+      "testar o mesmo conceito que era a resposta correta original — não " +
+      "troque qual é o fato correto.\n";
 
   return (
     "Reescreva a pergunta de múltipla escolha abaixo, mudando a redação " +
@@ -307,9 +321,7 @@ export function promptReformulacao(pergunta: PerguntaIA): string {
     "conceito testado e a mesma resposta correta.\n\n" +
     "Regras:\n" +
     `- O número de alternativas deve continuar o mesmo: ${pergunta.opcoes.length}.\n` +
-    '- Exatamente uma alternativa deve ter "correta": true, e ela deve ' +
-    "testar o mesmo conceito que era a resposta correta original — não " +
-    "troque qual é o fato correto.\n" +
+    regraCorretas +
     "- Não copie o enunciado nem as alternativas originais literalmente; " +
     "mude a redação.\n" +
     `- Mantenha a mesma dificuldade ("${pergunta.dificuldade}") e o ` +

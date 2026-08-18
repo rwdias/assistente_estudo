@@ -134,8 +134,10 @@ function renderOpcoesForm() {
   const row = document.createElement('div');
   row.className = 'opcao-row';
   row.innerHTML = `
-    <input type="text" class="opcao-input" placeholder="${linhas === 0 ? 'Resposta correta' : 'Resposta errada'}" required />
-    ${linhas === 0 ? '<span class="opcao-correta-badge">correta</span>' : ''}
+    <label class="opcao-correta-check" title="Marcar como correta">
+      <input type="checkbox" class="opcao-correta" ${linhas === 0 ? 'checked' : ''} />
+    </label>
+    <input type="text" class="opcao-input" placeholder="Alternativa" required />
   `;
   container.appendChild(row);
 }
@@ -245,12 +247,19 @@ document.getElementById('form-nova-pergunta').addEventListener('submit', async (
 
   const enunciado = document.getElementById('pergunta-enunciado').value.trim();
   const topico = document.getElementById('pergunta-topico').value || null;
-  const textos = Array.from(document.querySelectorAll('#pergunta-opcoes-container .opcao-input'))
-    .map((i) => i.value.trim())
-    .filter(Boolean);
+  const opcoes = Array.from(document.querySelectorAll('#pergunta-opcoes-container .opcao-row'))
+    .map((row) => ({
+      texto: row.querySelector('.opcao-input').value.trim(),
+      correta: row.querySelector('.opcao-correta').checked,
+    }))
+    .filter((o) => o.texto);
 
-  if (textos.length < 2) {
+  if (opcoes.length < 2) {
     toast('Preencha pelo menos duas alternativas.', 'error');
+    return;
+  }
+  if (!opcoes.some((o) => o.correta)) {
+    toast('Marque pelo menos uma alternativa como correta.', 'error');
     return;
   }
 
@@ -260,7 +269,7 @@ document.getElementById('form-nova-pergunta').addEventListener('submit', async (
       topico,
       dificuldade: 'Média', // interno — não exposto na UI
       origem: 'manual',
-      opcoes: textos.map((texto, i) => ({ texto, correta: i === 0 })),
+      opcoes,
     });
     toast('Pergunta adicionada.');
     resetarFormPergunta();

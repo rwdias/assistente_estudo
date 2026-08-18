@@ -311,15 +311,25 @@ function renderOrigemQuiz(pergunta) {
   return materia ? `<div class="question-origem">${esc(materia.nome)}</div>` : '';
 }
 
+// Questão de múltipla resposta: mais de uma alternativa correta (a IA de
+// extração já marca todas as corretas quando o enunciado pede — ver
+// promptExtracao). Nesse caso o clique só marca/desmarca; a resposta é
+// avaliada de uma vez, ao confirmar.
+function perguntaMultipla(pergunta) {
+  return pergunta.opcoes.filter((o) => o.correta).length > 1;
+}
+
 function renderPerguntaQuizHTML(pergunta, chave) {
   const imagens = renderImagensPergunta(pergunta);
   const antes = pergunta.imagens_posicao === 'antes';
+  const multipla = perguntaMultipla(pergunta);
   return `
-    <div class="question-card" data-chave="${chave}">
+    <div class="question-card" data-chave="${chave}" ${multipla ? 'data-multipla="1"' : ''}>
       ${renderOrigemQuiz(pergunta)}
       ${antes ? imagens : ''}
       <div class="question-title">${formatarTexto(pergunta.enunciado)}</div>
       ${antes ? '' : imagens}
+      ${multipla ? '<p class="opcoes-multipla-aviso">Esta questão tem mais de uma alternativa correta — marque todas e confirme.</p>' : ''}
       <div class="opcoes-quiz">
         ${pergunta.opcoes
           .map(
@@ -331,6 +341,7 @@ function renderPerguntaQuizHTML(pergunta, chave) {
           )
           .join('')}
       </div>
+      ${multipla ? '<button type="button" class="btn btn-primary btn-sm opcoes-confirmar-btn" disabled>Confirmar resposta</button>' : ''}
       <div class="saber-mais" data-saber-mais hidden></div>
     </div>
   `;
@@ -340,22 +351,58 @@ function wirePerguntaQuiz(pergunta, chave, aoResponder) {
   const card = document.querySelector(`.question-card[data-chave="${chave}"]`);
   if (!card) return;
 
-  card.querySelectorAll('.opcao-quiz').forEach((el, idx) => {
-    el.addEventListener('click', async () => {
-      if (card.dataset.respondida) return;
-      card.dataset.respondida = '1';
+  const opcoesEls = card.querySelectorAll('.opcao-quiz');
+  const multipla = card.dataset.multipla === '1';
 
-      const opcaoEscolhida = pergunta.opcoes[idx];
+  async function finalizar(indicesEscolhidos) {
+    card.dataset.respondida = '1';
 
-      card.querySelectorAll('.opcao-quiz').forEach((el2, idx2) => {
-        el2.classList.add('desabilitada');
-        if (pergunta.opcoes[idx2].correta) el2.classList.add('correta');
+    const escolhidos = new Set(indicesEscolhidos);
+    const corretos = new Set(
+      pergunta.opcoes.map((o, i) => (o.correta ? i : -1)).filter((i) => i !== -1)
+    );
+    const correta =
+      escolhidos.size === corretos.size && [...corretos].every((i) => escolhidos.has(i));
+
+    opcoesEls.forEach((el, idx) => {
+      el.classList.add('desabilitada');
+      const ehCorreta = pergunta.opcoes[idx].correta;
+      if (ehCorreta) el.classList.add('correta');
+      if (escolhidos.has(idx)) {
+        el.classList.add('selecionada');
+        if (!ehCorreta) el.classList.add('incorreta');
+      }
+    });
+
+    montarSaberMais(card, pergunta);
+    await aoResponder(correta);
+  }
+
+  if (multipla) {
+    const btnConfirmar = card.querySelector('.opcoes-confirmar-btn');
+    const escolhidos = new Set();
+
+    opcoesEls.forEach((el, idx) => {
+      el.addEventListener('click', () => {
+        if (card.dataset.respondida) return;
+        el.classList.toggle('selecionada');
+        if (escolhidos.has(idx)) escolhidos.delete(idx);
+        else escolhidos.add(idx);
+        btnConfirmar.disabled = escolhidos.size === 0;
       });
-      el.classList.add(opcaoEscolhida.correta ? 'correta' : 'incorreta', 'selecionada');
+    });
 
-      montarSaberMais(card, pergunta);
+    btnConfirmar.addEventListener('click', () => {
+      if (card.dataset.respondida) return;
+      finalizar(escolhidos);
+    });
+    return;
+  }
 
-      await aoResponder(opcaoEscolhida.correta);
+  opcoesEls.forEach((el, idx) => {
+    el.addEventListener('click', () => {
+      if (card.dataset.respondida) return;
+      finalizar([idx]);
     });
   });
 }

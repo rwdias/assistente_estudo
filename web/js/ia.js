@@ -1,11 +1,12 @@
 let extracaoPendente = [];
 let tipoIa = 'pergunta';
 
-// Porta de validar_pergunta_json: >=2 opções, exatamente 1 correta,
-// todos os textos preenchidos.
+// Porta de validar_pergunta_json: >=2 opções, pelo menos 1 correta
+// (questões de múltipla resposta têm mais de uma), todos os textos
+// preenchidos.
 function perguntaValida(p) {
   if (!p.enunciado?.trim() || !Array.isArray(p.opcoes) || p.opcoes.length < 2) return false;
-  if (p.opcoes.filter((o) => o.correta === true).length !== 1) return false;
+  if (p.opcoes.filter((o) => o.correta === true).length < 1) return false;
   return p.opcoes.every((o) => o.texto?.trim());
 }
 
@@ -196,12 +197,14 @@ function renderIaItemHTML(pergunta, indice) {
       <textarea class="ia-enunciado" rows="2">${esc(pergunta.enunciado)}</textarea>
       <input type="hidden" class="ia-dificuldade" value="${esc(pergunta.dificuldade || 'Média')}" />
 
-      <label>Alternativas (marque a correta)</label>
+      <label>Alternativas (marque a(s) correta(s) — a IA já marca mais de uma quando a questão pede)</label>
       ${pergunta.opcoes
         .map(
           (o, j) => `
         <div class="opcao-row">
-          <input type="radio" name="ia-correta-${indice}" class="ia-correta-radio" value="${j}" ${o.correta ? 'checked' : ''} />
+          <label class="opcao-correta-check" title="Marcar como correta">
+            <input type="checkbox" class="ia-correta-check" ${o.correta ? 'checked' : ''} />
+          </label>
           <input type="text" class="ia-opcao-texto" value="${esc(o.texto)}" />
         </div>`
         )
@@ -238,11 +241,11 @@ async function salvarExtracao() {
       });
     } else {
       const textos = Array.from(card.querySelectorAll('.ia-opcao-texto')).map((i) => i.value.trim());
-      const indiceCorreto = Number(card.querySelector('.ia-correta-radio:checked')?.value ?? 0);
+      const corretas = Array.from(card.querySelectorAll('.ia-correta-check')).map((i) => i.checked);
       const saberMais = card.querySelector('.ia-saber-mais')?.value.trim();
       selecionadas.push({
         ...base,
-        opcoes: textos.map((texto, j) => ({ texto, correta: j === indiceCorreto })),
+        opcoes: textos.map((texto, j) => ({ texto, correta: corretas[j] })),
         saber_mais: saberMais ? [saberMais] : [],
       });
     }
