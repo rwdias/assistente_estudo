@@ -241,7 +241,10 @@ function renderRevisaoAtual() {
   container.innerHTML = `
     <div style="margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:8px">
       <span style="display:flex; gap:6px; flex-wrap:wrap">${badgeEstado}</span>
-      ${botaoVoltarHTML}
+      <span style="display:flex; align-items:center; gap:8px">
+        ${botaoVoltarHTML}
+        ${renderMenuItemHTML([{ acao: 'editar', rotulo: 'Editar', icone: ICONE_EDITAR }])}
+      </span>
     </div>
     ${
       podeVariar
@@ -284,6 +287,37 @@ function renderRevisaoAtual() {
   if (podeVoltar) {
     document.getElementById('fc-voltar-btn').addEventListener('click', voltarFlashcard);
   }
+
+  wireMenuItem(container, (acao) => {
+    if (acao !== 'editar') return;
+    // Se está exibindo uma variante, o que se edita é a pergunta ORIGINAL —
+    // a variante é conteúdo derivado (e será descartada se o texto mudar).
+    const base = pergunta.original
+      ? { ...pergunta, enunciado: pergunta.original.enunciado, opcoes: pergunta.original.opcoes }
+      : pergunta;
+    abrirEdicaoItem(base, recarregarItemAtual);
+  });
+}
+
+// Recarrega só o item atual depois de editar, preservando o lugar na sessão.
+async function recarregarItemAtual() {
+  const atual = revisaoFila[revisaoIndice];
+  if (!atual) return;
+
+  try {
+    const nova = await buscarPerguntaPorId(atual.id);
+    if (nova) {
+      revisaoFila[revisaoIndice] = {
+        ...aplicarVariante(nova),
+        novo: atual.novo,
+        reaprendendo: atual.reaprendendo,
+      };
+    }
+  } catch (erro) {
+    toast(erro.message, 'error');
+  }
+
+  renderRevisaoAtual();
 }
 
 // Campos da linha de revisoes_perguntas que o SM-2 (registrar_resposta)

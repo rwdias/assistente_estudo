@@ -16,6 +16,10 @@ UI, mensagens de commit e comunicação.
 | Regras de negócio no banco | Funções SQL: `registrar_resposta` (SM-2), `resumo_materias`, `consumir_quota_ia` |
 | Chamadas de IA | Edge Functions Deno/TS: `supabase/functions/extrair` e `reformular` |
 
+Edição de item usa a RPC `atualizar_pergunta` (não UPDATE direto): trocar
+alternativas é apagar+inserir, e precisa ser atômico. Ela também descarta as
+variantes quando o conteúdo muda (não quando muda só o tópico).
+
 O backend Python (FastAPI/SQLAlchemy/alembic) foi **removido** — não recriar.
 O SQLite antigo (`assistente_estudo.db`, `backups/`) é só fallback histórico.
 
@@ -141,6 +145,11 @@ user `postgres.scafgcpxjsimzaaviean`, senha no `.env`. (O host direto
   mantendo `**negrito**`/`*ênfase*` inline.
 - Sidebar é rail (72px) que expande no hover, com pin persistido; seletor de
   matéria é dropdown próprio no header (select nativo não aceita estilo).
+- Cada item (pergunta/flashcard) tem menu de engrenagem — `renderMenuItemHTML`
+  + `wireMenuItem` em core.js, usado na lista de Perguntas (Editar/Remover) e
+  na tela de estudo (Editar). Editar durante o estudo recarrega só aquele item
+  (`recarregarItemAtual`), preservando o lugar na sessão; exibindo variante,
+  o que se edita é sempre a pergunta original.
 
 ## Deploy
 

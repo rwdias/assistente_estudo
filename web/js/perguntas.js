@@ -35,6 +35,7 @@ async function carregarTopicosNosSelects() {
 
   document.getElementById('pergunta-topico').innerHTML = opcoes;
   document.getElementById('fc-topico').innerHTML = opcoes;
+  document.getElementById('editar-topico').innerHTML = opcoes;
 }
 
 async function aoAbrirPerguntas() {
@@ -308,8 +309,14 @@ async function carregarPerguntas() {
   lista.innerHTML = perguntas
     .map(
       (p) => `
-      <div class="pergunta-card">
-        <div class="pergunta-enunciado">${esc(p.enunciado)}</div>
+      <div class="pergunta-card" data-id="${p.id}">
+        <div style="display:flex; align-items:flex-start; gap:10px">
+          <div class="pergunta-enunciado" style="flex:1">${esc(p.enunciado)}</div>
+          ${renderMenuItemHTML([
+            { acao: 'editar', rotulo: 'Editar', icone: ICONE_EDITAR },
+            { acao: 'remover', rotulo: 'Remover', icone: ICONE_LIXEIRA, perigo: true },
+          ])}
+        </div>
         <div class="pergunta-meta">
           ${p.tipo === 'flashcard'
             ? '<span class="badge badge-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7.5 7V6a2 2 0 0 1 2-2H19a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-1"/></svg>flashcard</span>'
@@ -329,15 +336,20 @@ async function carregarPerguntas() {
                 </div>`
               )
               .join('')}
-        <button type="button" class="btn btn-danger btn-sm remover-pergunta-btn" data-id="${p.id}" style="margin-top:10px">Remover</button>
       </div>`
     )
     .join('');
 
-  lista.querySelectorAll('.remover-pergunta-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      perguntaParaRemover = Number(btn.dataset.id);
-      openModal('modal-delete');
+  const porId = new Map(perguntas.map((p) => [Number(p.id), p]));
+  lista.querySelectorAll('.pergunta-card').forEach((card) => {
+    const id = Number(card.dataset.id);
+    wireMenuItem(card, (acao) => {
+      if (acao === 'remover') {
+        perguntaParaRemover = id;
+        openModal('modal-delete');
+      } else if (acao === 'editar') {
+        abrirEdicaoItem(porId.get(id), carregarPerguntas);
+      }
     });
   });
 }
@@ -355,6 +367,156 @@ document.getElementById('modal-delete-confirm').addEventListener('click', async 
     carregarPerguntas();
   }
   perguntaParaRemover = null;
+});
+
+// --- edição de pergunta/flashcard ---
+// `itemEmEdicao` guarda o item aberto e `aoSalvarEdicao` o que recarregar
+// depois (a lista, ou a sessão de estudo — quem abriu decide).
+let itemEmEdicao = null;
+let aoSalvarEdicao = null;
+
+function addLinhaOpcaoEdicao(texto = '', correta = false) {
+  const container = document.getElementById('editar-opcoes-container');
+  const row = document.createElement('div');
+  row.className = 'opcao-row';
+  row.innerHTML = `
+    <label class="opcao-correta-check" title="Marcar como correta">
+      <input type="checkbox" class="editar-opcao-correta" ${correta ? 'checked' : ''} />
+    </label>
+    <input type="text" class="editar-opcao-texto" placeholder="Alternativa" />
+  `;
+  row.querySelector('.editar-opcao-texto').value = texto;
+  container.appendChild(row);
+}
+
+// `item` é o objeto já normalizado (normalizarPergunta). Atenção: as opções
+// vêm EMBARALHADAS da exibição — como a edição regrava todas com ordem nova,
+// isso é inofensivo (a ordem do banco não tem significado próprio).
+async function abrirEdicaoItem(item, aoSalvar) {
+  if (!item) return;
+  itemEmEdicao = item;
+  aoSalvarEdicao = aoSalvar || null;
+
+  // O select de tópicos só era preenchido ao abrir o painel Perguntas; quem
+  // edita direto do estudo precisa dele populado, senão salvaria sem tópico.
+  await carregarTopicosNosSelects();
+
+  const ehFlashcard = item.tipo === 'flashcard';
+  document.getElementById('editar-titulo').textContent =
+    ehFlashcard ? 'Editar flashcard' : 'Editar pergunta';
+  document.getElementById('editar-label-enunciado').textContent =
+    ehFlashcard ? 'Frente' : 'Enunciado';
+  document.getElementById('editar-enunciado').value = item.enunciado || '';
+  document.getElementById('editar-verso').value = item.verso || '';
+  document.getElementById('editar-bloco-verso').style.display = ehFlashcard ? 'block' : 'none';
+  document.getElementById('editar-bloco-opcoes').style.display = ehFlashcard ? 'none' : 'block';
+
+  const container = document.getElementById('editar-opcoes-container');
+  container.innerHTML = '';
+  if (!ehFlashcard) {
+    (item.opcoes || []).forEach((o) => addLinhaOpcaoEdicao(o.texto, o.correta));
+    if ((item.opcoes || []).length === 0) {
+      addLinhaOpcaoEdicao();
+      addLinhaOpcaoEdicao();
+    }
+  }
+
+  const select = document.getElementById('editar-topico');
+  select.value = item.topico || '';
+
+  const temVariantes = (item.variantes || []).length > 0;
+  document.getElementById('editar-aviso-variantes').hidden = !temVariantes;
+
+  openModal('modal-editar-item');
+}
+
+document.getElementById('editar-add-opcao-btn').addEventListener('click', () => {
+  const container = document.getElementById('editar-opcoes-container');
+  if (container.querySelectorAll('.opcao-row').length >= MAX_OPCOES) {
+    toast('Máximo de 6 alternativas.', 'error');
+    return;
+  }
+  addLinhaOpcaoEdicao();
+});
+
+document.getElementById('editar-salvar-btn').addEventListener('click', async () => {
+  if (!itemEmEdicao) return;
+
+  const ehFlashcard = itemEmEdicao.tipo === 'flashcard';
+  const enunciado = document.getElementById('editar-enunciado').value.trim();
+  const verso = document.getElementById('editar-verso').value.trim();
+
+  if (!enunciado) {
+    toast(ehFlashcard ? 'A frente não pode ficar vazia.' : 'O enunciado não pode ficar vazio.', 'error');
+    return;
+  }
+  if (ehFlashcard && !verso) {
+    toast('O verso não pode ficar vazio.', 'error');
+    return;
+  }
+
+  let opcoes = [];
+  if (!ehFlashcard) {
+    opcoes = Array.from(document.querySelectorAll('#editar-opcoes-container .opcao-row'))
+      .map((row) => ({
+        texto: row.querySelector('.editar-opcao-texto').value.trim(),
+        correta: row.querySelector('.editar-opcao-correta').checked,
+      }))
+      .filter((o) => o.texto);
+
+    if (opcoes.length < 2) {
+      toast('A pergunta precisa de pelo menos duas alternativas.', 'error');
+      return;
+    }
+    if (!opcoes.some((o) => o.correta)) {
+      toast('Marque pelo menos uma alternativa como correta.', 'error');
+      return;
+    }
+  }
+
+  const btn = document.getElementById('editar-salvar-btn');
+  btn.disabled = true;
+
+  let subdivisaoId;
+  try {
+    subdivisaoId = await garantirSubdivisao(
+      Estado.materiaId,
+      document.getElementById('editar-topico').value || 'Geral',
+    );
+  } catch (erro) {
+    btn.disabled = false;
+    toast(erro.message, 'error');
+    return;
+  }
+
+  // RPC porque trocar as alternativas é apagar + inserir: precisa ser atômico.
+  const { data, error } = await sb.rpc('atualizar_pergunta', {
+    p_pergunta_id: itemEmEdicao.id,
+    p_enunciado: enunciado,
+    p_verso: ehFlashcard ? verso : null,
+    p_subdivisao_id: subdivisaoId,
+    p_opcoes: opcoes,
+  });
+
+  btn.disabled = false;
+
+  if (error) {
+    toast(error.message, 'error');
+    return;
+  }
+
+  closeModal('modal-editar-item');
+  const descartadas = data?.variantes_descartadas || 0;
+  toast(
+    descartadas > 0
+      ? `Alterações salvas. ${descartadas} versão(ões) reformulada(s) foram descartadas.`
+      : 'Alterações salvas.'
+  );
+
+  const recarregar = aoSalvarEdicao;
+  itemEmEdicao = null;
+  aoSalvarEdicao = null;
+  if (recarregar) recarregar();
 });
 
 resetarFormPergunta();

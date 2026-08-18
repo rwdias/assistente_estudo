@@ -537,6 +537,41 @@
   </div>
 </div>
 
+<!-- MODAL editar pergunta/flashcard -->
+<div class="modal-overlay" id="modal-editar-item">
+  <div class="modal modal-largo">
+    <h3 id="editar-titulo">Editar pergunta</h3>
+
+    <label id="editar-label-enunciado">Enunciado</label>
+    <textarea id="editar-enunciado" rows="4"></textarea>
+
+    <div id="editar-bloco-verso" style="display:none">
+      <label>Verso</label>
+      <textarea id="editar-verso" rows="4"></textarea>
+    </div>
+
+    <div id="editar-bloco-opcoes">
+      <label>Alternativas (marque a(s) correta(s))</label>
+      <div id="editar-opcoes-container"></div>
+      <button type="button" id="editar-add-opcao-btn" class="btn btn-secondary btn-sm">+ Alternativa</button>
+    </div>
+
+    <label>Tópico</label>
+    <select id="editar-topico"></select>
+
+    <p class="editar-aviso" id="editar-aviso-variantes" hidden>
+      Esta pergunta tem versões reformuladas por IA. Se você mudar o enunciado
+      ou as alternativas, elas serão descartadas — foram geradas a partir do
+      texto antigo.
+    </p>
+
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-fechar-modal="modal-editar-item">Cancelar</button>
+      <button class="btn btn-primary" id="editar-salvar-btn">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL completar perfil (login social ou contas antigas) -->
 <div class="modal-overlay" id="modal-completar-perfil">
   <div class="modal">

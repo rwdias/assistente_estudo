@@ -541,6 +541,42 @@ textarea { resize: vertical; }
 }
 .modal h3 { font-size: 1.05rem; margin: 0 0 6px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+/* edição tem alternativas + textareas: precisa de mais largura que os modais
+   de confirmação, e de rolagem quando a pergunta é longa */
+.modal-largo { max-width: 640px; max-height: calc(100vh - 48px); overflow-y: auto; }
+.editar-aviso {
+  margin-top: 14px; padding: 10px 12px; border-radius: var(--radius-sm);
+  background: var(--destaque-bg); color: var(--destaque);
+  font-size: .8rem; font-weight: 600; line-height: 1.5;
+}
+
+/* ============ menu de opções do item (engrenagem) ============ */
+.item-menu { position: relative; flex-shrink: 0; }
+.item-menu-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; padding: 0; border-radius: 9px; cursor: pointer;
+  background: transparent; border: 1.5px solid transparent; color: var(--texto-3);
+  transition: background .13s, color .13s, border-color .13s;
+}
+.item-menu-btn:hover { background: var(--superficie-2); color: var(--texto); border-color: var(--borda); }
+.item-menu-btn svg { width: 16px; height: 16px; }
+.item-menu-lista {
+  display: none; position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+  min-width: 170px; padding: 6px; border-radius: 12px;
+  background: var(--superficie); border: 1.5px solid var(--borda);
+  box-shadow: var(--shadow-lg);
+}
+.item-menu-lista.aberto { display: block; animation: panelIn .13s ease; }
+.item-menu-lista button {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 9px 10px; border: none; border-radius: 8px; cursor: pointer;
+  background: transparent; color: var(--texto); font: inherit; font-size: .85rem;
+  font-weight: 500; text-align: left;
+}
+.item-menu-lista button:hover { background: var(--superficie-2); }
+.item-menu-lista button svg { width: 15px; height: 15px; flex-shrink: 0; }
+.item-menu-lista button.perigo { color: var(--erro); }
+.item-menu-lista button.perigo:hover { background: var(--erro-bg); }
 
 #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 900; display: flex; flex-direction: column; gap: 10px; }
 /* fundo fixo escuro nos dois temas — texto branco sempre legível */
