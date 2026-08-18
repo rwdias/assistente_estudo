@@ -5,9 +5,15 @@ let revisaoErros = 0;
 let filtroRevisao = 'tudo'; // 'tudo' | 'pergunta' | 'flashcard'
 let revisaoReaprendendoIds = new Set();
 
+// Pilha de desfazer da avaliação de flashcards (Acertei/Errei). Cada item
+// avaliado empilha um "frame" com o estado anterior (índice, contadores,
+// fila e a linha de revisoes_perguntas antes do SM-2 rodar), permitindo
+// voltar e reavaliar caso o usuário tenha clicado errado. Ver voltarFlashcard().
+let revisaoHistorico = [];
+
 // Atalhos de teclado do fluxo de flashcard no Aprendizado:
 //   Enter     -> "Mostrar resposta" (se a resposta está oculta) ou "Acertei".
-//   Backspace -> "Errei" (só com a avaliação visível).
+//   Backspace -> volta para o item anterior (desfaz a última avaliação).
 // Aciona os próprios botões (.click()), então funciona a cada re-render sem
 // precisar recriar o listener. Não interfere em perguntas (os botões de
 // flashcard não existem) nem quando se digita num campo.
@@ -28,13 +34,13 @@ let revisaoReaprendendoIds = new Set();
 
     const mostrar = document.getElementById('fc-mostrar-btn');
     const acertei = document.getElementById('fc-acertei-btn');
-    const errei = document.getElementById('fc-errei-btn');
+    const voltar = document.getElementById('fc-voltar-btn');
 
     if (e.key === 'Enter') {
       if (visivel(mostrar)) { e.preventDefault(); mostrar.click(); }
       else if (visivel(acertei)) { e.preventDefault(); acertei.click(); }
     } else if (e.key === 'Backspace') {
-      if (visivel(errei)) { e.preventDefault(); errei.click(); }
+      if (visivel(voltar)) { e.preventDefault(); voltar.click(); }
     }
   });
 })();
@@ -162,6 +168,7 @@ async function carregarRevisao() {
   });
 
   revisaoIndice = 0;
+  revisaoHistorico = [];
   salvarSessaoRevisao();
   renderRevisaoAtual();
 }
@@ -196,13 +203,20 @@ function renderRevisaoAtual() {
   const container = document.getElementById('revisao-atual');
 
   const ICONE_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.1V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+  const ICONE_VOLTAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="9 14 4 9 9 4"/><path d="M4 9h10.5A5.5 5.5 0 0 1 20 14.5v0A5.5 5.5 0 0 1 14.5 20H11"/></svg>';
+  const podeVoltar = revisaoHistorico.length > 0;
+  const botaoVoltarHTML = podeVoltar
+    ? `<button type="button" class="btn btn-secondary btn-sm" id="fc-voltar-btn">${ICONE_VOLTAR} Voltar</button>`
+    : '';
 
   if (revisaoIndice >= revisaoFila.length) {
     limparSessaoRevisaoSeConcluida();
     container.innerHTML =
-      revisaoFila.length === 0
+      (revisaoFila.length === 0
         ? `<p class="fim-sessao">${ICONE_OK} Nada para aprender ou revisar agora.</p>`
-        : `<p class="fim-sessao">${ICONE_OK} Sessão de aprendizado concluída.</p>`;
+        : `<p class="fim-sessao">${ICONE_OK} Sessão de aprendizado concluída.</p>`) +
+      (podeVoltar ? `<div style="margin-top:10px">${botaoVoltarHTML}</div>` : '');
+    if (podeVoltar) document.getElementById('fc-voltar-btn').addEventListener('click', voltarFlashcard);
     return;
   }
 
@@ -218,7 +232,10 @@ function renderRevisaoAtual() {
   else if (pergunta.novo) badgeEstado = `<span class="badge badge-blue">${ICONE_NOVO} a aprender</span>`;
 
   container.innerHTML = `
-    <div style="margin-bottom:10px">${badgeEstado}</div>
+    <div style="margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:8px">
+      ${badgeEstado}
+      ${botaoVoltarHTML}
+    </div>
     ${
       podeReformular
         ? `<div class="card" style="padding:14px 18px">
@@ -246,6 +263,43 @@ function renderRevisaoAtual() {
       .getElementById('revisao-reformular-btn')
       .addEventListener('click', reformularAtual);
   }
+
+  if (podeVoltar) {
+    document.getElementById('fc-voltar-btn').addEventListener('click', voltarFlashcard);
+  }
+}
+
+// Campos da linha de revisoes_perguntas que o SM-2 (registrar_resposta)
+// altera a cada resposta — usados para tirar um "antes" e permitir desfazer.
+const CAMPOS_REVISAO_SM2 =
+  'vezes_respondida, vezes_acertada, vezes_errada, ultima_resposta_correta, ' +
+  'ultima_respondida_em, fator_facilidade, intervalo_dias, proxima_revisao_em, updated_at';
+
+// Desfaz a última avaliação de flashcard (Acertei/Errei): volta o estado
+// local (índice, contadores, fila, "reaprendendo") para antes da avaliação
+// e restaura a linha do SM-2 no banco para o snapshot tirado antes de
+// `registrar_resposta` rodar. Espera essa chamada original terminar antes de
+// restaurar, para não haver corrida entre as duas escritas.
+async function voltarFlashcard() {
+  const frame = revisaoHistorico.pop();
+  if (!frame) return;
+
+  revisaoIndice = frame.indiceAnterior;
+  revisaoAcertos = frame.acertosAntes;
+  revisaoErros = frame.errosAntes;
+  revisaoReaprendendoIds = frame.reaprendendoIdsAntes;
+  revisaoFila = frame.filaAntes;
+  salvarSessaoRevisao();
+  renderRevisaoAtual();
+
+  await frame.concluido;
+  if (!frame.snapshotRevisao) return;
+
+  const { error } = await sb
+    .from('revisoes_perguntas')
+    .update(frame.snapshotRevisao)
+    .eq('pergunta_id', frame.perguntaId);
+  if (error) toast(error.message, 'error');
 }
 
 // Fluxo Anki: mostra a frente, revela o verso sob demanda e o próprio
@@ -290,6 +344,18 @@ function renderFlashcardRevisao(card) {
 
   function avaliar(correta) {
     document.getElementById('fc-avaliacao').style.display = 'none';
+
+    const frame = {
+      perguntaId: Number(card.id),
+      indiceAnterior: revisaoIndice,
+      acertosAntes: revisaoAcertos,
+      errosAntes: revisaoErros,
+      reaprendendoIdsAntes: new Set(revisaoReaprendendoIds),
+      filaAntes: revisaoFila.slice(),
+      snapshotRevisao: null,
+    };
+    revisaoHistorico.push(frame);
+
     if (correta) {
       revisaoAcertos += 1;
       revisaoReaprendendoIds.delete(Number(card.id));
@@ -299,8 +365,19 @@ function renderFlashcardRevisao(card) {
     }
     salvarSessaoRevisao();
 
-    // Registra o SM-2 em segundo plano (não bloqueia o avanço).
-    sb.rpc('registrar_resposta', { p_pergunta_id: card.id, p_correta: correta })
+    // Tira um "antes" da linha do SM-2 (p/ permitir desfazer com o botão
+    // Voltar/Backspace) e só então registra a resposta — tudo em segundo
+    // plano, não bloqueia o avanço. voltarFlashcard() espera essa promessa
+    // terminar antes de restaurar, evitando corrida entre as duas escritas.
+    frame.concluido = sb
+      .from('revisoes_perguntas')
+      .select(CAMPOS_REVISAO_SM2)
+      .eq('pergunta_id', card.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        frame.snapshotRevisao = data || null;
+        return sb.rpc('registrar_resposta', { p_pergunta_id: card.id, p_correta: correta });
+      })
       .then(({ error }) => { if (error) toast(error.message, 'error'); });
 
     // Acertei/Errei já avança direto para o próximo item.
