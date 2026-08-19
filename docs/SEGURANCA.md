@@ -115,6 +115,29 @@ Não há "rotas" próprias; o acesso é PostgREST + RPC. Cada caminho:
 
 ---
 
+## Pentest grey-box (2026-08-19)
+
+Bateria de ataques ativos contra a **produção**, com usuários descartáveis,
+sem DoS e sem tocar dados reais. **Resultado: 0 vulnerabilidades.**
+
+| Vetor | Ataques | Resultado |
+|---|---|---|
+| **Anon** | ler 8 tabelas, criar matéria, chamar 4 RPCs sem login | tudo 401/404 |
+| **IDOR leitura** | B lê materias/subdivisoes/perguntas/opcoes/revisoes/variantes/perfil de A | tudo `[]` |
+| **IDOR escrita** | B altera/apaga pergunta de A; injeta opção/variante; `registrar_resposta` e `atualizar_pergunta` na pergunta de A | tudo 400/403, dado de A intacto |
+| **Escalonamento** | B eleva `ia_limite_diario`; zera contador de quota; escreve no catálogo; forja `usuario_id` de A; INSERT em `perfis` c/ limite alto | tudo 403 |
+| **Burla de quota** | UPDATE nas 3 colunas de quota de `perfis` | 403 (grant por coluna) — impossível resetar |
+| **Edge Functions** | `reformular`/`extrair` sem auth; token forjado; CORS de `evil.example.com` | 401 / 401 / sem `Allow-Origin` |
+| **Injeção** | `' OR 1=1--`, `; drop table`, `id=gt.0`, `like.*` no filtro; 500 alternativas na RPC | 403 ou 0 linhas; RPC barra em 400 |
+| **XSS armazenado** | `<img onerror>` gravado como enunciado | aceito cru, mas render escapa (`esc`/`formatarTexto`) — sem sink de HTML |
+
+Notas:
+- `consumir_quota_ia` aceita `p_limite` do cliente, mas chamá-la direto só
+  **incrementa** o próprio contador (auto-dano) — não reseta e não altera o
+  limite que a Edge Function usa (ela passa o próprio, do secret). Sem bypass.
+- Não é pentest de infra Supabase nem de rede — é de aplicação (authz/RLS/
+  IDOR/quota/JWT/CORS/injeção). Reexecutar após mudança de policy/função.
+
 ## Regras para código novo (checklist obrigatório)
 
 Toda adição de feature deve preservar as 5 barreiras acima:
