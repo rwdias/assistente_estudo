@@ -99,6 +99,11 @@ fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
 
 ## Segurança (inegociável)
 
+> Auditoria completa das 5 falhas clássicas (RLS, permissão no cliente, IDOR,
+> hardcode, XSS) e **checklist para código novo** em `docs/SEGURANCA.md` —
+> consultar antes de adicionar tabela, RPC, Edge Function ou render de dado.
+
+
 - **RLS deny-by-default**: `anon` não tem NENHUM privilégio; `authenticated`
   só acessa as próprias linhas, com `WITH CHECK` em toda a cadeia
   materia→subdivisão→pergunta→opção/revisão/variante (bloqueia IDOR de
