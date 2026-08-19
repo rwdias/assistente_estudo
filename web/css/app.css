@@ -422,6 +422,23 @@ textarea { resize: vertical; }
   white-space: pre-wrap; color: var(--texto);
 }
 .fc-acoes { display: flex; gap: 10px; margin-top: 14px; }
+/* 4 botões de avaliação (estilo Anki), com o prazo de retorno em cima */
+.fc-avaliacao { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.fc-opcao { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; min-width: 92px; }
+.fc-prazo {
+  font-size: .72rem; font-weight: 700; color: var(--texto-3);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.fc-opcao .btn { width: 100%; justify-content: center; gap: 6px; }
+.fc-atalho {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 5px;
+  font-size: .65rem; font-weight: 700; line-height: 1;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+@media (max-width: 560px) {
+  .fc-opcao { min-width: calc(50% - 5px); flex: 0 0 calc(50% - 5px); }
+}
 .fc-rotulo {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: .68rem; font-weight: 800;

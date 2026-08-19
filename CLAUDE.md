@@ -65,6 +65,16 @@ fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
 - Acerto = q5, erro = q2; EF piso 1.3; progressão 1 → 6 → round(i×EF) dias;
   erro zera intervalo e reagenda +10min. Implementação canônica: função SQL
   `registrar_resposta` (portada e validada 1:1 contra o antigo src/srs.py).
+- **Flashcards usam 4 níveis** (estilo Anki), via `p_qualidade` na mesma
+  função: 2 De novo (lapso, +10min) · 3 Difícil (volta antes do Bom, EF cai)
+  · 4 Bom (progressão canônica, EF estável) · 5 Fácil (Bom×1.3, EF sobe;
+  cartão novo pula p/ 4 dias). Atalhos 1–4, e Enter = Bom.
+  Perguntas e simulado seguem **binários** — chamam sem `p_qualidade` e o
+  comportamento é idêntico ao de sempre (provado por teste de regressão que
+  compara a função antiga e a nova em 80 combinações de estado).
+- O prazo mostrado em cima de cada botão vem de `preverIntervalos` (core.js),
+  que é **espelho** da SM-2 do banco. Mexeu na SQL, mexa lá também — há teste
+  comparando as duas numa matriz de intervalo × EF × qualidade.
 - Item nunca respondido = **"a aprender"** (novo); respondido e vencido =
   **"a revisar"**. Errou na sessão → volta ao fim da fila como
   **"reaprendendo"** até acertar (espelho do Anki; lógica em `web/js/revisao.js`).

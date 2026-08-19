@@ -111,6 +111,8 @@ function normalizarPergunta(linha) {
     origem: linha.origem,
     opcoes,
     variantes,
+    intervalo_dias: rev?.intervalo_dias ?? 0,
+    fator_facilidade: rev?.fator_facilidade ?? 250,
     vezes_respondida: vezesRespondida,
     vezes_acertada: vezesAcertada,
     acertos_seguidos: acertosSeguidos,
@@ -163,7 +165,8 @@ const SELECT_PERGUNTA = `
   opcoes ( texto, correta, ordem ),
   pergunta_variantes ( id, enunciado, opcoes, descartada ),
   revisoes_perguntas ( vezes_respondida, vezes_acertada, ultima_resposta_correta,
-                       intervalo_dias, proxima_revisao_em, acertos_seguidos ),
+                       intervalo_dias, fator_facilidade, proxima_revisao_em,
+                       acertos_seguidos ),
   subdivisoes!inner ( materia_id, nome )
 `;
 
@@ -296,6 +299,38 @@ document.querySelectorAll('.modal-overlay').forEach((m) => {
 document.querySelectorAll('[data-fechar-modal]').forEach((btn) => {
   btn.addEventListener('click', () => closeModal(btn.dataset.fecharModal));
 });
+
+// --- previsão dos intervalos dos 4 botões do flashcard ---
+// ESPELHO da função SQL `registrar_resposta` (migração 0017). Serve só para
+// MOSTRAR o tempo em cima de cada botão — quem decide de verdade é o banco.
+// Qualquer mudança na SM-2 de lá precisa ser refletida aqui; há teste
+// comparando as duas contra uma matriz de estados.
+const QUALIDADE = { DE_NOVO: 2, DIFICIL: 3, BOM: 4, FACIL: 5 };
+
+function preverIntervalos(intervaloDias, fatorFacilidade) {
+  const i = Math.max(0, Number(intervaloDias) || 0);
+  const efBase = (Number(fatorFacilidade) || 250) / 100;
+  const efDe = (q) => Math.max(efBase + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02)), 1.3);
+
+  const intervaloBom = (ef) => (i <= 0 ? 1 : i === 1 ? 6 : Math.round(i * ef));
+
+  return {
+    [QUALIDADE.DE_NOVO]: 0,
+    [QUALIDADE.DIFICIL]: i <= 0 ? 1 : Math.max(i + 1, Math.round(i * 1.2)),
+    [QUALIDADE.BOM]: intervaloBom(efDe(QUALIDADE.BOM)),
+    [QUALIDADE.FACIL]: i <= 0 ? 4 : Math.round(intervaloBom(efDe(QUALIDADE.FACIL)) * 1.3),
+  };
+}
+
+// Rótulo curto no estilo do Anki: <10min, 3 dias, 2,4 meses, 1,7 anos.
+function formatarIntervalo(dias) {
+  if (dias <= 0) return '<10 min';
+  if (dias === 1) return '1 dia';
+  if (dias < 30) return `${dias} dias`;
+  if (dias < 365) return `${(dias / 30).toFixed(1).replace('.', ',')} meses`;
+  const anos = (dias / 365).toFixed(1).replace('.', ',');
+  return `${anos} ano${anos === '1,0' ? '' : 's'}`;
+}
 
 // --- menu de opções de um item (engrenagem) ---
 // Usado tanto na lista de perguntas quanto na tela de estudo. Cada entrada do

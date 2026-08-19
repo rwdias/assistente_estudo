@@ -11,18 +11,20 @@ let revisaoReaprendendoIds = new Set();
 // voltar e reavaliar caso o usuário tenha clicado errado. Ver voltarFlashcard().
 let revisaoHistorico = [];
 
-// Atalhos de teclado do fluxo de flashcard no Aprendizado:
-//   Enter     -> "Mostrar resposta" (se a resposta está oculta) ou "Acertei".
+// Atalhos de teclado do fluxo de flashcard no Aprendizado (espelho do Anki):
+//   Enter     -> "Mostrar resposta" (se oculta) ou "Bom".
+//   1 2 3 4   -> De novo / Difícil / Bom / Fácil (só com a avaliação visível).
 //   Backspace -> volta para o item anterior (desfaz a última avaliação).
 // Aciona os próprios botões (.click()), então funciona a cada re-render sem
 // precisar recriar o listener. Não interfere em perguntas (os botões de
 // flashcard não existem) nem quando se digita num campo.
 (function atalhosFlashcard() {
   const visivel = (el) => el && el.offsetParent !== null;
+  const TECLA_QUALIDADE = { 1: 2, 2: 3, 3: 4, 4: 5 };
 
   document.addEventListener('keydown', (e) => {
     if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key !== 'Enter' && e.key !== 'Backspace') return;
+    if (e.key !== 'Enter' && e.key !== 'Backspace' && !TECLA_QUALIDADE[e.key]) return;
 
     const painel = document.getElementById('panel-revisao');
     if (!painel || !painel.classList.contains('active')) return;
@@ -33,14 +35,18 @@ let revisaoHistorico = [];
     if (alvo && ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(alvo.tagName)) return;
 
     const mostrar = document.getElementById('fc-mostrar-btn');
-    const acertei = document.getElementById('fc-acertei-btn');
+    const avaliacao = document.getElementById('fc-avaliacao');
     const voltar = document.getElementById('fc-voltar-btn');
+    const botaoDe = (q) => avaliacao?.querySelector(`[data-qualidade="${q}"]`);
 
     if (e.key === 'Enter') {
       if (visivel(mostrar)) { e.preventDefault(); mostrar.click(); }
-      else if (visivel(acertei)) { e.preventDefault(); acertei.click(); }
+      else if (visivel(avaliacao)) { e.preventDefault(); botaoDe(QUALIDADE.BOM)?.click(); }
     } else if (e.key === 'Backspace') {
       if (visivel(voltar)) { e.preventDefault(); voltar.click(); }
+    } else if (visivel(avaliacao)) {
+      e.preventDefault();
+      botaoDe(TECLA_QUALIDADE[e.key])?.click();
     }
   });
 })();
@@ -353,10 +359,21 @@ async function voltarFlashcard() {
   if (error) toast(error.message, 'error');
 }
 
-// Fluxo Anki: mostra a frente, revela o verso sob demanda e o próprio
-// usuário se avalia (Errei/Acertei) — o resultado alimenta o mesmo SM-2.
+// Fluxo Anki: mostra a frente, revela o verso sob demanda e o próprio usuário
+// se avalia em 4 níveis. O tempo em cima de cada botão é a previsão de quando
+// o cartão volta (preverIntervalos espelha a SM-2 do banco).
 function renderFlashcardRevisao(card) {
   const container = document.getElementById('revisao-pergunta-container');
+  const previsao = preverIntervalos(card.intervalo_dias, card.fator_facilidade);
+
+  const botao = (qualidade, rotulo, classe, atalho) => `
+    <div class="fc-opcao">
+      <span class="fc-prazo">${esc(formatarIntervalo(previsao[qualidade]))}</span>
+      <button type="button" class="btn ${classe}" data-qualidade="${qualidade}">
+        ${esc(rotulo)}<span class="fc-atalho">${atalho}</span>
+      </button>
+    </div>
+  `;
 
   container.innerHTML = `
     <div class="question-card">
@@ -369,15 +386,11 @@ function renderFlashcardRevisao(card) {
       <div class="fc-acoes">
         <button type="button" class="btn btn-primary" id="fc-mostrar-btn">Mostrar resposta</button>
       </div>
-      <div class="fc-acoes" id="fc-avaliacao" style="display:none">
-        <button type="button" class="btn btn-danger" id="fc-errei-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><line x1="6" y1="6" x2="18" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg>
-          Errei
-        </button>
-        <button type="button" class="btn btn-primary" id="fc-acertei-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="20 6 9 17 4 12"/></svg>
-          Acertei
-        </button>
+      <div class="fc-avaliacao" id="fc-avaliacao" style="display:none">
+        ${botao(QUALIDADE.DE_NOVO, 'De novo', 'btn-danger', '1')}
+        ${botao(QUALIDADE.DIFICIL, 'Difícil', 'btn-secondary', '2')}
+        ${botao(QUALIDADE.BOM, 'Bom', 'btn-primary', '3')}
+        ${botao(QUALIDADE.FACIL, 'Fácil', 'btn-secondary', '4')}
       </div>
       <div class="saber-mais" data-saber-mais hidden></div>
     </div>
@@ -393,7 +406,10 @@ function renderFlashcardRevisao(card) {
     montarSaberMais(cardEl, card);
   });
 
-  function avaliar(correta) {
+  // "De novo" (2) conta como erro e devolve o cartão à fila da sessão;
+  // Difícil/Bom/Fácil (3/4/5) contam como acerto. Mesma regra do banco.
+  function avaliar(qualidade) {
+    const correta = qualidade >= QUALIDADE.DIFICIL;
     document.getElementById('fc-avaliacao').style.display = 'none';
 
     const frame = {
@@ -427,17 +443,22 @@ function renderFlashcardRevisao(card) {
       .maybeSingle()
       .then(({ data }) => {
         frame.snapshotRevisao = data || null;
-        return sb.rpc('registrar_resposta', { p_pergunta_id: card.id, p_correta: correta });
+        return sb.rpc('registrar_resposta', {
+          p_pergunta_id: card.id,
+          p_correta: correta,
+          p_qualidade: qualidade,
+        });
       })
       .then(({ error }) => { if (error) toast(error.message, 'error'); });
 
-    // Acertei/Errei já avança direto para o próximo item.
+    // Avaliar já avança direto para o próximo item.
     revisaoIndice += 1;
     renderRevisaoAtual();
   }
 
-  document.getElementById('fc-errei-btn').addEventListener('click', () => avaliar(false));
-  document.getElementById('fc-acertei-btn').addEventListener('click', () => avaliar(true));
+  container.querySelectorAll('#fc-avaliacao [data-qualidade]').forEach((btn) => {
+    btn.addEventListener('click', () => avaliar(Number(btn.dataset.qualidade)));
+  });
 }
 
 function renderPerguntaRevisao(pergunta) {
