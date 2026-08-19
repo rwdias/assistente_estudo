@@ -330,7 +330,8 @@ async function recarregarItemAtual() {
 // altera a cada resposta — usados para tirar um "antes" e permitir desfazer.
 const CAMPOS_REVISAO_SM2 =
   'vezes_respondida, vezes_acertada, vezes_errada, ultima_resposta_correta, ' +
-  'ultima_respondida_em, fator_facilidade, intervalo_dias, proxima_revisao_em, updated_at';
+  'ultima_respondida_em, fator_facilidade, intervalo_dias, proxima_revisao_em, ' +
+  'acertos_seguidos, updated_at';
 
 // Desfaz a última avaliação de flashcard (Acertei/Errei): volta o estado
 // local (índice, contadores, fila, "reaprendendo") para antes da avaliação
@@ -549,11 +550,12 @@ async function gerarVariantesAtual() {
   // Atualiza só o item atual: remontar a fila jogaria o usuário de volta ao
   // início da sessão. A rotação só muda na PRÓXIMA revisão (depende de
   // vezes_respondida), então a tela continua mostrando esta mesma versão.
+  const gravadas = inseridas || [];
   const item = revisaoFila[revisaoIndice];
-  item.variantes = inseridas || [];
+  item.variantes = gravadas;
   item.pode_variar = false;
 
-  toast(`${inseridas.length} versão(ões) gravada(s) — vão se revezar com o original.`);
+  toast(`${gravadas.length} versão(ões) gravada(s) — vão se revezar com o original.`);
   renderRevisaoAtual();
 }
 
