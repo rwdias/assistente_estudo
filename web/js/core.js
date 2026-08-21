@@ -674,9 +674,16 @@ function montarSaberMais(card, pergunta, estado) {
 // Única ação do cliente: pedir "o próximo" complemento. O servidor devolve do
 // cache (sem gastar IA) ou gera — indistinguível daqui.
 async function consultarSaberMais(card, pergunta, estado, btn) {
-  const original = btn.innerHTML;
-  btn.disabled = true;
-  btn.textContent = 'Consultando...';
+  // Troca o botão pelo indicador de "IA pensando" (mantém o que já foi
+  // revelado acima). O mesmo indicador vale para cache e IA — daqui não há
+  // como distinguir, e o piso de latência garante que ele apareça.
+  const ICONE_SPARKLE = '<svg class="ia-sparkle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7L19 15z"/></svg>';
+  btn.outerHTML = `
+    <div class="saber-mais-pensando" role="status" aria-live="polite">
+      ${ICONE_SPARKLE}
+      <span>IA pensando</span>
+      <span class="ia-dots"><i></i><i></i><i></i></span>
+    </div>`;
 
   try {
     const { data, error } = await sb.functions.invoke('saber_mais', {
@@ -689,8 +696,7 @@ async function consultarSaberMais(card, pergunta, estado, btn) {
 
     if (error) {
       toast(await mensagemErroFuncao(error), 'error');
-      btn.disabled = false;
-      btn.innerHTML = original;
+      montarSaberMais(card, pergunta, estado); // restaura o botão
       return;
     }
 
@@ -703,8 +709,7 @@ async function consultarSaberMais(card, pergunta, estado, btn) {
     montarSaberMais(card, pergunta, estado);
   } catch (erro) {
     toast(erro.message || 'Falha ao consultar.', 'error');
-    btn.disabled = false;
-    btn.innerHTML = original;
+    montarSaberMais(card, pergunta, estado); // restaura o botão
   }
 }
 

@@ -544,6 +544,36 @@ textarea { resize: vertical; }
 .saber-mais-btn { display: inline-flex; align-items: center; gap: 7px; }
 .saber-mais-btn svg { width: 15px; height: 15px; }
 
+/* "IA pensando": sparkle que pulsa + reticências que saltam em cascata */
+.saber-mais-pensando {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-size: .86rem; font-weight: 600; color: var(--brand-ink);
+  padding: 8px 2px;
+}
+.ia-sparkle {
+  width: 18px; height: 18px; flex-shrink: 0; color: var(--brand);
+  transform-origin: center;
+  animation: ia-pulsar 1.4s ease-in-out infinite;
+}
+.ia-dots { display: inline-flex; gap: 3px; }
+.ia-dots i {
+  width: 4px; height: 4px; border-radius: 50%; background: currentColor;
+  display: inline-block; animation: ia-ponto 1.2s ease-in-out infinite;
+}
+.ia-dots i:nth-child(2) { animation-delay: .16s; }
+.ia-dots i:nth-child(3) { animation-delay: .32s; }
+@keyframes ia-pulsar {
+  0%, 100% { transform: scale(.85) rotate(0deg); opacity: .5; }
+  50%      { transform: scale(1.15) rotate(12deg); opacity: 1; }
+}
+@keyframes ia-ponto {
+  0%, 70%, 100% { opacity: .3; transform: translateY(0); }
+  35%           { opacity: 1; transform: translateY(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ia-sparkle, .ia-dots i { animation-duration: .01ms; animation-iteration-count: 1; }
+}
+
 /* ============ MODAL / TOAST ============ */
 .modal-overlay {
   display: none; position: fixed; inset: 0; background: rgba(7,20,18,.55);
