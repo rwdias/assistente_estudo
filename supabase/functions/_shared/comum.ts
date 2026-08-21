@@ -50,6 +50,27 @@ export async function usuarioAutenticado(req: Request): Promise<boolean> {
   return resposta.ok;
 }
 
+// Chamada PostgREST/RPC repassando o JWT do chamador — o RLS do dono se
+// aplica exatamente como se o front tivesse chamado. Uso interno das Edge
+// Functions que precisam ler/gravar dados do próprio usuário no servidor.
+export function restComoUsuario(
+  req: Request,
+  caminho: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const url = Deno.env.get("SUPABASE_URL")!;
+  const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
+  return fetch(`${url}/rest/v1/${caminho}`, {
+    ...init,
+    headers: {
+      apikey: anon,
+      Authorization: req.headers.get("Authorization") ?? "",
+      "Content-Type": "application/json",
+      ...(init.headers as Record<string, string> ?? {}),
+    },
+  });
+}
+
 export async function consumirQuota(req: Request): Promise<boolean> {
   const limite = parseInt(Deno.env.get("IA_QUOTA_DIARIA") ?? "20", 10);
   const url = Deno.env.get("SUPABASE_URL")!;
@@ -188,19 +209,15 @@ export function promptSaberMais(pergunta: PerguntaIA, anteriores: string[]): str
     : "";
 
   return (
-    "Você é um tutor de estudos conversando com um aluno. Dada a questão de " +
-    "múltipla escolha abaixo, escreva uma explicação (\"Saber mais\") em " +
-    "português do Brasil, clara e didática, como se estivesse falando com a " +
-    "pessoa.\n\n" +
-    "A explicação deve:\n" +
-    "- esclarecer o conceito central por trás da questão;\n" +
-    "- deixar claro por que a alternativa correta é a certa e por que as " +
-    "outras não servem;\n" +
-    "- trazer contexto útil (exemplos, quando usar, comparações, pegadinhas).\n\n" +
-    "Regras de formatação: use Markdown enxuto — **negrito** para termos-chave, " +
-    "listas com \"- \" e, se ajudar, uma tabela `| a | b |`. Não use títulos " +
-    "com # nem blocos de código. Escreva um texto corrido e contínuo (sem " +
-    "numeração ou rótulo de seção). Seja objetivo (1 a 4 parágrafos)." +
+    "Você é um tutor de estudos. Dada a questão de múltipla escolha abaixo, " +
+    "escreva uma explicação CURTA (\"Saber mais\") em português do Brasil.\n\n" +
+    "Vá direto ao essencial: o conceito central e por que a alternativa " +
+    "correta é a certa. Só comente uma distratora se for pegadinha comum. " +
+    "Não repita o enunciado, não faça introdução (\"Nesta questão...\") nem " +
+    "frase de encerramento.\n\n" +
+    "Formatação: Markdown enxuto — **negrito** só em 1 ou 2 termos-chave. Sem " +
+    "títulos, sem listas longas, sem blocos de código. NO MÁXIMO 2 parágrafos " +
+    "curtos, idealmente 1. Se 2 ou 3 frases bastarem, use só isso." +
     continuacao +
     "\n\nQuestão:\n" +
     `Enunciado: ${pergunta.enunciado}\n` +
@@ -268,16 +285,14 @@ export function promptSaberMaisFlashcard(
     : "";
 
   return (
-    "Você é um tutor de estudos conversando com um aluno. Dado o flashcard " +
-    "abaixo (frente e verso), escreva uma explicação (\"Saber mais\") em " +
-    "português do Brasil, clara e didática, como se estivesse falando com a " +
-    "pessoa.\n\n" +
-    "Explique melhor o conceito da resposta, com contexto útil, exemplos, " +
-    "comparações e pegadinhas comuns — sem apenas repetir o verso.\n\n" +
-    "Regras de formatação: use Markdown enxuto — **negrito** para termos-chave, " +
-    "listas com \"- \" e, se ajudar, uma tabela `| a | b |`. Não use títulos " +
-    "com # nem blocos de código. Texto corrido e contínuo (sem numeração ou " +
-    "rótulo de seção). Seja objetivo (1 a 4 parágrafos)." +
+    "Você é um tutor de estudos. Dado o flashcard abaixo (frente e verso), " +
+    "escreva uma explicação CURTA (\"Saber mais\") em português do Brasil.\n\n" +
+    "Aprofunde só o essencial do conceito da resposta — um exemplo ou " +
+    "pegadinha comum, se ajudar. Não repita o verso, não faça introdução nem " +
+    "frase de encerramento.\n\n" +
+    "Formatação: Markdown enxuto — **negrito** só em 1 ou 2 termos-chave. Sem " +
+    "títulos, sem listas longas, sem blocos de código. NO MÁXIMO 2 parágrafos " +
+    "curtos, idealmente 1. Se 2 ou 3 frases bastarem, use só isso." +
     continuacao +
     "\n\nFlashcard:\n" +
     `Frente: ${frente}\n` +

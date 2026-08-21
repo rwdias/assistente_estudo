@@ -165,6 +165,15 @@ user `postgres.scafgcpxjsimzaaviean`, senha no `.env`. (O host direto
   na tela de estudo (Editar). Editar durante o estudo recarrega só aquele item
   (`recarregarItemAtual`), preservando o lugar na sessão; exibindo variante,
   o que se edita é sempre a pergunta original.
+- **"Saber mais"** (aprofundamento, ≤ 3 complementos): a decisão cache-ou-IA
+  é do SERVIDOR (Edge Function `saber_mais`), de propósito — o front NUNCA
+  recebe o conteúdo salvo no carregamento (`saber_mais` saiu de
+  `SELECT_PERGUNTA`) e sempre manda a mesma chamada (`pergunta_id` + `vistos`).
+  Cache e IA retornam a mesma forma `{complementos,total}`, então nem pelo
+  devtools dá para distinguir. O bloco começa recolhido; `consultarSaberMais`
+  (core.js) é a única ação. A função lê a questão por RLS (IDOR-safe), devolve
+  do cache com piso de latência e sem quota, ou gera via `chamarProvedor` +
+  grava por `adicionar_saber_mais`. **Não** reexpor o cache no cliente.
 
 ## Deploy
 
@@ -172,7 +181,8 @@ user `postgres.scafgcpxjsimzaaviean`, senha no `.env`. (O host direto
   (com **cache busting** — assets ganham `?v=<sha>`; não remover esse passo).
   Verificar: `gh run watch` + `curl ... | grep 'js/core.js?v='`.
 - **Edge Functions**: `SUPABASE_ACCESS_TOKEN=... supabase functions deploy
-  extrair reformular --project-ref scafgcpxjsimzaaviean --use-api`.
+  extrair reformular saber_mais --project-ref scafgcpxjsimzaaviean --use-api`
+  (mudou `_shared/comum.ts`? redeploy as três, que o compartilham).
 - Commits **sem trailer de coautoria**, mensagens em pt-BR.
 
 ## Testes (não há suíte permanente — validação por E2E)

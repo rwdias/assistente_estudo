@@ -106,7 +106,8 @@ function normalizarPergunta(linha) {
     verso: linha.verso,
     imagens: linha.imagens || [],
     imagens_posicao: linha.imagens_posicao || 'depois',
-    saber_mais: Array.isArray(linha.saber_mais) ? linha.saber_mais : [],
+    // saber_mais NÃO vem no carregamento: quem decide cache-ou-IA é a Edge
+    // Function, sob demanda (o conteúdo salvo não fica exposto na página).
     dificuldade: linha.dificuldade,
     origem: linha.origem,
     opcoes,
@@ -161,7 +162,7 @@ function aplicarVariante(pergunta) {
 }
 
 const SELECT_PERGUNTA = `
-  id, tipo, enunciado, verso, dificuldade, origem, imagens, imagens_posicao, saber_mais, created_at,
+  id, tipo, enunciado, verso, dificuldade, origem, imagens, imagens_posicao, created_at,
   opcoes ( texto, correta, ordem ),
   pergunta_variantes ( id, enunciado, opcoes, descartada ),
   revisoes_perguntas ( vezes_respondida, vezes_acertada, ultima_resposta_correta,
@@ -618,9 +619,12 @@ function wirePerguntaQuiz(pergunta, chave, aoResponder) {
   });
 }
 
-// --- "Saber mais": aprofundamento por IA com cache de até 3 complementos ---
-// Modelo padrão das consultas de aprofundamento (não há seletor na tela de
-// estudo). O texto é cacheado na própria pergunta (perguntas.saber_mais).
+// --- "Saber mais": aprofundamento sob demanda (até 3 complementos) ---
+// A decisão cache-ou-IA é do SERVIDOR (Edge Function `saber_mais`): o cliente
+// nunca recebe o conteúdo salvo no carregamento e sempre faz a mesma chamada
+// (pergunta_id + quantos já viu). Assim, nem pelo código nem pelo devtools dá
+// para saber se a resposta veio do cache ou foi gerada agora — a forma é
+// idêntica. O bloco começa SEMPRE recolhido; clicar dispara a consulta.
 const SABER_MAIS_MAX = 3;
 const SABER_MAIS_MODELO = 'ChatGPT';
 
@@ -631,89 +635,76 @@ function podeSaberMais(pergunta) {
   return !pergunta.doBanco && pergunta.id != null;
 }
 
-// Preenche/atualiza o bloco de "Saber mais" do card já respondido: exibe os
-// complementos cacheados como um texto contínuo (sem numeração) e, se houver
-// menos de 3, o botão "Ainda não entendi" para pedir uma nova explicação que
-// continua de onde a anterior parou.
-function montarSaberMais(card, pergunta) {
+// `estado` acumula o que já foi revelado NESTA exibição do card. Sem estado =
+// recolhido (nada revelado), que é como todo card começa.
+function montarSaberMais(card, pergunta, estado) {
   const bloco = card.querySelector('[data-saber-mais]');
   if (!bloco || !podeSaberMais(pergunta)) return;
 
-  const complementos = pergunta.saber_mais || [];
-  const restantes = SABER_MAIS_MAX - complementos.length;
+  estado = estado || { revelados: [], total: null, esgotado: false };
+  const nRev = estado.revelados.length;
+
+  const ICONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+
+  // Botão: nada revelado → "Saber mais"; já revelou e ainda cabe → "Ainda não
+  // entendi"; esgotado (servidor não trouxe mais, ou chegou ao teto) → sem botão.
+  let rotulo = null;
+  if (!estado.esgotado && nRev < SABER_MAIS_MAX) {
+    rotulo = nRev === 0 ? 'Saber mais' : 'Ainda não entendi';
+  }
 
   bloco.hidden = false;
   bloco.innerHTML = `
-    ${complementos.length
+    ${nRev
       ? `<div class="saber-mais-item">
-           ${complementos
+           ${estado.revelados
              .map((t) => `<div class="saber-mais-texto">${formatarTexto(t, { compacto: true })}</div>`)
              .join('')}
          </div>`
       : ''}
-    ${
-      restantes > 0
-        ? `<button type="button" class="btn btn-secondary btn-sm saber-mais-btn">
-             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-             ${complementos.length === 0 ? 'Saber mais' : 'Ainda não entendi'}
-           </button>`
-        : ''
-    }
+    ${rotulo
+      ? `<button type="button" class="btn btn-secondary btn-sm saber-mais-btn">${ICONE}${rotulo}</button>`
+      : ''}
   `;
 
   const btn = bloco.querySelector('.saber-mais-btn');
-  if (btn) btn.addEventListener('click', () => pedirSaberMais(card, pergunta, btn));
+  if (btn) btn.addEventListener('click', () => consultarSaberMais(card, pergunta, estado, btn));
 }
 
-async function pedirSaberMais(card, pergunta, btn) {
-  const conteudoOriginal = btn.innerHTML;
+// Única ação do cliente: pedir "o próximo" complemento. O servidor devolve do
+// cache (sem gastar IA) ou gera — indistinguível daqui.
+async function consultarSaberMais(card, pergunta, estado, btn) {
+  const original = btn.innerHTML;
   btn.disabled = true;
-  btn.textContent = 'Consultando IA...';
+  btn.textContent = 'Consultando...';
 
   try {
-    // Flashcard manda frente/verso; pergunta manda enunciado/opções.
-    const corpoPergunta = pergunta.tipo === 'flashcard'
-      ? { enunciado: pergunta.enunciado, verso: pergunta.verso || '' }
-      : {
-          enunciado: pergunta.enunciado,
-          opcoes: (pergunta.opcoes || []).map((o) => ({ texto: o.texto, correta: o.correta })),
-        };
-
     const { data, error } = await sb.functions.invoke('saber_mais', {
       body: {
         modelo: SABER_MAIS_MODELO,
-        pergunta: corpoPergunta,
-        anteriores: pergunta.saber_mais || [],
+        pergunta_id: pergunta.id,
+        vistos: estado.revelados.length,
       },
     });
 
     if (error) {
       toast(await mensagemErroFuncao(error), 'error');
       btn.disabled = false;
-      btn.innerHTML = conteudoOriginal;
+      btn.innerHTML = original;
       return;
     }
 
-    // Persiste na pergunta (RLS do dono + teto de 3 na função SQL) e recebe o
-    // array atualizado, fonte de verdade do cache.
-    const { data: novo, error: erroPersist } = await sb.rpc('adicionar_saber_mais', {
-      p_pergunta_id: pergunta.id,
-      p_texto: data.saber_mais,
-    });
+    const novos = Array.isArray(data?.complementos) ? data.complementos : [];
+    estado.revelados = [...estado.revelados, ...novos];
+    if (typeof data?.total === 'number') estado.total = data.total;
+    // esgota quando o servidor não trouxe nada novo ou já atingiu o teto.
+    estado.esgotado = novos.length === 0 || estado.revelados.length >= SABER_MAIS_MAX;
 
-    if (erroPersist) {
-      toast(erroPersist.message, 'error');
-      btn.disabled = false;
-      btn.innerHTML = conteudoOriginal;
-      return;
-    }
-
-    pergunta.saber_mais = Array.isArray(novo) ? novo : [...(pergunta.saber_mais || []), data.saber_mais];
-    montarSaberMais(card, pergunta);
+    montarSaberMais(card, pergunta, estado);
   } catch (erro) {
-    toast(erro.message || 'Falha ao consultar a IA.', 'error');
+    toast(erro.message || 'Falha ao consultar.', 'error');
     btn.disabled = false;
-    btn.innerHTML = conteudoOriginal;
+    btn.innerHTML = original;
   }
 }
 
