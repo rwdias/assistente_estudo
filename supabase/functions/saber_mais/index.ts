@@ -83,11 +83,13 @@ Deno.serve(async (req) => {
   const salvos = (Array.isArray(q.saber_mais) ? q.saber_mais : [])
     .filter((t): t is string => typeof t === "string" && t.trim() !== "");
 
-  // CACHE: há complemento salvo além do que o cliente já viu → devolve sem IA.
+  // CACHE: devolve UM complemento por vez (o próximo salvo), sem IA. Assim
+  // cada clique — "Saber mais" e depois "Ainda não entendi" — traz só o
+  // seguinte, nunca todos de uma vez.
   if (salvos.length > vistos) {
     await dormir(PISO_CACHE_MS);
     return respostaJson(req, {
-      complementos: salvos.slice(vistos),
+      complementos: [salvos[vistos]],
       total: salvos.length,
     });
   }
