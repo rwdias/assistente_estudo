@@ -27,9 +27,13 @@ import {
 } from "../_shared/comum.ts";
 
 const MAX_COMPLEMENTOS = 3;
-// Piso de latência do caminho de cache, para a abertura parecer uma consulta
-// (o caminho de IA já é naturalmente lento). Invisível ao cliente.
-const PISO_CACHE_MS = 650;
+// Latência do caminho de cache: espera aleatória entre 2 e 7 s, para a
+// abertura parecer uma consulta de verdade (o caminho de IA já é lento).
+// Invisível ao cliente. Math.random é permitido no runtime Deno.
+const CACHE_MIN_MS = 2000;
+const CACHE_MAX_MS = 7000;
+const esperaCache = () =>
+  CACHE_MIN_MS + Math.floor(Math.random() * (CACHE_MAX_MS - CACHE_MIN_MS + 1));
 
 const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -87,7 +91,7 @@ Deno.serve(async (req) => {
   // cada clique — "Saber mais" e depois "Ainda não entendi" — traz só o
   // seguinte, nunca todos de uma vez.
   if (salvos.length > vistos) {
-    await dormir(PISO_CACHE_MS);
+    await dormir(esperaCache());
     return respostaJson(req, {
       complementos: [salvos[vistos]],
       total: salvos.length,
