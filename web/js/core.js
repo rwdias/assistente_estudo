@@ -421,9 +421,43 @@ function renderImagensPergunta(pergunta) {
 // qualquer fonte de prova): tabelas (linhas "| a | b |"), citações (linhas
 // iniciadas por "> "), ênfase inline (*...* / **...**) e referências.
 // O texto é SEMPRE escapado antes — nenhuma tag vinda do dado sobrevive.
+// --- fórmulas LaTeX → MathML (só em matéria matemática, via { math: true }) ---
+// Estratégia "protege e restaura": o math é extraído ANTES do escape/Markdown
+// (senão `esc()` estragaria o `<`/`&` do LaTeX e as regex de Markdown comeriam
+// `\frac`, `*` etc.), renderizado pelo Temml (que produz MathML seguro, com
+// `trust=false` — bloqueia `\href` e afins → sem XSS), e reinserido DEPOIS de
+// todo o pipeline. O placeholder usa caracteres de uso privado (/)
+// que sobrevivem ao escape e não casam com nenhuma regex de Markdown.
+function extrairMath(texto, saida) {
+  // sem Temml carregado (ou fora do modo math) o chamador nem chega aqui.
+  const guarda = (latex, bloco) => {
+    let mathml;
+    try {
+      mathml = temml.renderToString(latex, { displayMode: bloco, throwOnError: false });
+    } catch (_) {
+      // fórmula impossível de converter: mostra o LaTeX cru, escapado (inerte).
+      mathml = esc((bloco ? '$$' : '$') + latex + (bloco ? '$$' : '$'));
+    }
+    const token = '\uE000' + saida.length + '\uE001';
+    saida.push(bloco ? `<span class="math-bloco">${mathml}</span>` : mathml);
+    return token;
+  };
+  return texto
+    .replace(/\$\$([\s\S]+?)\$\$/g, (_, m) => guarda(m.trim(), true))   // bloco $$...$$
+    .replace(/\$([^$\n]+?)\$/g, (_, m) => guarda(m.trim(), false));     // inline $...$
+}
+
+function restaurarMath(html, saida) {
+  return html.replace(/\uE000(\d+)\uE001/g, (_, i) => saida[Number(i)] ?? '');
+}
+
 function formatarTexto(texto, opcoes = {}) {
   const compacto = Boolean(opcoes.compacto);
-  const linhas = esc(texto ?? '').split('\n');
+  // Renderiza fórmula só quando pedido (matéria matemática) E o Temml carregou.
+  const comMath = Boolean(opcoes.math) && typeof temml !== 'undefined' && temml;
+  const mathRenderizado = [];
+  const fonte = comMath ? extrairMath(String(texto ?? ''), mathRenderizado) : (texto ?? '');
+  const linhas = esc(fonte).split('\n');
   const html = [];
   let tabela = [];
   let citacao = [];
@@ -491,8 +525,12 @@ function formatarTexto(texto, opcoes = {}) {
   fecharCitacao();
 
   const saida = html.join('');
+  // restaura as fórmulas (placeholders → MathML) SEMPRE por último, depois de
+  // todo o Markdown, para nenhuma regex tocar no MathML já pronto.
+  const finalizar = (s) => (comMath ? restaurarMath(s, mathRenderizado) : s);
+
   if (compacto) {
-    return saida
+    return finalizar(saida
       // negrito inline marcado com **...**
       .replace(/\*\*([^*]{2,240}?)\*\*/g, '<strong>$1</strong>')
       // fonte explícita marcada com *...* em linha própria
@@ -503,14 +541,14 @@ function formatarTexto(texto, opcoes = {}) {
       // fonte entre parênteses que a IA não marcou (linha bibliográfica:
       // ano de 4 dígitos ou "Disponível em") — vira itálico discreto
       .replace(/(?:^|<br>)(\([^()<]{6,240}?(?:\b\d{4}\b|Disponível em)[^()<]*?\))(?=<br>|$)/g,
-        '<em class="fonte-enunciado">$1</em>');
+        '<em class="fonte-enunciado">$1</em>'));
   }
 
-  return saida
+  return finalizar(saida
     // comportamento histórico de questões/simulados: *...* vira referência em bloco
     .replace(/\*([^*]{2,240}?)\*/g, '<em class="fonte-enunciado">$1</em>')
     .replace(/(?:^|<br>)(\([^()<]{6,240}?(?:\b\d{4}\b|Disponível em)[^()<]*?\))(?=<br>|$)/g,
-      '<em class="fonte-enunciado">$1</em>');
+      '<em class="fonte-enunciado">$1</em>'));
 }
 
 // Chip com a origem da questão: nome da prova (banco de questões) ou da

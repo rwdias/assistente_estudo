@@ -485,6 +485,13 @@ textarea { resize: vertical; }
 .opcao-row input[type=text] { flex: 1; }
 .opcao-correta-check { display: inline-flex; flex-shrink: 0; }
 
+/* fórmulas matemáticas (MathML via Temml). Bloco $$...$$ centralizado e com
+   rolagem horizontal própria (equação larga não estoura a largura da página).
+   Fórmula inline herda o tamanho do texto. */
+.math-bloco { display: block; overflow-x: auto; text-align: center; margin: 8px 0; }
+math { font-size: 1.08em; }
+.temml-error { font-size: .85rem; }
+
 .badge {
   display: inline-flex; align-items: center; gap: 5px; padding: 3.5px 10px;
   border-radius: 20px; font-size: .72rem; font-weight: 700;
