@@ -123,9 +123,12 @@ já descarta URL fora do Storage do projeto — novo bucket no mesmo host funcio
 
 ## Fases de construção
 
-1. **Tipo de matéria** (`materias.tipo`) + escolha na criação + **renderização
-   LaTeX→MathML** (escopada a matéria matemática) + **ingestão por TEXTO** →
-   flashcards matemáticos. Sem tabela nova além da coluna. Matéria normal intocada.
+1. ✅ **FEITA.** **Tipo de matéria** (`materias.tipo`, migr. 0020; `resumo_materias`
+   devolve tipo, 0021) + escolha na criação + **renderização LaTeX→MathML**
+   (Temml vendorizado em `web/js/vendor/`, `formatarTexto({math:true})`, escopada
+   a matéria matemática) + **ingestão por TEXTO** (`extrair` com flag `matematica`
+   + `promptFlashcardsMath`, preview com fórmula renderizada). Matéria normal
+   intocada. Estudo e lista renderizam fórmula só em matéria matemática.
 1.5. **Ingestão por VISÃO** (foto/PDF): multimodal no `extrair`, `pdf.js`, bucket do
    usuário + anexo de figura.
 2. **Drill paramétrico**: `tipo='problema'` + tabela `problemas` + amostragem
