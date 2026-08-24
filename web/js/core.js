@@ -578,6 +578,8 @@ function wirePerguntaQuiz(pergunta, chave, aoResponder) {
 
   async function finalizar(indicesEscolhidos) {
     card.dataset.respondida = '1';
+    // já respondeu: o botão "Confirmar resposta" (só existe na múltipla) sai.
+    card.querySelector('.opcoes-confirmar-btn')?.remove();
 
     const escolhidos = new Set(indicesEscolhidos);
     const corretos = new Set(
