@@ -563,7 +563,7 @@ function renderPerguntaQuizHTML(pergunta, chave) {
           )
           .join('')}
       </div>
-      ${multipla ? '<button type="button" class="btn btn-primary btn-sm opcoes-confirmar-btn" disabled>Confirmar resposta</button>' : ''}
+      <button type="button" class="btn btn-primary btn-sm opcoes-confirmar-btn" disabled>Confirmar resposta</button>
       <div class="saber-mais" data-saber-mais hidden></div>
     </div>
   `;
@@ -615,32 +615,31 @@ function wirePerguntaQuiz(pergunta, chave, aoResponder) {
     await aoResponder(correta);
   }
 
-  if (multipla) {
-    const btnConfirmar = card.querySelector('.opcoes-confirmar-btn');
-    const escolhidos = new Set();
-
-    opcoesEls.forEach((el, idx) => {
-      el.addEventListener('click', () => {
-        if (card.dataset.respondida) return;
-        el.classList.toggle('selecionada');
-        if (escolhidos.has(idx)) escolhidos.delete(idx);
-        else escolhidos.add(idx);
-        btnConfirmar.disabled = escolhidos.size === 0;
-      });
-    });
-
-    btnConfirmar.addEventListener('click', () => {
-      if (card.dataset.respondida) return;
-      finalizar(escolhidos);
-    });
-    return;
-  }
+  // Fluxo único: marca (múltipla = checkbox, várias; única = rádio, uma por
+  // vez) e só registra ao "Confirmar resposta" — dá para trocar antes.
+  const btnConfirmar = card.querySelector('.opcoes-confirmar-btn');
+  const escolhidos = new Set();
 
   opcoesEls.forEach((el, idx) => {
     el.addEventListener('click', () => {
       if (card.dataset.respondida) return;
-      finalizar([idx]);
+      if (multipla) {
+        el.classList.toggle('selecionada');
+        if (escolhidos.has(idx)) escolhidos.delete(idx);
+        else escolhidos.add(idx);
+      } else {
+        opcoesEls.forEach((o) => o.classList.remove('selecionada'));
+        el.classList.add('selecionada');
+        escolhidos.clear();
+        escolhidos.add(idx);
+      }
+      btnConfirmar.disabled = escolhidos.size === 0;
     });
+  });
+
+  btnConfirmar.addEventListener('click', () => {
+    if (card.dataset.respondida) return;
+    finalizar(escolhidos);
   });
 }
 
