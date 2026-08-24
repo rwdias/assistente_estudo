@@ -351,21 +351,28 @@ export function promptFlashcardsMath(
     "Você monta flashcards de MATEMÁTICA a partir de exercícios de livro colados " +
     "pelo usuário (enunciados e, quase sempre, as respostas/gabarito).\n\n" +
     `Para cada exercício encontrado, no máximo ${maxFlashcards}, crie um card:\n` +
-    '- "frente": o ENUNCIADO do exercício, completo, preservando os dados. Toda ' +
-    "fórmula/símbolo matemático em LaTeX entre cifrões: inline com $...$ e " +
-    "expressões destacadas com $$...$$. Ex.: $x^2$, $\\frac{a}{b}$, " +
-    "$\\int_0^1 x\\,dx$, $\\sqrt{b^2-4ac}$.\n" +
+    '- "frente": o ENUNCIADO do exercício, completo, preservando os dados.\n' +
     '- "verso": a RESOLUÇÃO passo a passo, ELABORADA por você, terminando na ' +
     "resposta final. Se o material trouxer a resposta, chegue EXATAMENTE nela " +
-    "(use-a como gabarito — não contradiga). Se não trouxer, resolva e mostre o " +
-    "resultado. Passos curtos e claros, cada um em uma linha, fórmulas em LaTeX. " +
-    "Destaque a resposta final (ex.: **Resposta:** $x = 2$).\n" +
+    "(use-a como gabarito — NÃO se contradiga e não mude a resposta). Se não " +
+    "trouxer, resolva. Cada passo em uma linha (use quebras de linha normais, " +
+    "NUNCA barras invertidas soltas para quebrar linha). Termine destacando a " +
+    "resposta: **Resposta:** ...\n" +
     '- "dificuldade": "Fácil", "Média" ou "Difícil" (se incerto, ' +
     `"${dificuldadePadrao}").\n` +
     `- "topico": subtópico curto dentro de "${assunto}" (ex.: "Derivadas", ` +
-    '"Sistemas lineares"), ou null.\n\n' +
-    "Regras: um exercício por card; não invente exercícios que não estão no " +
-    "texto; NÃO escreva HTML, só LaTeX entre cifrões para a matemática." +
+    '"Tautologias"), ou null.\n\n' +
+    "REGRAS DE MATEMÁTICA (essenciais):\n" +
+    "- Envolva em cifrões $...$ TODA expressão simbólica/matemática, INCLUSIVE " +
+    "no enunciado da frente. Ex.: frente \"Traduza $p \\leftrightarrow \\neg q$\"; " +
+    "nunca deixe o símbolo solto fora dos cifrões.\n" +
+    "- Use COMANDOS LaTeX, não caracteres Unicode. Mapa: negação $\\neg$, " +
+    "conjunção (e) $\\land$, disjunção (ou) $\\lor$, condicional (se…então) " +
+    "$\\to$, bicondicional (se e somente se) $\\leftrightarrow$, raiz " +
+    "$\\sqrt{\\;}$, fração $\\frac{a}{b}$, potência x^{n}, multiplicação " +
+    "$\\cdot$, diferente $\\neq$, verdadeiro/falso use V e F normais.\n" +
+    "- Um exercício por card; não invente exercícios fora do texto; NÃO escreva " +
+    "HTML — só texto e LaTeX entre cifrões." +
     blocoContexto +
     `\nAssunto geral: ${assunto}.\n` +
     "Responda apenas com o JSON pedido, sem texto adicional."
