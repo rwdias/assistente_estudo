@@ -12,6 +12,7 @@ import {
   FLASHCARDS_SCHEMA,
   promptExtracao,
   promptFlashcards,
+  promptFlashcardsMath,
   respostaJson,
   usuarioAutenticado,
 } from "../_shared/comum.ts";
@@ -46,6 +47,8 @@ Deno.serve(async (req) => {
   const dificuldadePadrao = String(corpo.dificuldade_padrao ?? "Média");
   const tipo = String(corpo.tipo ?? "pergunta");
   const contexto = String(corpo.contexto ?? "");
+  // Matéria matemática: flashcards com fórmula em LaTeX + resolução passo a passo.
+  const matematica = corpo.matematica === true;
 
   if (!["pergunta", "flashcard"].includes(tipo)) {
     return respostaJson(req, { erro: "Tipo inválido." }, 400);
@@ -84,7 +87,10 @@ Deno.serve(async (req) => {
 
   try {
     if (tipo === "flashcard") {
-      const system = promptFlashcards(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto);
+      // matéria matemática usa o prompt com LaTeX + passo a passo elaborado.
+      const system = matematica
+        ? promptFlashcardsMath(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto)
+        : promptFlashcards(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto);
       const dados = (await chamarProvedor(
         modelo,
         system,

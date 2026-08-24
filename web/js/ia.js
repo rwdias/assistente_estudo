@@ -119,6 +119,8 @@ document.getElementById('ia-extrair-btn').addEventListener('click', async () => 
   };
   if (tipoIa === 'flashcard') {
     corpo.contexto = document.getElementById('ia-contexto').value.trim();
+    // matéria matemática: a IA gera flashcards com fórmula em LaTeX + passo a passo.
+    corpo.matematica = materiaEhMatematica();
   }
 
   const { data, error } = await sb.functions.invoke('extrair', { body: corpo });
@@ -164,9 +166,17 @@ function renderIaPreview() {
   `;
 
   document.getElementById('ia-salvar-btn').addEventListener('click', salvarExtracao);
+  wireMathPreviews();
 }
 
 function renderIaFlashcardHTML(card, indice) {
+  // Em matéria matemática, mostra um preview do LaTeX renderizado sob cada
+  // campo — assim o usuário vê a fórmula e corrige um `\frac` torto antes de
+  // salvar. `data-preview` liga o textarea ao seu preview (wireMathPreviews).
+  const mat = materiaEhMatematica();
+  const preview = (texto, alvo) => mat
+    ? `<div class="ia-math-preview" data-preview="${alvo}">${formatarTexto(texto || '', { math: true, compacto: true })}</div>`
+    : '';
   return `
     <div class="pergunta-card" data-idx="${indice}" data-tipo="flashcard">
       <label class="checkbox-label">
@@ -174,16 +184,32 @@ function renderIaFlashcardHTML(card, indice) {
       </label>
 
       <label>Frente</label>
-      <textarea class="ia-enunciado" rows="2">${esc(card.enunciado)}</textarea>
+      <textarea class="ia-enunciado" data-campo="frente" rows="2">${esc(card.enunciado)}</textarea>
+      ${preview(card.enunciado, 'frente')}
 
       <label>Verso</label>
-      <textarea class="ia-verso" rows="3">${esc(card.verso)}</textarea>
+      <textarea class="ia-verso" data-campo="verso" rows="3">${esc(card.verso)}</textarea>
+      ${preview(card.verso, 'verso')}
       <input type="hidden" class="ia-dificuldade" value="${esc(card.dificuldade || 'Média')}" />
 
       <label>Tópico (opcional)</label>
       <input type="text" class="ia-topico" value="${esc(card.topico || '')}" />
     </div>
   `;
+}
+
+// Atualiza o preview do LaTeX conforme se edita (só existe em matéria
+// matemática). Cada textarea com data-campo tem um preview irmão com o mesmo
+// data-preview dentro do mesmo card.
+function wireMathPreviews() {
+  document.querySelectorAll('#ia-preview textarea[data-campo]').forEach((ta) => {
+    const card = ta.closest('.pergunta-card');
+    const alvo = card?.querySelector(`.ia-math-preview[data-preview="${ta.dataset.campo}"]`);
+    if (!alvo) return;
+    ta.addEventListener('input', () => {
+      alvo.innerHTML = formatarTexto(ta.value, { math: true, compacto: true });
+    });
+  });
 }
 
 function renderIaItemHTML(pergunta, indice) {

@@ -330,6 +330,48 @@ export function promptFlashcards(
   );
 }
 
+// Flashcards de MATEMÁTICA a partir de exercícios de livro (com as respostas).
+// Diferenças do promptFlashcards normal: fórmulas em LaTeX (o app renderiza em
+// MathML) e o verso traz a resolução ELABORADA passo a passo — sempre — mas
+// ancorada na resposta que veio no material (a resposta ser conhecida evita a
+// IA "inventar" o resultado). Cada exercício vira um card (frente = enunciado,
+// verso = passo a passo + resposta final).
+export function promptFlashcardsMath(
+  assunto: string,
+  dificuldadePadrao: string,
+  maxFlashcards: number,
+  contexto: string,
+): string {
+  const blocoContexto = contexto.trim()
+    ? "\n\nCONTEXTO DA MATÉRIA (siga o recorte/estilo descrito — ex.: ementa):\n" +
+      "-----\n" + contexto.trim() + "\n-----\n"
+    : "";
+
+  return (
+    "Você monta flashcards de MATEMÁTICA a partir de exercícios de livro colados " +
+    "pelo usuário (enunciados e, quase sempre, as respostas/gabarito).\n\n" +
+    `Para cada exercício encontrado, no máximo ${maxFlashcards}, crie um card:\n` +
+    '- "frente": o ENUNCIADO do exercício, completo, preservando os dados. Toda ' +
+    "fórmula/símbolo matemático em LaTeX entre cifrões: inline com $...$ e " +
+    "expressões destacadas com $$...$$. Ex.: $x^2$, $\\frac{a}{b}$, " +
+    "$\\int_0^1 x\\,dx$, $\\sqrt{b^2-4ac}$.\n" +
+    '- "verso": a RESOLUÇÃO passo a passo, ELABORADA por você, terminando na ' +
+    "resposta final. Se o material trouxer a resposta, chegue EXATAMENTE nela " +
+    "(use-a como gabarito — não contradiga). Se não trouxer, resolva e mostre o " +
+    "resultado. Passos curtos e claros, cada um em uma linha, fórmulas em LaTeX. " +
+    "Destaque a resposta final (ex.: **Resposta:** $x = 2$).\n" +
+    '- "dificuldade": "Fácil", "Média" ou "Difícil" (se incerto, ' +
+    `"${dificuldadePadrao}").\n` +
+    `- "topico": subtópico curto dentro de "${assunto}" (ex.: "Derivadas", ` +
+    '"Sistemas lineares"), ou null.\n\n' +
+    "Regras: um exercício por card; não invente exercícios que não estão no " +
+    "texto; NÃO escreva HTML, só LaTeX entre cifrões para a matemática." +
+    blocoContexto +
+    `\nAssunto geral: ${assunto}.\n` +
+    "Responda apenas com o JSON pedido, sem texto adicional."
+  );
+}
+
 export interface PerguntaIA {
   enunciado: string;
   dificuldade: string;

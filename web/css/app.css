@@ -489,6 +489,12 @@ textarea { resize: vertical; }
    rolagem horizontal própria (equação larga não estoura a largura da página).
    Fórmula inline herda o tamanho do texto. */
 .math-bloco { display: block; overflow-x: auto; text-align: center; margin: 8px 0; }
+/* preview do LaTeX renderizado sob os campos de edição (ingestão matemática) */
+.ia-math-preview {
+  margin: -4px 0 10px; padding: 8px 10px; border-radius: var(--radius-sm);
+  background: var(--superficie-2); border: 1px dashed var(--borda-forte);
+  font-size: .92rem; color: var(--texto); overflow-x: auto; min-height: 1.4em;
+}
 math { font-size: 1.08em; }
 .temml-error { font-size: .85rem; }
 
