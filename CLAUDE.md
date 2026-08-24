@@ -72,9 +72,19 @@ fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
   Perguntas e simulado seguem **binários** — chamam sem `p_qualidade` e o
   comportamento é idêntico ao de sempre (provado por teste de regressão que
   compara a função antiga e a nova em 80 combinações de estado).
+- **Agendamento em DIAS ÚTEIS** (0019): a DATA da próxima revisão pula
+  sáb/dom e feriados nacionais do BR (fixos + móveis via Páscoa: Carnaval,
+  Sexta Santa, Corpus Christi) — funções `eh_feriado_nacional`/
+  `adiciona_dias_uteis`, fuso America/Sao_Paulo. Objetivo: não acumular
+  matéria depois de fds/feriado (nada vence em dia não-útil). O **número** do
+  intervalo (1, 6, round(i×EF)) NÃO muda — só a data derivada dele; o lapso
+  de +10min segue em tempo corrido. SM-2 provado idêntico à 0017 em 200 casos.
 - O prazo mostrado em cima de cada botão vem de `preverIntervalos` (core.js),
-  que é **espelho** da SM-2 do banco. Mexeu na SQL, mexa lá também — há teste
-  comparando as duas numa matriz de intervalo × EF × qualidade.
+  espelho do **número** do intervalo do banco (há teste numa matriz intervalo
+  × EF × qualidade). Atenção: o rótulo mostra o intervalo em dias ÚTEIS de
+  estudo (ex.: "6 dias"), então a data real cai alguns dias corridos depois
+  (fds/feriados pulados) — `preverIntervalos` NÃO replica o calendário de
+  feriados de propósito (evita duplicar essa lógica no cliente).
 - Item nunca respondido = **"a aprender"** (novo); respondido e vencido =
   **"a revisar"**. Errou na sessão → volta ao fim da fila como
   **"reaprendendo"** até acertar (espelho do Anki; lógica em `web/js/revisao.js`).
