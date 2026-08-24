@@ -6,6 +6,20 @@ de flashcard (resolve no papel → revela → se dá nota) se reaproveitam intei
 matemática adiciona uma camada por cima. Documento de DESENHO — implementar em
 fases, cada uma entregando valor sozinha.
 
+## Matéria tem TIPO (separação dura)
+
+A matéria ganha `tipo = 'normal' | 'matematica'`, escolhido **na criação**. A
+matéria **normal fica 100% inalterada** — o que existe hoje (múltipla escolha,
+vestibular, concurso) não muda em nada. O **modo matemática** (LaTeX, ingestão de
+livro, drill paramétrico, digitar-e-conferir) só aparece **dentro de matéria
+matemática**. Assim nada polui o fluxo normal, e a renderização de fórmula é
+escopada ao tipo matemática (não interpreta `$...$` em matéria normal).
+
+- `materias` recebe a coluna `tipo` (default `'normal'`); a UI de criar matéria
+  passa a perguntar o tipo. Coluna não é sensível → sem mudança de RLS.
+- O estudo e as telas de criação/ingestão ramificam pelo tipo da matéria atual.
+- (Em aberto) trocar o tipo depois da criação: por ora, fixo na criação.
+
 ## Duas trilhas (independentes)
 
 - **Trilha A — exercícios de livro (estáticos).** Você manda o material (texto, foto
@@ -109,8 +123,9 @@ já descarta URL fora do Storage do projeto — novo bucket no mesmo host funcio
 
 ## Fases de construção
 
-1. **Renderização LaTeX→MathML + ingestão por TEXTO** → flashcards matemáticos.
-   Sem esquema novo. Destrava o estudo com fórmula e passo a passo.
+1. **Tipo de matéria** (`materias.tipo`) + escolha na criação + **renderização
+   LaTeX→MathML** (escopada a matéria matemática) + **ingestão por TEXTO** →
+   flashcards matemáticos. Sem tabela nova além da coluna. Matéria normal intocada.
 1.5. **Ingestão por VISÃO** (foto/PDF): multimodal no `extrair`, `pdf.js`, bucket do
    usuário + anexo de figura.
 2. **Drill paramétrico**: `tipo='problema'` + tabela `problemas` + amostragem
