@@ -531,6 +531,16 @@ function perguntaMultipla(pergunta) {
   return pergunta.opcoes.filter((o) => o.correta).length > 1;
 }
 
+// Etiqueta de resultado ao pé de cada alternativa (após responder).
+const ICONE_TAG = {
+  acertou: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  errou: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  faltou: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+};
+function tagOpcao(tipo, texto) {
+  return `<span class="opcao-tag opcao-tag-${tipo}">${ICONE_TAG[tipo] || ''}${esc(texto)}</span>`;
+}
+
 function renderPerguntaQuizHTML(pergunta, chave) {
   const imagens = renderImagensPergunta(pergunta);
   const antes = pergunta.imagens_posicao === 'antes';
@@ -576,13 +586,26 @@ function wirePerguntaQuiz(pergunta, chave, aoResponder) {
     const correta =
       escolhidos.size === corretos.size && [...corretos].every((i) => escolhidos.has(i));
 
+    // Quatro estados distintos, cada um com etiqueta, para não confundir o que
+    // se acertou com o que faltou marcar:
+    //   acertou = marcou e é correta (verde sólido)
+    //   errou   = marcou e é errada  (vermelho)
+    //   faltou  = correta que NÃO foi marcada (verde tracejado)
+    //   (não marcada e errada = apagada)
     opcoesEls.forEach((el, idx) => {
       el.classList.add('desabilitada');
       const ehCorreta = pergunta.opcoes[idx].correta;
-      if (ehCorreta) el.classList.add('correta');
-      if (escolhidos.has(idx)) {
-        el.classList.add('selecionada');
-        if (!ehCorreta) el.classList.add('incorreta');
+      const marcada = escolhidos.has(idx);
+
+      if (ehCorreta && marcada) {
+        el.classList.add('correta', 'selecionada');
+        el.insertAdjacentHTML('beforeend', tagOpcao('acertou', 'você acertou'));
+      } else if (ehCorreta && !marcada) {
+        el.classList.add('correta', 'faltou');
+        el.insertAdjacentHTML('beforeend', tagOpcao('faltou', 'faltou marcar'));
+      } else if (!ehCorreta && marcada) {
+        el.classList.add('incorreta', 'selecionada');
+        el.insertAdjacentHTML('beforeend', tagOpcao('errou', 'você errou'));
       }
     });
 

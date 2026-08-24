@@ -525,8 +525,24 @@ textarea { resize: vertical; }
 .opcao-quiz.correta .opcao-letra { background: var(--ok); border-color: var(--ok); color: white; }
 .opcao-quiz.incorreta { border-color: var(--erro); background: var(--erro-bg); color: var(--texto); }
 .opcao-quiz.incorreta .opcao-letra { background: var(--erro); border-color: var(--erro); color: white; }
+/* "faltou marcar": correta que NÃO foi selecionada — verde TRACEJADO e sem
+   preenchimento, para distinguir da que foi acertada (verde sólido). */
+.opcao-quiz.correta.faltou { background: transparent; border-style: dashed; border-color: var(--ok); }
+.opcao-quiz.correta.faltou .opcao-letra { background: transparent; border-color: var(--ok); color: var(--ok); }
 .opcao-quiz.desabilitada { pointer-events: none; }
 .opcao-quiz.desabilitada:not(.correta):not(.incorreta) { opacity: .55; }
+
+/* etiqueta de resultado ao fim de cada alternativa respondida */
+.opcao-tag {
+  margin-left: auto; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: .72rem; font-weight: 800; letter-spacing: .01em; white-space: nowrap;
+}
+.opcao-tag svg { width: 13px; height: 13px; }
+.opcao-tag-acertou { color: var(--ok); background: color-mix(in srgb, var(--ok) 15%, transparent); }
+.opcao-tag-errou { color: var(--erro); background: color-mix(in srgb, var(--erro) 15%, transparent); }
+.opcao-tag-faltou { color: var(--ok); background: color-mix(in srgb, var(--ok) 13%, transparent); }
 .reformulado-aviso { display: inline-block; margin-bottom: 10px; font-size: .78rem; color: var(--destaque); font-weight: 700; }
 .opcoes-multipla-aviso { margin: -6px 0 10px; font-size: .8rem; color: var(--brand-ink); font-weight: 600; }
 .opcoes-confirmar-btn { margin-top: 4px; }
