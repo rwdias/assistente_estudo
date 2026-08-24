@@ -7,6 +7,11 @@ repetição espaçada SM-2 e ingestão de questões por IA).
 Idioma do projeto: **pt-BR** em tudo — código (nomes de funções/variáveis),
 UI, mensagens de commit e comunicação.
 
+**Código bem comentado é obrigatório** (inegociável): todo código novo explica
+O QUE faz e, principalmente, **POR QUÊ** — a intenção e a decisão por trás
+(trade-off, armadilha evitada, regra de negócio), não o óbvio. Vale para SQL,
+Edge Functions e front. Comentar como quem explica para o próximo a manter.
+
 ## Arquitetura (100% serverless — NÃO existe backend próprio)
 
 | Camada | Onde |
