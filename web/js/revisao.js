@@ -366,6 +366,9 @@ async function voltarFlashcard() {
 function renderFlashcardRevisao(card) {
   const container = document.getElementById('revisao-pergunta-container');
   const previsao = preverIntervalos(card.intervalo_dias, card.fator_facilidade);
+  // Em matéria matemática, frente/verso renderizam LaTeX; em normal, mat=false
+  // deixa o comportamento idêntico ao de sempre.
+  const mat = materiaEhMatematica();
 
   const botao = (qualidade, rotulo, classe, atalho) => `
     <div class="fc-opcao">
@@ -382,8 +385,8 @@ function renderFlashcardRevisao(card) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7.5 7V6a2 2 0 0 1 2-2H19a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-1"/></svg>
         Flashcard
       </span>
-      <div class="question-title">${formatarTexto(card.enunciado, { compacto: true })}</div>
-      <div class="fc-verso" id="fc-verso-revisao" style="display:none">${formatarTexto(card.verso || '', { compacto: true })}</div>
+      <div class="question-title">${formatarTexto(card.enunciado, { compacto: true, math: mat })}</div>
+      <div class="fc-verso" id="fc-verso-revisao" style="display:none">${formatarTexto(card.verso || '', { compacto: true, math: mat })}</div>
       <div class="fc-acoes">
         <button type="button" class="btn btn-primary" id="fc-mostrar-btn">Mostrar resposta</button>
       </div>

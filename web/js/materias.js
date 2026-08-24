@@ -85,16 +85,20 @@ document.addEventListener('keydown', (e) => {
 document.getElementById('nova-materia-btn').addEventListener('click', () => {
   fecharDropdownMaterias();
   document.getElementById('nova-materia-nome').value = '';
+  document.getElementById('nova-materia-tipo').value = 'normal'; // reset
   openModal('modal-nova-materia');
 });
 
 document.getElementById('confirmar-nova-materia-btn').addEventListener('click', async () => {
   const nome = document.getElementById('nova-materia-nome').value.trim();
   if (!nome) return;
+  // O tipo define o modo de estudo (normal x matemática) e é fixo na criação.
+  const tipoSel = document.getElementById('nova-materia-tipo').value;
+  const tipo = tipoSel === 'matematica' ? 'matematica' : 'normal';
 
   const { data: materia, error } = await sb
     .from('materias')
-    .insert({ nome })
+    .insert({ nome, tipo })
     .select('id, nome')
     .single();
 

@@ -306,12 +306,16 @@ async function carregarPerguntas() {
     return;
   }
 
+  // Em matéria matemática, a lista renderiza LaTeX (enunciado/verso/alternativas);
+  // em normal, `mat`=false mantém tudo com esc() como sempre foi.
+  const mat = materiaEhMatematica();
+  const fmt = (t) => (mat ? formatarTexto(t || '', { math: true, compacto: true }) : esc(t || ''));
   lista.innerHTML = perguntas
     .map(
       (p) => `
       <div class="pergunta-card" data-id="${p.id}">
         <div style="display:flex; align-items:flex-start; gap:10px">
-          <div class="pergunta-enunciado" style="flex:1">${esc(p.enunciado)}</div>
+          <div class="pergunta-enunciado" style="flex:1">${fmt(p.enunciado)}</div>
           ${renderMenuItemHTML([
             { acao: 'editar', rotulo: 'Editar', icone: ICONE_EDITAR },
             { acao: 'remover', rotulo: 'Remover', icone: ICONE_LIXEIRA, perigo: true },
@@ -326,13 +330,13 @@ async function carregarPerguntas() {
           ${p.madura ? '<span class="badge badge-green">dominada</span>' : ''}
         </div>
         ${p.tipo === 'flashcard'
-          ? `<div class="verso-lista">${esc(p.verso || '')}</div>`
+          ? `<div class="verso-lista">${fmt(p.verso)}</div>`
           : p.opcoes
               .map(
                 (o) => `
                 <div class="opcao-lista ${o.correta ? 'correta' : ''}">
                   <span class="marcador"></span>
-                  <span>${esc(o.texto)}</span>
+                  <span>${fmt(o.texto)}</span>
                 </div>`
               )
               .join('')}

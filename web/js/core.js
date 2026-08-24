@@ -12,6 +12,14 @@ function definirMateriaAtual(id) {
   else localStorage.removeItem('materiaId');
 }
 
+// A matéria (atual, por padrão) é do tipo matemática? É o que liga o modo math
+// — renderizar fórmula em LaTeX, formulários específicos etc. Matéria normal
+// (ou tipo ainda não carregado) devolve false, então nada muda no fluxo normal.
+// `tipo` vem de resumo_materias (0021).
+function materiaEhMatematica(id = Estado.materiaId) {
+  return Estado.materias.find((m) => m.id === id)?.tipo === 'matematica';
+}
+
 // --- domínio: SRS (exibição) ---
 // Porta de src/srs.py: dificuldade pessoal e maturidade são derivadas do
 // histórico salvo em revisoes_perguntas; o SM-2 em si roda no banco
@@ -583,11 +591,15 @@ function renderPerguntaQuizHTML(pergunta, chave) {
   const imagens = renderImagensPergunta(pergunta);
   const antes = pergunta.imagens_posicao === 'antes';
   const multipla = perguntaMultipla(pergunta);
+  // Em matéria matemática, enunciado e alternativas renderizam LaTeX. Em
+  // matéria normal, mat=false → comportamento byte-a-byte idêntico ao de sempre
+  // (enunciado via formatarTexto sem math; alternativas via esc puro).
+  const mat = materiaEhMatematica();
   return `
     <div class="question-card" data-chave="${chave}" ${multipla ? 'data-multipla="1"' : ''}>
       ${renderOrigemQuiz(pergunta)}
       ${antes ? imagens : ''}
-      <div class="question-title">${formatarTexto(pergunta.enunciado)}</div>
+      <div class="question-title">${formatarTexto(pergunta.enunciado, { math: mat })}</div>
       ${antes ? '' : imagens}
       ${multipla ? '<p class="opcoes-multipla-aviso">Esta questão tem mais de uma alternativa correta — marque todas e confirme.</p>' : ''}
       <div class="opcoes-quiz">
@@ -596,7 +608,7 @@ function renderPerguntaQuizHTML(pergunta, chave) {
             (o, idx) => `
             <div class="opcao-quiz" data-idx="${idx}">
               <span class="opcao-letra">${LETRAS[idx] || '?'}</span>
-              <span>${esc(o.texto)}</span>
+              <span>${mat ? formatarTexto(o.texto, { math: true, compacto: true }) : esc(o.texto)}</span>
             </div>`
           )
           .join('')}
