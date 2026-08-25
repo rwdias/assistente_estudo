@@ -219,6 +219,11 @@
         <svg class="sb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7.5 7V6a2 2 0 0 1 2-2H19a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-1"/></svg>
         <span>Flashcards via IA</span>
       </a>
+      <!-- Listas de exercícios: só aparece em matéria matemática (toggle via JS). -->
+      <a class="sb-item" data-panel="listas" id="sb-listas" style="display:none">
+        <svg class="sb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
+        <span>Listas de exercícios</span>
+      </a>
     </nav>
 
     <div class="sb-footer">
@@ -504,6 +509,33 @@
         <div id="ia-preview"></div>
       </div>
 
+      <!-- LISTAS de exercícios (matéria matemática) -->
+      <div class="panel" id="panel-listas">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Nova lista por IA</div>
+            <p class="card-sub">Cole os exercícios do livro/lista (com o gabarito, se tiver). A IA monta a lista com resolução, e o código confere as respostas calculáveis.</p>
+          </div>
+          <div class="card-body">
+            <label>Nome da lista</label>
+            <input type="text" id="lista-nome" placeholder="Ex.: Lista 1 — Lógica proposicional" />
+            <label>Provedor</label>
+            <select id="lista-modelo"><option>ChatGPT</option><option>Claude</option><option>Grok</option></select>
+            <label>Cole os exercícios (e o gabarito)</label>
+            <textarea id="lista-texto" rows="8" placeholder="Cole aqui os enunciados e, se houver, as respostas..."></textarea>
+            <button type="button" id="lista-gerar-btn" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z"/></svg>
+              Gerar lista
+            </button>
+          </div>
+        </div>
+
+        <div id="lista-preview"></div>
+
+        <h2 class="secao-titulo" style="margin-top:24px">Minhas listas</h2>
+        <div id="listas-existentes"></div>
+      </div>
+
     </div>
   </main>
 </div>
@@ -621,6 +653,11 @@
 <!-- Temml: LaTeX → MathML nativo (vendorizado, same-origin → CSP 'self';
      sem eval; usado só em matéria matemática via formatarTexto({math:true})). -->
 <script src="js/vendor/temml.min.js"></script>
+<!-- Avaliadores determinísticos (sem eval): o código confere as contas/lógica
+     das listas de exercícios, em vez de confiar na IA. -->
+<script src="js/calculo.js"></script>
+<script src="js/logica.js"></script>
+<script src="js/conferir.js"></script>
 <script src="js/core.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/materias.js"></script>
@@ -628,6 +665,7 @@
 <script src="js/simulado.js"></script>
 <script src="js/revisao.js"></script>
 <script src="js/ia.js"></script>
+<script src="js/listas.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

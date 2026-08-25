@@ -38,6 +38,9 @@ function painelAtivo() {
 function renderMateriaDropdown() {
   const atual = Estado.materias.find((m) => m.id === Estado.materiaId);
   document.getElementById('materia-atual-nome').textContent = atual ? atual.nome : 'Sem matéria';
+  // "Listas de exercícios" só faz sentido em matéria matemática.
+  const sbListas = document.getElementById('sb-listas');
+  if (sbListas) sbListas.style.display = materiaEhMatematica() ? '' : 'none';
 
   const lista = document.getElementById('materia-dropdown-lista');
 

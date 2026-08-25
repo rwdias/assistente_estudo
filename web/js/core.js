@@ -257,6 +257,7 @@ const panelMeta = {
   simulado: { titulo: 'Simulado', sub: 'Pratique com suas matérias ou monte pelo banco de questões' },
   perguntas: { titulo: 'Perguntas', sub: 'Cadastre e gerencie o banco de questões' },
   ia: { titulo: 'Adicionar via IA', sub: 'Cole questões e deixe a IA estruturar tudo' },
+  listas: { titulo: 'Listas de exercícios', sub: 'Monte listas de um livro; resolva e o código confere as respostas' },
 };
 
 function goPanel(id, sbItem) {
@@ -276,6 +277,7 @@ function goPanel(id, sbItem) {
   if (id === 'perguntas') aoAbrirPerguntas();
   if (id === 'revisao') carregarRevisao();
   if (id === 'ia') aoAbrirIa();
+  if (id === 'listas') aoAbrirListas();
 
   window.scrollTo(0, 0);
 }

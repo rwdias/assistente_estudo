@@ -221,11 +221,11 @@ const VERIFICACAO_SCHEMA = {
   required: ["tipo", "expressao", "atomos", "restricoes", "incognitas"],
   additionalProperties: false,
 };
-const FLASHCARD_MATH_SCHEMA = {
+const EXERCICIO_SCHEMA = {
   type: "object",
   properties: {
-    frente: { type: "string" },
-    verso: { type: "string" },
+    frente: { type: "string" },      // enunciado
+    verso: { type: "string" },       // resolução passo a passo
     resposta: { type: ["string", "null"] },
     dificuldade: { type: "string", enum: DIFICULDADES },
     topico: { type: ["string", "null"] },
@@ -234,12 +234,12 @@ const FLASHCARD_MATH_SCHEMA = {
   required: ["frente", "verso", "resposta", "dificuldade", "topico", "verificacao"],
   additionalProperties: false,
 };
-export const FLASHCARDS_MATH_SCHEMA = {
+export const EXERCICIOS_MATH_SCHEMA = {
   type: "object",
   properties: {
-    flashcards: { type: "array", items: FLASHCARD_MATH_SCHEMA },
+    exercicios: { type: "array", items: EXERCICIO_SCHEMA },
   },
-  required: ["flashcards"],
+  required: ["exercicios"],
   additionalProperties: false,
 };
 
@@ -407,31 +407,50 @@ export function promptFlashcardsMath(
     : "";
 
   return (
-    "Você monta flashcards de MATEMÁTICA a partir de exercícios de livro colados " +
-    "pelo usuário (enunciados e, quase sempre, as respostas/gabarito).\n\n" +
-    `Para cada exercício encontrado, no máximo ${maxFlashcards}, crie um card:\n` +
+    "Você monta EXERCÍCIOS de MATEMÁTICA a partir de listas/livros colados pelo " +
+    "usuário (enunciados e, quase sempre, as respostas/gabarito).\n\n" +
+    `Para cada exercício encontrado, no máximo ${maxFlashcards}, produza:\n` +
     '- "frente": o ENUNCIADO do exercício, completo, preservando os dados.\n' +
     '- "verso": a RESOLUÇÃO passo a passo, ELABORADA por você, terminando na ' +
     "resposta final. Se o material trouxer a resposta, chegue EXATAMENTE nela " +
     "(use-a como gabarito — NÃO se contradiga e não mude a resposta). Se não " +
-    "trouxer, resolva. Cada passo em uma linha (use quebras de linha normais, " +
-    "NUNCA barras invertidas soltas para quebrar linha). Termine destacando a " +
-    "resposta: **Resposta:** ...\n" +
+    "trouxer, resolva. Cada passo em uma linha (quebras normais, NUNCA barras " +
+    "invertidas soltas). Termine com **Resposta:** ...\n" +
+    '- "resposta": a resposta final CURTA e isolada (ex.: "F", "V(p)=F", ' +
+    '"$x=-3$"), ou null se não houver resposta objetiva.\n' +
     '- "dificuldade": "Fácil", "Média" ou "Difícil" (se incerto, ' +
     `"${dificuldadePadrao}").\n` +
-    `- "topico": subtópico curto dentro de "${assunto}" (ex.: "Derivadas", ` +
-    '"Tautologias"), ou null.\n\n' +
+    `- "topico": subtópico curto dentro de "${assunto}", ou null.\n` +
+    '- "verificacao": descreve o que é CALCULÁVEL, para o CÓDIGO conferir a ' +
+    "resposta (assim erros de conta são pegos). Escolha o tipo:\n" +
+    "   • Achar V ou F de uma proposição → tipo \"logica_valor\". \"expressao\" = " +
+    "a proposição com SÍMBOLOS de átomo (letras) e operadores ASCII (& = E, " +
+    "| = OU, ~ = NÃO, > = SE-ENTÃO, = = SE-E-SÓ-SE). \"atomos\" = lista, um por " +
+    "letra: se o átomo é uma CONTA, ponha \"aritmetica\" (ex.: \"3+2=7\") e " +
+    "\"valor\":null; se é um FATO do mundo ou um valor DADO no enunciado, ponha " +
+    "\"valor\" (\"V\"/\"F\") e \"aritmetica\":null.\n" +
+    "     Ex.: \"3+2=7 e 5+5=10\" → expressao \"a & b\", atomos [{simbolo:\"a\"," +
+    "aritmetica:\"3+2=7\",valor:null},{simbolo:\"b\",aritmetica:\"5+5=10\",valor:null}].\n" +
+    "     Ex. dado: \"$p \\land \\neg q$, com $V(p)=V, V(q)=F$\" → expressao " +
+    "\"p & ~q\", atomos [{simbolo:\"p\",aritmetica:null,valor:\"V\"},{simbolo:\"q\"," +
+    "aritmetica:null,valor:\"F\"}].\n" +
+    "   • Determinar V(p)/V(q) a partir de condições → tipo \"logica_incognita\". " +
+    "\"restricoes\" = lista de {expressao (em p,q,...), valor \"V\"/\"F\"}; " +
+    "\"incognitas\" = [\"p\"] ou [\"p\",\"q\"].\n" +
+    "     Ex.: \"$V(q)=F$ e $V(p\\lor q)=F$, achar $V(p)$\" → restricoes " +
+    "[{expressao:\"q\",valor:\"F\"},{expressao:\"p|q\",valor:\"F\"}], incognitas [\"p\"].\n" +
+    "   • Resposta é um NÚMERO → tipo \"numerico\", \"expressao\" = a conta (ex.: \"2+7\").\n" +
+    "   • NÃO calculável (traduzir p/ português, provar, desenhar) → tipo " +
+    "\"nenhuma\" e os demais campos null.\n" +
+    "   Na verificacao use a sintaxe ASCII dos operadores (& | ~ > =), NÃO LaTeX. " +
+    "Preencha com null todo campo não usado.\n\n" +
     "REGRAS DE MATEMÁTICA (essenciais):\n" +
-    "- Envolva em cifrões $...$ TODA expressão simbólica/matemática, INCLUSIVE " +
-    "no enunciado da frente. Ex.: frente \"Traduza $p \\leftrightarrow \\neg q$\"; " +
-    "nunca deixe o símbolo solto fora dos cifrões.\n" +
-    "- Use COMANDOS LaTeX, não caracteres Unicode. Mapa: negação $\\neg$, " +
-    "conjunção (e) $\\land$, disjunção (ou) $\\lor$, condicional (se…então) " +
-    "$\\to$, bicondicional (se e somente se) $\\leftrightarrow$, raiz " +
-    "$\\sqrt{\\;}$, fração $\\frac{a}{b}$, potência x^{n}, multiplicação " +
-    "$\\cdot$, diferente $\\neq$, verdadeiro/falso use V e F normais.\n" +
-    "- Um exercício por card; não invente exercícios fora do texto; NÃO escreva " +
-    "HTML — só texto e LaTeX entre cifrões." +
+    "- Envolva em cifrões $...$ TODA expressão simbólica na frente/verso/resposta. " +
+    "Ex.: \"Traduza $p \\leftrightarrow \\neg q$\". Nunca deixe símbolo solto.\n" +
+    "- Use COMANDOS LaTeX, não Unicode: negação $\\neg$, E $\\land$, OU $\\lor$, " +
+    "se-então $\\to$, sse $\\leftrightarrow$, raiz $\\sqrt{\\;}$, fração " +
+    "$\\frac{a}{b}$, potência x^{n}, vezes $\\cdot$, diferente $\\neq$.\n" +
+    "- Um exercício por item; não invente exercícios fora do texto; sem HTML." +
     blocoContexto +
     `\nAssunto geral: ${assunto}.\n` +
     "Responda apenas com o JSON pedido, sem texto adicional."

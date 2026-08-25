@@ -495,6 +495,14 @@ textarea { resize: vertical; }
   background: var(--superficie-2); border: 1px dashed var(--borda-forte);
   font-size: .92rem; color: var(--texto); overflow-x: auto; min-height: 1.4em;
 }
+/* conferência determinística do exercício (código confere a resposta da IA) */
+.conf-linha { margin-top: 6px; }
+.conf-badge {
+  display: inline-block; padding: 4px 10px; border-radius: 8px;
+  font-size: .78rem; font-weight: 700; line-height: 1.4;
+}
+.conf-ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.conf-corr { color: var(--destaque); background: var(--destaque-bg); }
 math { font-size: 1.08em; }
 .temml-error { font-size: .85rem; }
 

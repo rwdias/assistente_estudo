@@ -8,6 +8,7 @@ import {
   corsHeaders,
   DIFICULDADES,
   ErroProvedorIA,
+  EXERCICIOS_MATH_SCHEMA,
   EXTRACAO_SCHEMA,
   FLASHCARDS_SCHEMA,
   promptExtracao,
@@ -50,7 +51,9 @@ Deno.serve(async (req) => {
   // Matéria matemática: flashcards com fórmula em LaTeX + resolução passo a passo.
   const matematica = corpo.matematica === true;
 
-  if (!["pergunta", "flashcard"].includes(tipo)) {
+  // 'exercicio' = ingestão de lista (livro/lista com gabarito): exercícios com
+  // resolução, resposta e `verificacao` (o que o código confere).
+  if (!["pergunta", "flashcard", "exercicio"].includes(tipo)) {
     return respostaJson(req, { erro: "Tipo inválido." }, 400);
   }
   if (!texto.trim()) {
@@ -86,6 +89,20 @@ Deno.serve(async (req) => {
   }
 
   try {
+    if (tipo === "exercicio") {
+      // Lista de exercícios: enunciado + resolução + resposta + verificacao.
+      const system = promptFlashcardsMath(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto);
+      const dados = (await chamarProvedor(
+        modelo,
+        system,
+        texto,
+        EXERCICIOS_MATH_SCHEMA,
+        "extracao_exercicios",
+      )) as { exercicios: unknown[] };
+
+      return respostaJson(req, { exercicios: dados.exercicios.slice(0, MAX_PERGUNTAS) });
+    }
+
     if (tipo === "flashcard") {
       // matéria matemática usa o prompt com LaTeX + passo a passo elaborado.
       const system = matematica
