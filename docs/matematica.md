@@ -20,7 +20,58 @@ escopada ao tipo matemática (não interpreta `$...$` em matéria normal).
 - O estudo e as telas de criação/ingestão ramificam pelo tipo da matéria atual.
 - (Em aberto) trocar o tipo depois da criação: por ora, fixo na criação.
 
-## Duas trilhas (independentes)
+## Lista de exercícios — a 3ª categoria (decisão de 2026-08-25)
+
+Exercício de livro/lista **não é** flashcard nem simulado — é uma categoria
+própria, ao lado das duas que já existem:
+
+| Modo | Interação | Origem |
+|---|---|---|
+| Simulado | reconhecer a alternativa | minhas matérias / banco público |
+| Flashcard | recall ativo + auto-nota (SM-2) | anotações, fórmulas, definições |
+| **Lista de exercícios** | **resolver** e **conferir** a resposta | livros/listas com gabarito |
+
+Forçar em flashcard perde (1) a **identidade de lista** (numerada, com sub-itens,
+de uma fonte; você percorre a lista) e (2) a interação certa: **resolver e ser
+conferido**, não "virar o cartão e se dar nota".
+
+**Decisões fechadas com o dono:**
+- A **lista vive dentro da matéria** (matéria → listas → exercícios). Matéria
+  matemática passa a ter **flashcards** (recall de fórmula/definição) **E listas**.
+- Estudo: **resolver + conferir, com os errados na repetição espaçada**. Você
+  percorre a lista resolvendo; o CÓDIGO confere (Calc/Logica) ou compara com o
+  gabarito; há placar de progresso; quem erra entra no SM-2 (dias úteis) e volta.
+
+**Modelo de dados:**
+- `listas` (id, materia_id fk, nome, created_at) — coleção ordenada dentro da
+  matéria. RLS pela cadeia de dono (lista → matéria).
+- `perguntas.tipo` ganha `'exercicio'` + coluna `lista_id` (fk, nullable).
+- `exercicios` (1:1 com a pergunta): `resposta_esperada`, `verificacao jsonb`,
+  `ordem`. O `verso` guarda a resolução passo a passo.
+- **SM-2 reusa** `revisoes_perguntas`: responder um exercício chama
+  `registrar_resposta` (errado agenda cedo → volta; certo agenda longe). Reusa
+  variantes, dias úteis, RLS — tudo.
+
+**Resolver e conferir (onde entra o determinístico):**
+- Na ingestão, a IA emite por exercício uma `verificacao` (o que é calculável) —
+  o código roda `Calc`/`Logica` (`web/js/conferir.js`) e é a **fonte da verdade**
+  onde é 100% computável; onde não é, compara com a `resposta_esperada` (gabarito)
+  ou o usuário se auto-avalia.
+- Fluxo: digita a resposta → conferência determinística → certo/errado → SM-2.
+
+**Ingestão de livro/lista** (texto ou foto/PDF) → monta uma **LISTA** (exercícios
++ gabarito + verificação), NÃO flashcards. (Flashcards continuam para recall de
+fórmula/definição, criados à parte.)
+
+**Reaproveita o já feito (Fase 1):** renderização LaTeX→MathML, tipo de matéria,
+e os avaliadores determinísticos (`Calc`/`Logica`/`conferir`, já prontos e
+testados). Só a ingestão muda de alvo (flashcard → lista).
+
+## Trilha antiga — flashcards matemáticos e drill (mantidas)
+
+> Nota: a "Trilha A" abaixo foi **substituída** pela Lista de exercícios acima
+> para o caso de livros/listas. Flashcards matemáticos seguem existindo para
+> recall de conceito; a Trilha B (drill paramétrico) segue como está.
 
 - **Trilha A — exercícios de livro (estáticos).** Você manda o material (texto, foto
   ou PDF) com os exercícios **e as respostas**; a IA monta **flashcards

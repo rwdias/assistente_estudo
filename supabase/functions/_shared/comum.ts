@@ -184,6 +184,65 @@ export const FLASHCARDS_SCHEMA = {
   additionalProperties: false,
 };
 
+// Flashcard MATEMÁTICO: além de frente/verso, traz a `resposta` final (curta) e
+// a `verificacao` — a descrição do que é CALCULÁVEL, para o código conferir
+// (a IA traduz, o código calcula; ver web/js/conferir.js). Campos sempre
+// presentes (nullable) por exigência dos schemas estritos dos provedores.
+const ATOMO_SCHEMA = {
+  type: "object",
+  properties: {
+    simbolo: { type: "string" },
+    // conta a ser avaliada pelo código (ex.: "3+2=7") OU...
+    aritmetica: { type: ["string", "null"] },
+    // ...valor "V"/"F" dado pela IA (fato do mundo ou atribuição dada).
+    valor: { type: ["string", "null"] },
+  },
+  required: ["simbolo", "aritmetica", "valor"],
+  additionalProperties: false,
+};
+const RESTRICAO_SCHEMA = {
+  type: "object",
+  properties: {
+    expressao: { type: "string" },
+    valor: { type: "string", enum: ["V", "F"] },
+  },
+  required: ["expressao", "valor"],
+  additionalProperties: false,
+};
+const VERIFICACAO_SCHEMA = {
+  type: ["object", "null"],
+  properties: {
+    tipo: { type: "string", enum: ["numerico", "logica_valor", "logica_incognita", "nenhuma"] },
+    expressao: { type: ["string", "null"] },
+    atomos: { type: ["array", "null"], items: ATOMO_SCHEMA },
+    restricoes: { type: ["array", "null"], items: RESTRICAO_SCHEMA },
+    incognitas: { type: ["array", "null"], items: { type: "string" } },
+  },
+  required: ["tipo", "expressao", "atomos", "restricoes", "incognitas"],
+  additionalProperties: false,
+};
+const FLASHCARD_MATH_SCHEMA = {
+  type: "object",
+  properties: {
+    frente: { type: "string" },
+    verso: { type: "string" },
+    resposta: { type: ["string", "null"] },
+    dificuldade: { type: "string", enum: DIFICULDADES },
+    topico: { type: ["string", "null"] },
+    verificacao: VERIFICACAO_SCHEMA,
+  },
+  required: ["frente", "verso", "resposta", "dificuldade", "topico", "verificacao"],
+  additionalProperties: false,
+};
+export const FLASHCARDS_MATH_SCHEMA = {
+  type: "object",
+  properties: {
+    flashcards: { type: "array", items: FLASHCARD_MATH_SCHEMA },
+  },
+  required: ["flashcards"],
+  additionalProperties: false,
+};
+
 export const SABER_MAIS_SCHEMA = {
   type: "object",
   properties: {
