@@ -300,6 +300,8 @@ async function carregarPerguntas() {
     toast(erro.message, 'error');
     return;
   }
+  // Exercícios de lista são geridos no painel Listas, não aqui.
+  perguntas = perguntas.filter((p) => p.tipo !== 'exercicio');
 
   if (perguntas.length === 0) {
     lista.innerHTML = '<p>Nenhuma pergunta ou flashcard cadastrado ainda.</p>';

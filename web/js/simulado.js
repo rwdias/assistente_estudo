@@ -140,7 +140,8 @@ async function iniciarSimulado() {
       return;
     }
     // simulado é só múltipla escolha — flashcards vivem na Revisão
-    perguntas = perguntas.filter((p) => p.tipo !== 'flashcard');
+    // simulado é só múltipla escolha: exclui flashcards E exercícios de lista.
+    perguntas = perguntas.filter((p) => p.tipo === 'pergunta');
   }
 
   if (embaralhar) embaralharLista(perguntas);

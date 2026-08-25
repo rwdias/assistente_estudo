@@ -145,6 +145,9 @@ async function carregarRevisao() {
   const porId = new Map(perguntas.map((p) => [Number(p.id), p]));
   const idsNaFila = new Set();
   revisaoFila = perguntas
+    // Exercícios de lista têm SM-2, mas são estudados no modo "resolver a lista"
+    // (têm UI própria de resposta+conferência) — não entram na fila comum ainda.
+    .filter((p) => p.tipo !== 'exercicio')
     .filter((p) => filtroRevisao === 'tudo' || p.tipo === filtroRevisao)
     .filter((p) => p.proxima_revisao_em === null || new Date(p.proxima_revisao_em) <= agora)
     .map((p) => {
