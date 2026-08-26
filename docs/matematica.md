@@ -180,6 +180,19 @@ já descarta URL fora do Storage do projeto — novo bucket no mesmo host funcio
    a matéria matemática) + **ingestão por TEXTO** (`extrair` com flag `matematica`
    + `promptFlashcardsMath`, preview com fórmula renderizada). Matéria normal
    intocada. Estudo e lista renderizam fórmula só em matéria matemática.
+1.2. ✅ **FEITA.** **Lista de exercícios** (3ª categoria, dentro da matéria
+   matemática). Ingestão por texto mantém a **questão numerada inteira** com
+   todos os subitens juntos (não um card por subitem); cada questão traz
+   `verificacoes` (lista por subitem: rótulo + resposta + o que o código
+   confere). Migr. 0022 (`listas`/`exercicios`, `perguntas.tipo='exercicio'` +
+   `lista_id`), 0023 (`resumo_materias` não conta exercício na fila do
+   Aprendizado). UI: painel "Listas" (`web/js/listas.js`) com criar-por-IA +
+   preview com conferência do código, e **modo de estudo "resolver a lista"**
+   (clica na lista → vê o enunciado, resolve no papel, revela resolução +
+   gabarito + conferência por subitem → auto-avalia em 4 níveis no mesmo SM-2;
+   errar reenfileira na sessão). Perguntas/simulado/aprendizado filtram
+   `tipo='exercicio'` (só vive no modo lista). Tradução/itens sem V/F viram
+   `tipo:'nenhuma'` (sem conferência, sem falso alarme).
 1.5. **Ingestão por VISÃO** (foto/PDF): multimodal no `extrair`, `pdf.js`, bucket do
    usuário + anexo de figura.
 2. **Drill paramétrico**: `tipo='problema'` + tabela `problemas` + amostragem
