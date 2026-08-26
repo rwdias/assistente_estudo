@@ -506,6 +506,19 @@ textarea { resize: vertical; }
 math { font-size: 1.08em; }
 .temml-error { font-size: .85rem; }
 
+/* Cards de "Minhas listas": clicáveis, com a chamada "Estudar" à direita. */
+.lista-card { border: 1px solid var(--borda); background: var(--superficie); transition: border-color .15s, box-shadow .15s; }
+.lista-card:hover { border-color: var(--brand); box-shadow: var(--shadow); }
+.lista-card-estudar {
+  display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0;
+  color: var(--brand); font-weight: 700; font-size: .85rem;
+}
+/* Gabarito curto mostrado ao revelar a resolução no estudo da lista. */
+.lista-gabarito {
+  margin-top: 10px; padding: 8px 12px; border-radius: 8px;
+  background: var(--superficie-2); font-size: .9rem;
+}
+
 .badge {
   display: inline-flex; align-items: center; gap: 5px; padding: 3.5px 10px;
   border-radius: 20px; font-size: .72rem; font-weight: 700;

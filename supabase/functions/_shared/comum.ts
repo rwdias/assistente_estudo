@@ -209,29 +209,34 @@ const RESTRICAO_SCHEMA = {
   required: ["expressao", "valor"],
   additionalProperties: false,
 };
-const VERIFICACAO_SCHEMA = {
-  type: ["object", "null"],
+// Uma verificação por SUBITEM (a, b, c…) da questão: rótulo + a resposta que a
+// IA deu para o subitem + a descrição do que o código calcula para conferir.
+const SUBVERIFICACAO_SCHEMA = {
+  type: "object",
   properties: {
+    rotulo: { type: "string" },                 // "a", "b", "c"...
+    resposta: { type: ["string", "null"] },      // resposta da IA para o subitem
     tipo: { type: "string", enum: ["numerico", "logica_valor", "logica_incognita", "nenhuma"] },
     expressao: { type: ["string", "null"] },
     atomos: { type: ["array", "null"], items: ATOMO_SCHEMA },
     restricoes: { type: ["array", "null"], items: RESTRICAO_SCHEMA },
     incognitas: { type: ["array", "null"], items: { type: "string" } },
   },
-  required: ["tipo", "expressao", "atomos", "restricoes", "incognitas"],
+  required: ["rotulo", "resposta", "tipo", "expressao", "atomos", "restricoes", "incognitas"],
   additionalProperties: false,
 };
+// Exercício = a QUESTÃO NUMERADA INTEIRA (todos os subitens juntos). A
+// `verificacoes` lista um item por subitem, para o código conferir cada um.
 const EXERCICIO_SCHEMA = {
   type: "object",
   properties: {
-    frente: { type: "string" },      // enunciado
-    verso: { type: "string" },       // resolução passo a passo
-    resposta: { type: ["string", "null"] },
+    frente: { type: "string" },       // enunciado completo (com os subitens)
+    verso: { type: "string" },        // resolução de todos os subitens
     dificuldade: { type: "string", enum: DIFICULDADES },
     topico: { type: ["string", "null"] },
-    verificacao: VERIFICACAO_SCHEMA,
+    verificacoes: { type: "array", items: SUBVERIFICACAO_SCHEMA },
   },
-  required: ["frente", "verso", "resposta", "dificuldade", "topico", "verificacao"],
+  required: ["frente", "verso", "dificuldade", "topico", "verificacoes"],
   additionalProperties: false,
 };
 export const EXERCICIOS_MATH_SCHEMA = {
@@ -409,20 +414,22 @@ export function promptFlashcardsMath(
   return (
     "Você monta EXERCÍCIOS de MATEMÁTICA a partir de listas/livros colados pelo " +
     "usuário (enunciados e, quase sempre, as respostas/gabarito).\n\n" +
-    `Para cada exercício encontrado, no máximo ${maxFlashcards}, produza:\n` +
-    '- "frente": o ENUNCIADO do exercício, completo, preservando os dados.\n' +
-    '- "verso": a RESOLUÇÃO passo a passo, ELABORADA por você, terminando na ' +
-    "resposta final. Se o material trouxer a resposta, chegue EXATAMENTE nela " +
-    "(use-a como gabarito — NÃO se contradiga e não mude a resposta). Se não " +
-    "trouxer, resolva. Cada passo em uma linha (quebras normais, NUNCA barras " +
-    "invertidas soltas). Termine com **Resposta:** ...\n" +
-    '- "resposta": a resposta final CURTA e isolada (ex.: "F", "V(p)=F", ' +
-    '"$x=-3$"), ou null se não houver resposta objetiva.\n' +
+    "IMPORTANTE: um exercício = UMA QUESTÃO NUMERADA INTEIRA. Mantenha TODOS os " +
+    "subitens (a, b, c, …) da mesma questão JUNTOS no mesmo exercício — NÃO crie " +
+    "um exercício por subitem.\n\n" +
+    `Para cada questão numerada, no máximo ${maxFlashcards}, produza:\n` +
+    '- "frente": o ENUNCIADO completo da questão, com todos os subitens.\n' +
+    '- "verso": a RESOLUÇÃO de CADA subitem, ELABORADA por você. Comece cada ' +
+    "subitem com seu rótulo (ex.: \"a) …\"). Se o material trouxer as respostas, " +
+    "chegue EXATAMENTE nelas (gabarito — não se contradiga). Cada passo em uma " +
+    "linha (quebras normais, NUNCA barras invertidas soltas).\n" +
     '- "dificuldade": "Fácil", "Média" ou "Difícil" (se incerto, ' +
     `"${dificuldadePadrao}").\n` +
     `- "topico": subtópico curto dentro de "${assunto}", ou null.\n` +
-    '- "verificacao": descreve o que é CALCULÁVEL, para o CÓDIGO conferir a ' +
-    "resposta (assim erros de conta são pegos). Escolha o tipo:\n" +
+    '- "verificacoes": uma LISTA com UM item por subitem da questão. Cada item ' +
+    "tem \"rotulo\" (\"a\", \"b\", …), \"resposta\" (a resposta CURTA daquele " +
+    "subitem, ex.: \"F\", \"V(p)=F\", \"$p \\land q$\") e a descrição do que o " +
+    "CÓDIGO calcula para conferir (assim erros de conta são pegos). Tipo do subitem:\n" +
     "   • Achar V ou F de uma proposição → tipo \"logica_valor\". \"expressao\" = " +
     "a proposição com SÍMBOLOS de átomo (letras) e operadores ASCII (& = E, " +
     "| = OU, ~ = NÃO, > = SE-ENTÃO, = = SE-E-SÓ-SE). \"atomos\" = lista, um por " +
@@ -440,8 +447,14 @@ export function promptFlashcardsMath(
     "     Ex.: \"$V(q)=F$ e $V(p\\lor q)=F$, achar $V(p)$\" → restricoes " +
     "[{expressao:\"q\",valor:\"F\"},{expressao:\"p|q\",valor:\"F\"}], incognitas [\"p\"].\n" +
     "   • Resposta é um NÚMERO → tipo \"numerico\", \"expressao\" = a conta (ex.: \"2+7\").\n" +
-    "   • NÃO calculável (traduzir p/ português, provar, desenhar) → tipo " +
-    "\"nenhuma\" e os demais campos null.\n" +
+    "   • NÃO calculável → tipo \"nenhuma\" e os demais campos null. Entra AQUI: " +
+    "traduzir p/ português ou p/ símbolos, interpretar, provar, desenhar, E " +
+    "TAMBÉM toda questão cujos átomos NÃO têm valor V/F determinável (nem dado no " +
+    "enunciado, nem de uma conta). Ex.: \"p: Está frio; escreva ¬p em palavras\" " +
+    "→ \"nenhuma\" (não há V/F a calcular). Só use logica_valor/logica_incognita " +
+    "quando de fato houver V/F a apurar. Em \"nenhuma\", a \"resposta\" é a " +
+    "resposta curta REAL do subitem (a tradução, o símbolo, o valor pedido) — " +
+    "NUNCA um \"V\"/\"F\" inventado.\n" +
     "   Na verificacao use a sintaxe ASCII dos operadores (& | ~ > =), NÃO LaTeX. " +
     "Preencha com null todo campo não usado.\n\n" +
     "REGRAS DE MATEMÁTICA (essenciais):\n" +
@@ -450,7 +463,8 @@ export function promptFlashcardsMath(
     "- Use COMANDOS LaTeX, não Unicode: negação $\\neg$, E $\\land$, OU $\\lor$, " +
     "se-então $\\to$, sse $\\leftrightarrow$, raiz $\\sqrt{\\;}$, fração " +
     "$\\frac{a}{b}$, potência x^{n}, vezes $\\cdot$, diferente $\\neq$.\n" +
-    "- Um exercício por item; não invente exercícios fora do texto; sem HTML." +
+    "- Um exercício por QUESTÃO (subitens juntos); não invente questões fora do " +
+    "texto; sem HTML." +
     blocoContexto +
     `\nAssunto geral: ${assunto}.\n` +
     "Responda apenas com o JSON pedido, sem texto adicional."

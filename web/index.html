@@ -511,6 +511,8 @@
 
       <!-- LISTAS de exercícios (matéria matemática) -->
       <div class="panel" id="panel-listas">
+        <!-- Home: criar lista + minhas listas. Ao estudar, some e mostra #lista-estudo. -->
+        <div id="listas-home">
         <div class="card">
           <div class="card-header">
             <div class="card-title">Nova lista por IA</div>
@@ -534,6 +536,22 @@
 
         <h2 class="secao-titulo" style="margin-top:24px">Minhas listas</h2>
         <div id="listas-existentes"></div>
+        </div><!-- /#listas-home -->
+
+        <!-- Sub-view de estudo da lista: ver o enunciado, resolver no papel,
+             revelar a resolução + conferência do código e se auto-avaliar
+             (estilo flashcard, mesmo SM-2). Preenchida por listas.js. -->
+        <div id="lista-estudo" style="display:none">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:14px">
+            <button type="button" class="btn btn-secondary btn-sm" id="lista-estudo-voltar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><polyline points="15 18 9 12 15 6"/></svg>
+              Voltar às listas
+            </button>
+            <span class="card-title" id="lista-estudo-titulo"></span>
+          </div>
+          <div id="lista-estudo-resumo" class="stat-grid"></div>
+          <div id="lista-estudo-atual"></div>
+        </div>
       </div>
 
     </div>

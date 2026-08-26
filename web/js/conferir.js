@@ -60,6 +60,23 @@ function conferirVerificacao(v) {
   return { ok: false };
 }
 
+// Confere uma LISTA de subitens (a, b, c…) de uma questão. Cada subitem tem
+// `rotulo`, a `resposta` da IA e a descrição do que o código calcula. Devolve,
+// por subitem: { rotulo, respostaIA, respostaCodigo, ok, bate }.
+//   ok=false  → não deu para calcular (só a resposta da IA vale).
+//   ok=true   → o código calculou; `bate` diz se confere com a da IA.
+function conferirLista(verificacoes) {
+  const norm = (s) => String(s ?? '').toUpperCase().replace(/\s+/g, '').replace(/[.$]/g, '');
+  return (verificacoes || []).map((v) => {
+    const c = conferirVerificacao(v);
+    if (!c.ok) return { rotulo: v.rotulo, respostaIA: v.resposta, ok: false };
+    return {
+      rotulo: v.rotulo, respostaIA: v.resposta, respostaCodigo: c.resposta,
+      ok: true, bate: norm(c.resposta) === norm(v.resposta),
+    };
+  });
+}
+
 // "V"/"F"/"v"/"f"/true/false/1/0 → boolean, ou null se não reconhecido.
 function normalizarVF(x) {
   if (x === true || x === 1) return true;
@@ -77,5 +94,5 @@ function formatarNumero(n) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { conferirVerificacao, normalizarVF, formatarNumero };
+  module.exports = { conferirVerificacao, conferirLista, normalizarVF, formatarNumero };
 }
