@@ -76,10 +76,14 @@ document.getElementById('lista-gerar-btn')?.addEventListener('click', async () =
   btn.disabled = true;
   btn.textContent = `Consultando ${modelo}...`;
 
+  // Tópicos já existentes → a IA reutiliza os rótulos em vez de fragmentar.
+  const topicosExistentes = await topicosDaMateria(Estado.materiaId);
+
   const { data, error } = await sb.functions.invoke('extrair', {
     body: {
       modelo, texto, tipo: 'exercicio', matematica: true,
       assunto: materia?.nome ?? 'Matemática', dificuldade_padrao: 'Média',
+      topicos_existentes: topicosExistentes,
     },
   });
 

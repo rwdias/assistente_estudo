@@ -218,18 +218,46 @@ async function buscarPerguntasDaMateria(materiaId) {
   return data.map(normalizarPergunta);
 }
 
-async function garantirSubdivisao(materiaId, nome) {
-  const nomeLimpo = (nome || 'Geral').trim() || 'Geral';
+// Chave de COMPARAÇÃO de tópico (não de exibição): ignora caixa, acentos e
+// espaços repetidos. Assim "S3", "s3" e " S3 " são o MESMO tópico e não viram
+// subdivisões duplicadas — o antigo match exato (.eq nome) deixava duplicar.
+// A grafia guardada/exibida continua sendo a da primeira vez que apareceu.
+function chaveTopico(nome) {
+  return (nome || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+    .trim().replace(/\s+/g, ' ').toLowerCase();
+}
 
-  const { data: existente, error: erroBusca } = await sb
+// Lista os tópicos (subdivisões) já existentes numa matéria, sem o "Geral"
+// implícito. Enviado à IA na ingestão para ela REUTILIZAR rótulos em vez de
+// inventar sinônimos (contém a fragmentação da taxonomia).
+async function topicosDaMateria(materiaId) {
+  const { data, error } = await sb
     .from('subdivisoes')
-    .select('id')
-    .eq('materia_id', materiaId)
-    .eq('nome', nomeLimpo)
-    .maybeSingle();
+    .select('nome')
+    .eq('materia_id', materiaId);
+  if (error) return [];
+  return (data || [])
+    .map((s) => s.nome)
+    .filter((n) => n && n.trim() && n.trim().toLowerCase() !== 'geral');
+}
+
+async function garantirSubdivisao(materiaId, nome) {
+  const nomeLimpo = (nome || 'Geral').trim().replace(/\s+/g, ' ') || 'Geral';
+  const chave = chaveTopico(nomeLimpo);
+
+  // Busca por comparação NORMALIZADA (o Postgres só casava string idêntica).
+  // O conjunto de subdivisões por matéria é pequeno, então trazer todas e
+  // comparar no cliente é barato e evita escapar curingas de ILIKE.
+  const { data: existentes, error: erroBusca } = await sb
+    .from('subdivisoes')
+    .select('id, nome')
+    .eq('materia_id', materiaId);
 
   if (erroBusca) throw new Error(erroBusca.message);
-  if (existente) return existente.id;
+
+  const achado = (existentes || []).find((s) => chaveTopico(s.nome) === chave);
+  if (achado) return achado.id;
 
   const { data: criada, error: erroInsert } = await sb
     .from('subdivisoes')

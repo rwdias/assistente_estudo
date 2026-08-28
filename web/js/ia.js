@@ -122,6 +122,9 @@ document.getElementById('ia-extrair-btn').addEventListener('click', async () => 
     // matéria matemática: a IA gera flashcards com fórmula em LaTeX + passo a passo.
     corpo.matematica = materiaEhMatematica();
   }
+  // Envia os tópicos já existentes na matéria para a IA REUTILIZAR os rótulos
+  // em vez de inventar sinônimos/variações (evita fragmentar a taxonomia).
+  corpo.topicos_existentes = await topicosDaMateria(Estado.materiaId);
 
   const { data, error } = await sb.functions.invoke('extrair', { body: corpo });
 

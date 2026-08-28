@@ -50,6 +50,15 @@ Deno.serve(async (req) => {
   const contexto = String(corpo.contexto ?? "");
   // Matéria matemática: flashcards com fórmula em LaTeX + resolução passo a passo.
   const matematica = corpo.matematica === true;
+  // Tópicos que já existem na matéria (subdivisões). O front envia para a IA
+  // REUTILIZAR rótulos existentes em vez de inventar sinônimos/variações — é o
+  // que conteem a fragmentação da taxonomia. Cap defensivo no tamanho.
+  const topicosExistentes = Array.isArray(corpo.topicos_existentes)
+    ? (corpo.topicos_existentes as unknown[])
+      .map((t) => String(t).trim())
+      .filter(Boolean)
+      .slice(0, 200)
+    : [];
 
   // 'exercicio' = ingestão de lista (livro/lista com gabarito): exercícios com
   // resolução, resposta e `verificacao` (o que o código confere).
@@ -91,7 +100,7 @@ Deno.serve(async (req) => {
   try {
     if (tipo === "exercicio") {
       // Lista de exercícios: enunciado + resolução + resposta + verificacao.
-      const system = promptFlashcardsMath(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto);
+      const system = promptFlashcardsMath(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto, topicosExistentes);
       const dados = (await chamarProvedor(
         modelo,
         system,
@@ -106,8 +115,8 @@ Deno.serve(async (req) => {
     if (tipo === "flashcard") {
       // matéria matemática usa o prompt com LaTeX + passo a passo elaborado.
       const system = matematica
-        ? promptFlashcardsMath(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto)
-        : promptFlashcards(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto);
+        ? promptFlashcardsMath(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto, topicosExistentes)
+        : promptFlashcards(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto, topicosExistentes);
       const dados = (await chamarProvedor(
         modelo,
         system,
@@ -119,7 +128,7 @@ Deno.serve(async (req) => {
       return respostaJson(req, { flashcards: dados.flashcards.slice(0, MAX_PERGUNTAS) });
     }
 
-    const system = promptExtracao(assunto, dificuldadePadrao, MAX_PERGUNTAS);
+    const system = promptExtracao(assunto, dificuldadePadrao, MAX_PERGUNTAS, topicosExistentes);
     const dados = (await chamarProvedor(
       modelo,
       system,

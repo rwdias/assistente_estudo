@@ -291,10 +291,41 @@ export function promptSaberMais(pergunta: PerguntaIA, anteriores: string[]): str
   );
 }
 
+// Bloco de instrução de TÓPICO, compartilhado pelos três prompts de ingestão.
+// Existe para conter a fragmentação da taxonomia — o problema de o mesmo tema
+// virar N rótulos ("S3", "Amazon S3", "S3 Versioning") ou específico demais.
+// Duas regras: (1) REUTILIZAR um tópico que já existe na matéria (com a grafia
+// exata) sempre que a questão couber, criando novo só quando inédito; e (2)
+// granularidade de SERVIÇO/CONCEITO principal, nunca de sub-recurso/feature.
+// `topicosExistentes` é a lista atual de subdivisões da matéria (o front envia).
+export function blocoTopico(assunto: string, topicosExistentes: string[]): string {
+  const lista = (topicosExistentes || [])
+    .map((t) => String(t).trim())
+    .filter(Boolean)
+    .slice(0, 200); // teto defensivo: não estourar o tamanho do prompt
+
+  const jaExistem = lista.length
+    ? "TÓPICOS QUE JÁ EXISTEM nesta matéria — REUTILIZE um destes, com a grafia " +
+      "EXATA, sempre que a questão se encaixar em algum; só crie um novo se " +
+      "NENHUM servir:\n- " + lista.join("\n- ") + "\n\n"
+    : "";
+
+  return (
+    jaExistem +
+    `- "topico": o TEMA principal da questão dentro de "${assunto}", curto e ` +
+    "GENÉRICO — no nível de SERVIÇO/CONCEITO, JAMAIS de sub-recurso ou feature. " +
+    'Ex.: "S3" (não "S3 Versioning"), "IAM" (não "IAM Roles"), "SageMaker" ' +
+    '(não "SageMaker Endpoints"). Prefira 1–2 palavras. Se um tópico da lista ' +
+    "acima couber, use-o com a grafia EXATA; senão crie um novo seguindo essa " +
+    "mesma granularidade genérica. null só se realmente não der para determinar.\n"
+  );
+}
+
 export function promptExtracao(
   assunto: string,
   dificuldadePadrao: string,
   maxPerguntas: number,
+  topicosExistentes: string[] = [],
 ): string {
   return (
     "Você é um assistente que extrai questões de múltipla escolha de um " +
@@ -320,9 +351,7 @@ export function promptExtracao(
     "realmente corretas — pode ser mais de uma.\n" +
     '- "dificuldade": "Fácil", "Média" ou "Difícil". Se não for ' +
     `possível inferir, use "${dificuldadePadrao}".\n` +
-    `- "topico": um subtópico curto dentro de "${assunto}" (ex.: "IAM", ` +
-    '"Redes", "Regressão Linear"), ou null se não for possível ' +
-    "determinar.\n" +
+    blocoTopico(assunto, topicosExistentes) +
     '- "saber_mais": se o texto original trouxer explicação/comentário/' +
     "gabarito comentado sobre a questão (por que a alternativa correta é " +
     "certa e/ou por que as outras estão erradas), copie esse conteúdo aqui, " +
@@ -370,6 +399,7 @@ export function promptFlashcards(
   dificuldadePadrao: string,
   maxFlashcards: number,
   contexto: string,
+  topicosExistentes: string[] = [],
 ): string {
   const blocoContexto = contexto.trim()
     ? "\n\nCONTEXTO DA MATÉRIA (siga rigorosamente o estilo, o vocabulário e o " +
@@ -387,7 +417,7 @@ export function promptFlashcards(
     '- "verso": a resposta direta e concisa, sem rodeios.\n' +
     '- "dificuldade": "Fácil", "Média" ou "Difícil". Se não for possível ' +
     `inferir, use "${dificuldadePadrao}".\n` +
-    `- "topico": um subtópico curto dentro de "${assunto}", ou null.\n` +
+    blocoTopico(assunto, topicosExistentes) +
     blocoContexto +
     `\nAssunto geral: ${assunto}.\n` +
     "Responda apenas com o JSON pedido, sem texto adicional."
@@ -405,6 +435,7 @@ export function promptFlashcardsMath(
   dificuldadePadrao: string,
   maxFlashcards: number,
   contexto: string,
+  topicosExistentes: string[] = [],
 ): string {
   const blocoContexto = contexto.trim()
     ? "\n\nCONTEXTO DA MATÉRIA (siga o recorte/estilo descrito — ex.: ementa):\n" +
@@ -425,7 +456,7 @@ export function promptFlashcardsMath(
     "linha (quebras normais, NUNCA barras invertidas soltas).\n" +
     '- "dificuldade": "Fácil", "Média" ou "Difícil" (se incerto, ' +
     `"${dificuldadePadrao}").\n` +
-    `- "topico": subtópico curto dentro de "${assunto}", ou null.\n` +
+    blocoTopico(assunto, topicosExistentes) +
     '- "verificacoes": uma LISTA com UM item por subitem da questão. Cada item ' +
     "tem \"rotulo\" (\"a\", \"b\", …), \"resposta\" (a resposta CURTA daquele " +
     "subitem, ex.: \"F\", \"V(p)=F\", \"$p \\land q$\") e a descrição do que o " +
