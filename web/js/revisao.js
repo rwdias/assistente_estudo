@@ -98,6 +98,17 @@ function reenfileirarErrado(pergunta) {
   revisaoFila.push({ ...pergunta, novo: false, reaprendendo: true });
 }
 
+// Remove um item da sessão em andamento (usado ao ocultar/excluir durante o
+// estudo): tira todas as ocorrências dele da posição atual em diante e
+// re-renderiza — o próximo item assume o lugar, sem mexer no histórico.
+function descartarItemDaSessao(id) {
+  const idn = Number(id);
+  revisaoReaprendendoIds.delete(idn);
+  revisaoFila = revisaoFila.filter((p, i) => i < revisaoIndice || Number(p.id) !== idn);
+  salvarSessaoRevisao();
+  renderRevisaoAtual();
+}
+
 document.querySelectorAll('#tipo-toggle-revisao button').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#tipo-toggle-revisao button').forEach((b) => b.classList.remove('ativo'));
@@ -148,6 +159,7 @@ async function carregarRevisao() {
     // Exercícios de lista têm SM-2, mas são estudados no modo "resolver a lista"
     // (têm UI própria de resposta+conferência) — não entram na fila comum ainda.
     .filter((p) => p.tipo !== 'exercicio')
+    .filter((p) => !p.oculta) // itens ocultos não entram na revisão
     .filter((p) => filtroRevisao === 'tudo' || p.tipo === filtroRevisao)
     .filter((p) => p.proxima_revisao_em === null || new Date(p.proxima_revisao_em) <= agora)
     .map((p) => {
@@ -167,7 +179,7 @@ async function carregarRevisao() {
   revisaoReaprendendoIds.forEach((id) => {
     if (idsNaFila.has(id)) return;
     const pergunta = porId.get(id);
-    if (!pergunta) {
+    if (!pergunta || pergunta.oculta) {
       revisaoReaprendendoIds.delete(id);
       return;
     }
@@ -252,7 +264,11 @@ function renderRevisaoAtual() {
       <span style="display:flex; gap:6px; flex-wrap:wrap">${badgeEstado}</span>
       <span style="display:flex; align-items:center; gap:8px">
         ${botaoVoltarHTML}
-        ${renderMenuItemHTML([{ acao: 'editar', rotulo: 'Editar', icone: ICONE_EDITAR }])}
+        ${renderMenuItemHTML([
+          { acao: 'editar', rotulo: 'Editar', icone: ICONE_EDITAR },
+          { acao: 'ocultar', rotulo: 'Ocultar da revisão', icone: ICONE_OCULTAR },
+          { acao: 'excluir', rotulo: 'Excluir', icone: ICONE_LIXEIRA, perigo: true },
+        ])}
       </span>
     </div>
     ${
@@ -297,14 +313,23 @@ function renderRevisaoAtual() {
     document.getElementById('fc-voltar-btn').addEventListener('click', voltarFlashcard);
   }
 
-  wireMenuItem(container, (acao) => {
-    if (acao !== 'editar') return;
-    // Se está exibindo uma variante, o que se edita é a pergunta ORIGINAL —
-    // a variante é conteúdo derivado (e será descartada se o texto mudar).
-    const base = pergunta.original
-      ? { ...pergunta, enunciado: pergunta.original.enunciado, opcoes: pergunta.original.opcoes }
-      : pergunta;
-    abrirEdicaoItem(base, recarregarItemAtual);
+  wireMenuItem(container, async (acao) => {
+    if (acao === 'editar') {
+      // Se está exibindo uma variante, o que se edita é a pergunta ORIGINAL —
+      // a variante é conteúdo derivado (e será descartada se o texto mudar).
+      const base = pergunta.original
+        ? { ...pergunta, enunciado: pergunta.original.enunciado, opcoes: pergunta.original.opcoes }
+        : pergunta;
+      abrirEdicaoItem(base, recarregarItemAtual);
+    } else if (acao === 'ocultar') {
+      // Oculta e tira o item da sessão atual (segue para o próximo).
+      if (await ocultarPergunta(pergunta.id, true)) {
+        toast('Ocultada da revisão.');
+        descartarItemDaSessao(pergunta.id);
+      }
+    } else if (acao === 'excluir') {
+      pedirExclusaoPergunta(pergunta.id, () => descartarItemDaSessao(pergunta.id));
+    }
   });
 }
 

@@ -114,6 +114,9 @@ function normalizarPergunta(linha) {
     verso: linha.verso,
     imagens: linha.imagens || [],
     imagens_posicao: linha.imagens_posicao || 'depois',
+    // "Ocultar da revisão": item existe mas some da fila de estudo/simulado
+    // (fica na lista de Perguntas, com badge, e pode ser reexibido).
+    oculta: linha.oculta ?? false,
     // saber_mais NÃO vem no carregamento: quem decide cache-ou-IA é a Edge
     // Function, sob demanda (o conteúdo salvo não fica exposto na página).
     dificuldade: linha.dificuldade,
@@ -170,7 +173,7 @@ function aplicarVariante(pergunta) {
 }
 
 const SELECT_PERGUNTA = `
-  id, tipo, enunciado, verso, dificuldade, origem, imagens, imagens_posicao, created_at,
+  id, tipo, enunciado, verso, dificuldade, origem, imagens, imagens_posicao, oculta, created_at,
   opcoes ( texto, correta, ordem ),
   pergunta_variantes ( id, enunciado, opcoes, descartada ),
   revisoes_perguntas ( vezes_respondida, vezes_acertada, ultima_resposta_correta,
@@ -386,6 +389,45 @@ const ICONE_LIXEIRA =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
   '<polyline points="3 6 5 6 21 6"/>' +
   '<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+// olho cortado (ocultar) e olho (reexibir)
+const ICONE_OCULTAR =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+  '<path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>' +
+  '<path d="M6.61 6.61A18.5 18.5 0 0 0 2 12s3 8 10 8a9.12 9.12 0 0 0 5.39-1.61"/><line x1="2" y1="2" x2="22" y2="22"/></svg>';
+const ICONE_OLHO =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+  '<path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+
+// Marca/desmarca um item como oculto da revisão (update direto — RLS cobre;
+// não é atômico-crítico como trocar alternativas, então dispensa RPC).
+async function ocultarPergunta(id, oculta) {
+  const { error } = await sb.from('perguntas').update({ oculta }).eq('id', id);
+  if (error) { toast(error.message, 'error'); return false; }
+  return true;
+}
+
+// Exclusão de pergunta com confirmação, COMPARTILHADA entre a lista de
+// Perguntas e a tela de estudo. Guarda o id + um callback "depois de excluir"
+// (cada tela reage do seu jeito) e reaproveita o modal-delete. O handler do
+// botão de confirmar é ligado UMA vez aqui.
+let _exclusaoId = null;
+let _exclusaoApos = null;
+function pedirExclusaoPergunta(id, aposExcluir) {
+  _exclusaoId = id;
+  _exclusaoApos = aposExcluir || null;
+  openModal('modal-delete');
+}
+document.getElementById('modal-delete-confirm')?.addEventListener('click', async () => {
+  if (_exclusaoId == null) return;
+  const { error } = await sb.from('perguntas').delete().eq('id', _exclusaoId);
+  if (error) { toast(error.message, 'error'); return; }
+  closeModal('modal-delete');
+  toast('Item removido.');
+  const apos = _exclusaoApos;
+  _exclusaoId = null;
+  _exclusaoApos = null;
+  if (apos) await apos();
+});
 
 function renderMenuItemHTML(entradas) {
   return `

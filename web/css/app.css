@@ -531,6 +531,8 @@ math { font-size: 1.08em; }
 .badge-green { background: var(--ok-bg); color: var(--ok); }
 .badge-red { background: var(--erro-bg); color: var(--erro); }
 .badge-amber { background: var(--destaque-bg); color: var(--destaque); }
+/* item oculto da revisão: badge neutra/apagada */
+.badge-neutro { background: var(--superficie-2); color: var(--texto-2); }
 
 /* ============ QUIZ ============ */
 .question-card {

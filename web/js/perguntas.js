@@ -280,8 +280,6 @@ document.getElementById('form-nova-pergunta').addEventListener('submit', async (
   }
 });
 
-let perguntaParaRemover = null;
-
 async function carregarPerguntas() {
   const lista = document.getElementById('lista-perguntas');
 
@@ -320,7 +318,10 @@ async function carregarPerguntas() {
           <div class="pergunta-enunciado" style="flex:1">${fmt(p.enunciado)}</div>
           ${renderMenuItemHTML([
             { acao: 'editar', rotulo: 'Editar', icone: ICONE_EDITAR },
-            { acao: 'remover', rotulo: 'Remover', icone: ICONE_LIXEIRA, perigo: true },
+            p.oculta
+              ? { acao: 'reexibir', rotulo: 'Reexibir na revisão', icone: ICONE_OLHO }
+              : { acao: 'ocultar', rotulo: 'Ocultar da revisão', icone: ICONE_OCULTAR },
+            { acao: 'remover', rotulo: 'Excluir', icone: ICONE_LIXEIRA, perigo: true },
           ])}
         </div>
         <div class="pergunta-meta">
@@ -330,6 +331,7 @@ async function carregarPerguntas() {
           ${p.topico ? `<span class="badge badge-amber">${esc(p.topico)}</span>` : ''}
           <span>${p.vezes_acertada}/${p.vezes_respondida} acertos</span>
           ${p.madura ? '<span class="badge badge-green">dominada</span>' : ''}
+          ${p.oculta ? '<span class="badge badge-neutro">oculta da revisão</span>' : ''}
         </div>
         ${p.tipo === 'flashcard'
           ? `<div class="verso-lista">${fmt(p.verso)}</div>`
@@ -349,31 +351,23 @@ async function carregarPerguntas() {
   const porId = new Map(perguntas.map((p) => [Number(p.id), p]));
   lista.querySelectorAll('.pergunta-card').forEach((card) => {
     const id = Number(card.dataset.id);
-    wireMenuItem(card, (acao) => {
+    wireMenuItem(card, async (acao) => {
       if (acao === 'remover') {
-        perguntaParaRemover = id;
-        openModal('modal-delete');
+        pedirExclusaoPergunta(id, carregarPerguntas);
       } else if (acao === 'editar') {
         abrirEdicaoItem(porId.get(id), carregarPerguntas);
+      } else if (acao === 'ocultar' || acao === 'reexibir') {
+        const ok = await ocultarPergunta(id, acao === 'ocultar');
+        if (ok) {
+          toast(acao === 'ocultar' ? 'Ocultada da revisão.' : 'Reexibida na revisão.');
+          carregarPerguntas();
+        }
       }
     });
   });
 }
 
-document.getElementById('modal-delete-confirm').addEventListener('click', async () => {
-  if (perguntaParaRemover == null) return;
-
-  const { error } = await sb.from('perguntas').delete().eq('id', perguntaParaRemover);
-
-  if (error) {
-    toast(error.message, 'error');
-  } else {
-    closeModal('modal-delete');
-    toast('Pergunta removida.');
-    carregarPerguntas();
-  }
-  perguntaParaRemover = null;
-});
+// (a exclusão com confirmação vive em core.js: pedirExclusaoPergunta)
 
 // --- edição de pergunta/flashcard ---
 // `itemEmEdicao` guarda o item aberto e `aoSalvarEdicao` o que recarregar

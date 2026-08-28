@@ -139,9 +139,9 @@ async function iniciarSimulado() {
       toast(erro.message, 'error');
       return;
     }
-    // simulado é só múltipla escolha — flashcards vivem na Revisão
     // simulado é só múltipla escolha: exclui flashcards E exercícios de lista.
-    perguntas = perguntas.filter((p) => p.tipo === 'pergunta');
+    // Itens ocultos da revisão também ficam de fora do simulado.
+    perguntas = perguntas.filter((p) => p.tipo === 'pergunta' && !p.oculta);
   }
 
   if (embaralhar) embaralharLista(perguntas);
