@@ -200,8 +200,12 @@ user `postgres.scafgcpxjsimzaaviean`, senha no `.env`. (O host direto
   (mudou `_shared/comum.ts`? redeploy as três, que o compartilham).
 - Commits **sem trailer de coautoria**, mensagens em pt-BR.
 
-## Testes (não há suíte permanente — validação por E2E)
+## Testes (ainda por E2E; plano de suíte pytest em `docs/TESTES.md`)
 
+- **`docs/TESTES.md`**: plano para migrar a validação avulsa para uma suíte
+  pytest versionada (camadas: funções SQL, RLS, contrato das Edge Functions,
+  avaliadores, E2E), com fixtures de usuário descartável, marcadores
+  (`db/rls/edge/ai/e2e`) e rollout em fases. Consultar/atualizar ao criar testes.
 - Playwright (chromium) do `venv/` local contra `web/` servida com
   `python3 -m http.server 8001` (origem permitida no CORS) ou contra a URL
   pública. Scripts-modelo no scratchpad da sessão.
