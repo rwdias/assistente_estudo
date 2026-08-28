@@ -1,0 +1,6 @@
+# Dependências da suíte de testes (pytest). Instale no venv:
+#   venv/bin/pip install -r tests/requirements-dev.txt
+pytest>=8
+requests>=2.31
+psycopg[binary]>=3.1      # setup/admin via pooler quando preciso
+playwright>=1.62          # só para os testes @pytest.mark.e2e
