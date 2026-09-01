@@ -1,6 +1,20 @@
 let extracaoPendente = [];
 let tipoIa = 'pergunta';
 
+// Contexto PADRÃO para flashcards de matérias de EXATAS (matemática, física,
+// química, estatística…). Serve para o campo de contexto não vir vazio nessas
+// matérias: aparece pré-preenchido, e o usuário pode editar/salvar por matéria
+// a qualquer momento (o texto salvo sobrepõe este). Para mudar o padrão de TODAS
+// as futuras matérias de exatas, é só editar este texto.
+const CONTEXTO_PADRAO_EXATAS = `Matéria de EXATAS (matemática, física, química, estatística e afins). Gere flashcards que priorizam FÓRMULAS e sua aplicação:
+
+- Cubra: definições e conceitos-chave, fórmulas e teoremas, relações entre grandezas, condições de validade e casos particulares.
+- Toda fórmula vem em notação matemática, com o SIGNIFICADO de cada símbolo e as UNIDADES quando houver (ex.: v em m/s).
+- Um card = UM conceito, para recall ativo: a frente pede algo objetivo (a fórmula, a definição, quando aplicar); o verso responde direto e traz a fórmula/relação quando o conceito tiver uma.
+- Inclua, quando ajudar a fixar, uma pegadinha comum, uma condição de uso ("vale só quando…") ou um caso particular.
+- Priorize o que cai em prova: fórmulas-chave, como derivá-las ou aplicá-las, e a diferença entre conceitos que costumam ser confundidos.
+- Use a notação e os símbolos padrão da área.`;
+
 // Porta de validar_pergunta_json: >=2 opções, pelo menos 1 correta
 // (questões de múltipla resposta têm mais de uma), todos os textos
 // preenchidos.
@@ -63,7 +77,16 @@ async function aoAbrirIa() {
     .eq('id', Estado.materiaId)
     .single();
 
-  if (!error && data?.contexto_ia) campo.value = data.contexto_ia;
+  if (!error && data?.contexto_ia) {
+    campo.value = data.contexto_ia;
+  } else if (materiaEhMatematica()) {
+    // Matéria de exatas ainda sem contexto salvo: pré-preenche o padrão em vez
+    // de deixar vazio. É só uma sugestão editável — some se o usuário apagar, e
+    // vira o contexto da matéria quando ele clicar em "Salvar contexto".
+    campo.value = CONTEXTO_PADRAO_EXATAS;
+    document.getElementById('contexto-status').textContent =
+      'Contexto padrão de exatas — edite se quiser e clique em Salvar.';
+  }
 }
 
 document.getElementById('salvar-contexto-btn').addEventListener('click', async () => {
