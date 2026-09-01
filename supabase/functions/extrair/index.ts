@@ -21,7 +21,9 @@ import {
 const MAX_TEXTO = 20_000;
 const MAX_CONTEXTO = 10_000;
 const MAX_ASSUNTO = 150;
-const MAX_PERGUNTAS = 60;
+// Teto de itens por extração. Alto para caber slides densos (dezenas de
+// conceitos) sem cortar a cobertura; o custo real só aparece se a IA gerar tudo.
+const MAX_PERGUNTAS = 100;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -113,10 +115,13 @@ Deno.serve(async (req) => {
     }
 
     if (tipo === "flashcard") {
-      // matéria matemática usa o prompt com LaTeX + passo a passo elaborado.
-      const system = matematica
-        ? promptFlashcardsMath(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto, topicosExistentes)
-        : promptFlashcards(assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto, topicosExistentes);
+      // Flashcards de CONCEITO (anotações/slides/apostila) — sempre pelo
+      // promptFlashcards, que cobre o material de forma exaustiva. Em matéria de
+      // exatas, `matematica=true` liga as regras de LaTeX. (O promptFlashcardsMath,
+      // orientado a EXERCÍCIOS numerados, fica só para a ingestão de LISTAS.)
+      const system = promptFlashcards(
+        assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto, topicosExistentes, matematica,
+      );
       const dados = (await chamarProvedor(
         modelo,
         system,

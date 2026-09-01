@@ -6,13 +6,13 @@ let tipoIa = 'pergunta';
 // matérias: aparece pré-preenchido, e o usuário pode editar/salvar por matéria
 // a qualquer momento (o texto salvo sobrepõe este). Para mudar o padrão de TODAS
 // as futuras matérias de exatas, é só editar este texto.
-const CONTEXTO_PADRAO_EXATAS = `Matéria de EXATAS (matemática, física, química, estatística e afins). Gere flashcards que priorizam FÓRMULAS e sua aplicação:
+const CONTEXTO_PADRAO_EXATAS = `Matéria de EXATAS (matemática, física, química, estatística e afins). O objetivo é COBRIR TODO o material, sem pular conceitos.
 
-- Cubra: definições e conceitos-chave, fórmulas e teoremas, relações entre grandezas, condições de validade e casos particulares.
+- Percorra o conteúdo do início ao fim e crie cards para CADA conceito, definição, fórmula, teorema, propriedade, grandeza, classificação e termo que aparecer — inclusive os secundários. NÃO resuma nem selecione só os "principais".
+- Um mesmo tópico pode virar vários cards. Na dúvida entre incluir ou não algo, INCLUA — é melhor cards demais do que faltar conteúdo.
 - Toda fórmula vem em notação matemática, com o SIGNIFICADO de cada símbolo e as UNIDADES quando houver (ex.: v em m/s).
-- Um card = UM conceito, para recall ativo: a frente pede algo objetivo (a fórmula, a definição, quando aplicar); o verso responde direto e traz a fórmula/relação quando o conceito tiver uma.
-- Inclua, quando ajudar a fixar, uma pegadinha comum, uma condição de uso ("vale só quando…") ou um caso particular.
-- Priorize o que cai em prova: fórmulas-chave, como derivá-las ou aplicá-las, e a diferença entre conceitos que costumam ser confundidos.
+- Um card = UMA ideia, para recall ativo: a frente pede algo objetivo (a fórmula, a definição, quando aplicar); o verso responde direto e traz a fórmula/relação quando existir.
+- Quando ajudar a fixar, inclua uma condição de uso ("vale só quando…"), um caso particular ou uma pegadinha comum.
 - Use a notação e os símbolos padrão da área.`;
 
 // Porta de validar_pergunta_json: >=2 opções, pelo menos 1 correta

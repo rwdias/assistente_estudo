@@ -400,6 +400,7 @@ export function promptFlashcards(
   maxFlashcards: number,
   contexto: string,
   topicosExistentes: string[] = [],
+  matematica = false,
 ): string {
   const blocoContexto = contexto.trim()
     ? "\n\nCONTEXTO DA MATÉRIA (siga rigorosamente o estilo, o vocabulário e o " +
@@ -407,19 +408,44 @@ export function promptFlashcards(
       "-----\n" + contexto.trim() + "\n-----\n"
     : "";
 
+  // Matéria de exatas: fórmulas em LaTeX (o app renderiza em MathML). Diferente
+  // do prompt de EXERCÍCIOS (promptFlashcardsMath): aqui são cards de CONCEITO,
+  // não questões numeradas — é o que serve para slides/apostila.
+  const blocoMath = matematica
+    ? "\nNOTAÇÃO (matéria de exatas):\n" +
+      "- Envolva em cifrões $...$ TODA expressão, símbolo ou fórmula, na frente e " +
+      "no verso. Nunca deixe símbolo matemático solto.\n" +
+      "- Use COMANDOS LaTeX, não Unicode: $\\neg$ $\\land$ $\\lor$ $\\to$ " +
+      "$\\leftrightarrow$ raiz $\\sqrt{\\;}$ fração $\\frac{a}{b}$ potência x^{n} " +
+      "vezes $\\cdot$ diferente $\\neq$ $\\leq$ $\\geq$ somatório $\\sum$ integral $\\int$.\n" +
+      "- Toda fórmula vem com o significado de cada símbolo e as unidades quando houver.\n"
+    : "";
+
   return (
-    "Você é um assistente que cria flashcards de estudo (estilo Anki) a " +
-    "partir de um texto bruto colado pelo usuário (anotações, trechos de " +
-    "apostila, edital, questões, etc.).\n\n" +
-    `Crie flashcards objetivos, no máximo ${maxFlashcards}, cada um com:\n` +
-    '- "frente": uma pergunta curta, termo ou lacuna que force recall ' +
-    "ativo de UM conceito específico (nunca mais de um conceito por card).\n" +
-    '- "verso": a resposta direta e concisa, sem rodeios.\n' +
-    '- "dificuldade": "Fácil", "Média" ou "Difícil". Se não for possível ' +
-    `inferir, use "${dificuldadePadrao}".\n` +
+    "Você cria flashcards de estudo (estilo Anki) a partir de um material colado " +
+    "pelo usuário (anotações, apostila, SLIDES, edital, etc.).\n\n" +
+    "COBERTURA EXAUSTIVA — a regra MAIS IMPORTANTE: percorra o material do INÍCIO " +
+    "ao FIM e crie flashcards para CADA conceito, definição, fórmula, teorema, " +
+    "propriedade, classificação, termo e exemplo que aparecer — inclusive os " +
+    "secundários. NÃO resuma, NÃO selecione só os \"principais\", NÃO pule seções " +
+    "nem slides. Um mesmo conceito pode virar VÁRIOS cards. Na dúvida entre incluir " +
+    "ou não algo, INCLUA — é melhor cards demais do que faltar conteúdo. Slides " +
+    "costumam ter muitos itens curtos: cada tópico/bullet com informação nova vira " +
+    "pelo menos um card.\n\n" +
+    `Gere QUANTOS flashcards forem necessários para cobrir tudo (até ${maxFlashcards}). ` +
+    "Cada card:\n" +
+    '- "frente": pergunta curta, termo ou lacuna que force recall ativo de UM ' +
+    "conceito (nunca mais de um por card).\n" +
+    '- "verso": a resposta direta e concisa — inclua a fórmula/relação quando o ' +
+    "conceito tiver uma.\n" +
+    '- "dificuldade": "Fácil", "Média" ou "Difícil". Se não der para inferir, ' +
+    `use "${dificuldadePadrao}".\n` +
     blocoTopico(assunto, topicosExistentes) +
+    blocoMath +
     blocoContexto +
     `\nAssunto geral: ${assunto}.\n` +
+    "Se o material tiver mais conteúdo do que cabe no limite, prefira COBRIR mais " +
+    "conceitos com cards mais enxutos a aprofundar poucos.\n" +
     "Responda apenas com o JSON pedido, sem texto adicional."
   );
 }
@@ -631,6 +657,9 @@ async function chamarCompatOpenAI(
     body: JSON.stringify({
       model: Deno.env.get(config.envModelo) || config.modeloPadrao,
       messages: mensagens,
+      // Teto alto de saída: extrações grandes (slides com dezenas de conceitos)
+      // não podem ser truncadas no meio da lista de flashcards.
+      max_tokens: 16384,
       response_format: {
         type: "json_schema",
         json_schema: { name: nomeSchema, schema, strict: true },
