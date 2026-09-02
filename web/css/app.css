@@ -534,6 +534,15 @@ math { font-size: 1.08em; }
 /* item oculto da revisão: badge neutra/apagada */
 .badge-neutro { background: var(--superficie-2); color: var(--texto-2); }
 
+/* Faixa do modo Foco: explica a seleção dos itens (só aparece nesse modo). */
+.foco-info {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 16px; padding: 11px 16px;
+  background: var(--brand-light); color: var(--brand-ink);
+  border-radius: 10px; font-size: .88rem; line-height: 1.45;
+}
+.foco-info svg { width: 17px; height: 17px; flex-shrink: 0; }
+
 /* ============ QUIZ ============ */
 .question-card {
   background: var(--superficie); border-radius: var(--radius); border: 1px solid var(--borda);

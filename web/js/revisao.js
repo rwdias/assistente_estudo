@@ -2,8 +2,87 @@ let revisaoFila = [];
 let revisaoIndice = 0;
 let revisaoAcertos = 0;
 let revisaoErros = 0;
-let filtroRevisao = 'tudo'; // 'tudo' | 'pergunta' | 'flashcard'
+let filtroRevisao = 'tudo'; // 'tudo' | 'pergunta' | 'flashcard' | 'foco'
 let revisaoReaprendendoIds = new Set();
+
+// ===========================================================================
+// Modo FOCO — sessão curta e priorizada.
+// Problema que resolve: com centenas de itens vencidos, a fila inteira paralisa
+// ("muita coisa para estudar"). O Foco mistura perguntas E flashcards, ordena
+// por PRIORIDADE e corta nos N primeiros, dando uma sessão finita e útil.
+// ===========================================================================
+
+// Tamanho da sessão focada. Trocar aqui muda quantos itens entram.
+const FOCO_LIMITE = 100;
+
+// Tópicos considerados "fracos" nesta matéria (para a explicação e o badge).
+// null fora do modo Foco.
+let focoTopicosFracos = null;
+
+// Taxa de erro SUAVIZADA (Laplace): (erradas + 1) / (respondidas + 2).
+// A suavização é o ponto importante: sem ela, um item/tópico com 1 resposta e
+// 1 erro (100%) passaria na frente de um com 50 respostas e 20 erros (40%).
+// Pouca evidência é puxada para o meio (0,5) até haver histórico suficiente.
+function taxaErroSuavizada(respondidas, erradas) {
+  return (erradas + 1) / (respondidas + 2);
+}
+
+// Agrega acertos/erros POR TÓPICO na matéria inteira — inclusive itens que não
+// estão vencidos hoje. É o sinal central do Foco: "priorize o que eu mais erro".
+// Devolve Map<topico, { respondidas, erradas, taxa }>.
+function estatisticasPorTopico(perguntas) {
+  const stats = new Map();
+  for (const p of perguntas) {
+    if (p.tipo === 'exercicio' || p.oculta) continue;
+    const topico = p.topico || 'Geral';
+    const atual = stats.get(topico) || { respondidas: 0, erradas: 0 };
+    atual.respondidas += p.vezes_respondida;
+    atual.erradas += p.vezes_respondida - p.vezes_acertada;
+    stats.set(topico, atual);
+  }
+  for (const s of stats.values()) s.taxa = taxaErroSuavizada(s.respondidas, s.erradas);
+  return stats;
+}
+
+// Os tópicos em que mais se erra, com histórico suficiente para o número
+// significar algo (>= 3 respostas e ao menos 1 erro). Usado para explicar a
+// seleção ao usuário e marcar os itens.
+function topicosFracos(stats, quantos = 3) {
+  return [...stats.entries()]
+    .filter(([, s]) => s.respondidas >= 3 && s.erradas > 0)
+    .sort((a, b) => b[1].taxa - a[1].taxa)
+    .slice(0, quantos)
+    .map(([topico, s]) => ({
+      topico,
+      // taxa BRUTA para exibir (a suavizada é só para ordenar)
+      percentual: Math.round((s.erradas / s.respondidas) * 100),
+    }));
+}
+
+// Pontuação de prioridade de um item. Pesos, do mais para o menos importante:
+//   3× tópico que se erra mais  (o critério pedido)
+//   2× erro do próprio item
+//   1× há quanto tempo venceu   (satura em 30 dias de atraso)
+//   +2 se está "reaprendendo"   (errou nesta sessão → volta logo)
+// Item novo cai naturalmente no meio da fila: sem histórico, a suavização dá
+// 0,5 nas duas taxas — ele entra, mas atrás do que já se mostrou problemático.
+function pontuarPrioridade(p, statsTopico, agora) {
+  const DIA = 24 * 60 * 60 * 1000;
+  const stTopico = statsTopico.get(p.topico || 'Geral');
+  const erroTopico = stTopico ? stTopico.taxa : 0.5;
+  const erroItem = taxaErroSuavizada(p.vezes_respondida, p.vezes_respondida - p.vezes_acertada);
+
+  const atraso = p.proxima_revisao_em === null
+    ? 0.4 // nunca respondido: nunca "venceu" — entra, mas atrás do que venceu
+    : Math.min((agora - new Date(p.proxima_revisao_em)) / DIA / 30, 1);
+
+  return (
+    3 * erroTopico +
+    2 * erroItem +
+    1 * atraso +
+    (revisaoReaprendendoIds.has(Number(p.id)) ? 2 : 0)
+  );
+}
 
 // Pilha de desfazer da avaliação de flashcards (Acertei/Errei). Cada item
 // avaliado empilha um "frame" com o estado anterior (índice, contadores,
@@ -121,7 +200,7 @@ document.querySelectorAll('#tipo-toggle-revisao button').forEach((btn) => {
 
 (function restaurarFiltroRevisao() {
   const salvo = localStorage.getItem('filtroRevisao');
-  if (!['tudo', 'pergunta', 'flashcard'].includes(salvo)) return;
+  if (!['tudo', 'pergunta', 'flashcard', 'foco'].includes(salvo)) return;
   filtroRevisao = salvo;
   document.querySelectorAll('#tipo-toggle-revisao button').forEach((b) =>
     b.classList.toggle('ativo', b.dataset.filtro === filtroRevisao)
@@ -155,26 +234,42 @@ async function carregarRevisao() {
   const agora = new Date();
   const porId = new Map(perguntas.map((p) => [Number(p.id), p]));
   const idsNaFila = new Set();
-  revisaoFila = perguntas
+  // Candidatos: itens estudáveis e vencidos. O modo "foco" aceita os dois tipos
+  // (pergunta E flashcard) — o corte dele é por prioridade, não por tipo.
+  const candidatos = perguntas
     // Exercícios de lista têm SM-2, mas são estudados no modo "resolver a lista"
     // (têm UI própria de resposta+conferência) — não entram na fila comum ainda.
     .filter((p) => p.tipo !== 'exercicio')
     .filter((p) => !p.oculta) // itens ocultos não entram na revisão
-    .filter((p) => filtroRevisao === 'tudo' || p.tipo === filtroRevisao)
+    .filter((p) => filtroRevisao === 'tudo' || filtroRevisao === 'foco' || p.tipo === filtroRevisao)
     .filter((p) => p.proxima_revisao_em === null || new Date(p.proxima_revisao_em) <= agora)
-    .map((p) => {
-      idsNaFila.add(Number(p.id));
-      // aplicarVariante escolhe qual versão (original ou reformulada) entra
-      // nesta rodada; fica fixada no item da fila, então o "Voltar" restaura
-      // exatamente a mesma versão.
-      return { ...aplicarVariante(p), novo: p.vezes_respondida === 0 };
-    })
-    .sort((a, b) => {
+    // aplicarVariante escolhe qual versão (original ou reformulada) entra nesta
+    // rodada; fica fixada no item da fila, então o "Voltar" restaura a mesma.
+    .map((p) => ({ ...aplicarVariante(p), novo: p.vezes_respondida === 0 }));
+
+  if (filtroRevisao === 'foco') {
+    // Sessão priorizada e FINITA: ordena por prioridade e corta em FOCO_LIMITE.
+    // As estatísticas de tópico usam a matéria inteira (não só os vencidos),
+    // senão um tópico problemático some da conta justo quando está em dia.
+    const statsTopico = estatisticasPorTopico(perguntas);
+    focoTopicosFracos = topicosFracos(statsTopico);
+    revisaoFila = candidatos
+      .map((p) => ({ ...p, prioridade: pontuarPrioridade(p, statsTopico, agora) }))
+      .sort((a, b) => b.prioridade - a.prioridade)
+      .slice(0, FOCO_LIMITE);
+  } else {
+    focoTopicosFracos = null;
+    revisaoFila = candidatos.sort((a, b) => {
       if (a.novo !== b.novo) return a.novo ? -1 : 1;
       if (a.proxima_revisao_em === null) return -1;
       if (b.proxima_revisao_em === null) return 1;
       return new Date(a.proxima_revisao_em) - new Date(b.proxima_revisao_em);
     });
+  }
+
+  // idsNaFila é preenchido a partir da fila FINAL (no foco, o que sobrou do
+  // corte), para o bloco de reaprendendo abaixo não duplicar item já presente.
+  revisaoFila.forEach((p) => idsNaFila.add(Number(p.id)));
 
   revisaoReaprendendoIds.forEach((id) => {
     if (idsNaFila.has(id)) return;
@@ -215,6 +310,34 @@ function renderResumoRevisao() {
       <div class="stat-valor ${revisaoErros > 0 ? 'alerta' : ''}">${revisaoErros}</div>
       <div class="stat-rotulo">erros</div>
     </div>
+  `;
+
+  renderFocoInfo();
+}
+
+// No modo Foco, explica ao usuário POR QUE estes itens foram escolhidos — sem
+// isso a seleção parece arbitrária. Fora do Foco, a faixa some.
+function renderFocoInfo() {
+  const alvo = document.getElementById('revisao-foco-info');
+  if (!alvo) return;
+
+  if (filtroRevisao !== 'foco') {
+    alvo.style.display = 'none';
+    alvo.innerHTML = '';
+    return;
+  }
+
+  const fracos = focoTopicosFracos || [];
+  const detalhe = fracos.length
+    ? `Priorizando o que você mais erra: ${fracos
+        .map((f) => `<b>${esc(f.topico)}</b> (${f.percentual}% de erro)`)
+        .join(' · ')}.`
+    : 'Ainda sem histórico suficiente de erros — priorizando o que está vencido há mais tempo.';
+
+  alvo.style.display = 'flex';
+  alvo.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>
+    <span>Sessão focada: até ${FOCO_LIMITE} itens (perguntas e flashcards). ${detalhe}</span>
   `;
 }
 
@@ -257,6 +380,16 @@ function renderRevisaoAtual() {
 
   if (ehVariante) {
     badgeEstado += `<span class="badge badge-green">${ICONE_VARIANTE} versão reformulada</span>`;
+  }
+
+  // No modo Foco, marca o item cujo tópico está entre os que o usuário mais
+  // erra — é justamente a razão de ele ter subido na fila.
+  const ICONE_ALVO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>';
+  if (
+    filtroRevisao === 'foco' &&
+    (focoTopicosFracos || []).some((f) => f.topico === (pergunta.topico || 'Geral'))
+  ) {
+    badgeEstado += `<span class="badge badge-neutro">${ICONE_ALVO} tópico difícil</span>`;
   }
 
   container.innerHTML = `

@@ -453,8 +453,16 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7.5 7V6a2 2 0 0 1 2-2H19a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-1"/></svg>
             Flashcards
           </button>
+          <!-- Sessão curta e priorizada: perguntas + flashcards, só os mais
+               urgentes agora (pesa os tópicos em que se erra mais). -->
+          <button type="button" data-filtro="foco">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>
+            Foco 100
+          </button>
         </div>
         <div id="revisao-resumo" class="stat-grid"></div>
+        <!-- Só no modo Foco: explica POR QUE estes itens foram escolhidos -->
+        <div id="revisao-foco-info" class="foco-info" style="display:none"></div>
         <div id="revisao-atual"></div>
       </div>
 

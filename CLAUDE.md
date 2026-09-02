@@ -90,6 +90,16 @@ fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
   estudo (ex.: "6 dias"), então a data real cai alguns dias corridos depois
   (fds/feriados pulados) — `preverIntervalos` NÃO replica o calendário de
   feriados de propósito (evita duplicar essa lógica no cliente).
+- **Modo "Foco 100"** (4º filtro do Aprendizado): sessão curta e FINITA para
+  quando a fila tem centenas de itens. Mistura perguntas E flashcards vencidos,
+  ordena por prioridade e corta em `FOCO_LIMITE` (100). Pontuação em
+  `pontuarPrioridade` (revisao.js): `3×` taxa de erro do TÓPICO + `2×` erro do
+  próprio item + `1×` atraso (satura em 30 dias) + `2` se reaprendendo. As taxas
+  usam suavização de Laplace `(erradas+1)/(respondidas+2)` — sem ela, "1 erro de
+  1" passaria na frente de "20 de 50". Estatística de tópico vem da matéria
+  INTEIRA (não só dos vencidos). A faixa `#revisao-foco-info` explica a escolha
+  e o item ganha badge "tópico difícil" (`topicosFracos` só considera tópico com
+  ≥ 3 respostas — histórico ralo não vira "fraco").
 - Item nunca respondido = **"a aprender"** (novo); respondido e vencido =
   **"a revisar"**. Errou na sessão → volta ao fim da fila como
   **"reaprendendo"** até acertar (espelho do Anki; lógica em `web/js/revisao.js`).
