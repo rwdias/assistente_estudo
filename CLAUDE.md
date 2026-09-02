@@ -35,7 +35,11 @@ auth.users (Supabase)
 └── perfis            (quota diária de IA + nome/objetivo/nascimento do
     │                  cadastro; quota SÓ via função definer — o UPDATE do
     │                  usuário tem grant POR COLUNA nas 3 de perfil)
-└── materias          (usuario_id uuid, nome, contexto_ia md p/ flashcards)
+└── trilhas           (agrupam matérias do mesmo contexto: curso,
+    │                   certificação, concursos. SÓ organização — o estudo
+    │                   segue por matéria. materias.trilha_id é ON DELETE
+    │                   SET NULL: apagar a trilha NÃO apaga as matérias)
+└── materias          (usuario_id uuid, nome, trilha_id, contexto_ia md p/ flashcards)
     └── subdivisoes   ("tópicos"; "Geral" é o padrão implícito)
         └── perguntas (tipo 'pergunta'|'flashcard'; frente=enunciado, verso;
             │          dificuldade existe mas é INTERNA — nunca exibir na UI)
@@ -46,7 +50,9 @@ auth.users (Supabase)
                                     `descartada`. NÃO tem SM-2 próprio)
 ```
 
-Toda FK tem `ON DELETE CASCADE`. Ids são `bigint identity`.
+Toda FK tem `ON DELETE CASCADE` — **exceto `materias.trilha_id`**, que é
+`ON DELETE SET NULL` (a trilha é etiqueta de organização, não dona do conteúdo).
+Ids são `bigint identity`.
 
 ### Banco de provas (catálogo público)
 `catalogo_provas` → `catalogo_questoes` → `catalogo_alternativas`:

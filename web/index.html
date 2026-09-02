@@ -428,6 +428,14 @@
               <button type="button" class="btn btn-secondary btn-sm" id="config-salvar-nome-btn">Salvar</button>
             </div>
 
+            <label>Trilha</label>
+            <div class="opcao-row">
+              <select id="config-materia-trilha"></select>
+              <button type="button" class="btn btn-secondary btn-sm" id="config-salvar-trilha-btn">Salvar</button>
+            </div>
+            <input type="text" id="config-materia-trilha-nome" placeholder="Nome da nova trilha"
+                   style="display:none; margin-top:8px" />
+
             <label>Tópicos</label>
             <div id="config-topicos-lista"></div>
             <div class="opcao-row" style="margin-top:8px">
@@ -577,6 +585,12 @@
       <option value="normal">Normal — múltipla escolha, provas, concursos</option>
       <option value="matematica">Matemática — fórmulas, exercícios de livro</option>
     </select>
+    <!-- Trilha: agrupa matérias do mesmo contexto (curso, certificação...).
+         O valor "__nova" revela o campo de nome abaixo. -->
+    <label>Trilha</label>
+    <select id="nova-materia-trilha"></select>
+    <input type="text" id="nova-materia-trilha-nome" placeholder="Nome da nova trilha"
+           style="display:none; margin-top:8px" />
     <div class="modal-actions">
       <button class="btn btn-secondary" data-fechar-modal="modal-nova-materia">Cancelar</button>
       <button class="btn btn-primary" id="confirmar-nova-materia-btn">Criar</button>
@@ -661,6 +675,33 @@
 </div>
 
 <!-- MODAL confirmação de exclusão -->
+<!-- Renomear trilha (pelo menu no cabeçalho do grupo, no Início) -->
+<div class="modal-overlay" id="modal-trilha">
+  <div class="modal">
+    <h3>Renomear trilha</h3>
+    <label>Nome</label>
+    <input type="text" id="modal-trilha-nome" placeholder="Ex.: Estatística UFPR" />
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-fechar-modal="modal-trilha">Cancelar</button>
+      <button class="btn btn-primary" id="modal-trilha-confirm">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Excluir trilha: as matérias NÃO são apagadas (FK com ON DELETE SET NULL),
+     só deixam de ter trilha. O texto deixa isso explícito. -->
+<div class="modal-overlay" id="modal-delete-trilha">
+  <div class="modal">
+    <h3>Excluir trilha</h3>
+    <p>Excluir <strong id="modal-delete-trilha-nome"></strong>? As matérias dela
+       <strong>não serão apagadas</strong> — apenas ficarão sem trilha.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-fechar-modal="modal-delete-trilha">Cancelar</button>
+      <button class="btn btn-danger" id="modal-delete-trilha-confirm">Excluir trilha</button>
+    </div>
+  </div>
+</div>
+
 <!-- Gerar versões reformuladas de uma pergunta, a partir da lista de Perguntas.
      A ação também existe na tela de estudo, mas lá só aparece quando a pergunta
      cai na fila — por isso ela precisa estar acessível aqui. -->

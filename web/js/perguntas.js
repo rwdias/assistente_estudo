@@ -50,6 +50,12 @@ async function carregarConfigMateria() {
   const materia = Estado.materias.find((m) => m.id === Estado.materiaId);
   document.getElementById('config-materia-nome').value = materia?.nome ?? '';
 
+  // Trilha atual da matéria (agrupamento no seletor e no Início).
+  preencherSelectTrilha(document.getElementById('config-materia-trilha'), materia?.trilha_id);
+  const inputNovaTrilha = document.getElementById('config-materia-trilha-nome');
+  inputNovaTrilha.value = '';
+  inputNovaTrilha.style.display = 'none';
+
   const lista = document.getElementById('config-topicos-lista');
   let topicos;
   try {
@@ -106,6 +112,27 @@ document.getElementById('config-salvar-nome-btn').addEventListener('click', asyn
 
   toast('Matéria renomeada.');
   await carregarMaterias();
+});
+
+// Move a matéria para outra trilha (ou tira dela). Aceita "+ Nova trilha…",
+// criando a trilha antes de atribuir.
+document.getElementById('config-salvar-trilha-btn')?.addEventListener('click', async () => {
+  if (!Estado.materiaId) return;
+  const escolha = await resolverTrilhaSelecionada(
+    document.getElementById('config-materia-trilha'),
+    document.getElementById('config-materia-trilha-nome'),
+  );
+  if (!escolha.ok) return;
+
+  const { error } = await sb
+    .from('materias')
+    .update({ trilha_id: escolha.trilhaId })
+    .eq('id', Estado.materiaId);
+  if (error) { toast(error.message, 'error'); return; }
+
+  toast(escolha.trilhaId ? 'Matéria movida de trilha.' : 'Matéria ficou sem trilha.');
+  await carregarMaterias();
+  await carregarConfigMateria(); // re-render do select (pode ter trilha nova)
 });
 
 document.getElementById('config-add-topico-btn').addEventListener('click', async () => {

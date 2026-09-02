@@ -1,4 +1,80 @@
+// --- trilhas: agrupam matérias do mesmo contexto (curso, certificação...) ---
+// É só organização — o estudo continua escopado por matéria. A trilha de cada
+// matéria já vem em resumo_materias (trilha_id/trilha_nome), então a lista
+// separada abaixo serve só para preencher os seletores.
+async function carregarTrilhas() {
+  const { data, error } = await sb
+    .from('trilhas')
+    .select('id, nome')
+    .order('nome');
+  Estado.trilhas = error ? [] : (data || []);
+}
+
+// Agrupa as matérias por trilha para exibição. resumo_materias já vem ordenado
+// por trilha (nulls last) e depois por nome, então a ordem de inserção no Map
+// dá os grupos em ordem alfabética com "Sem trilha" no fim.
+function agruparPorTrilha(materias) {
+  const grupos = new Map();
+  for (const m of materias) {
+    const chave = m.trilha_id ?? 'sem';
+    if (!grupos.has(chave)) {
+      grupos.set(chave, {
+        id: m.trilha_id ?? null,
+        nome: m.trilha_nome || 'Sem trilha',
+        materias: [],
+      });
+    }
+    grupos.get(chave).materias.push(m);
+  }
+  return [...grupos.values()];
+}
+
+// Preenche um <select> de trilha. `__nova` é a opção que revela o campo de nome.
+function preencherSelectTrilha(select, trilhaId) {
+  if (!select) return;
+  select.innerHTML =
+    '<option value="">Sem trilha</option>' +
+    (Estado.trilhas || [])
+      .map((t) => `<option value="${t.id}">${esc(t.nome)}</option>`)
+      .join('') +
+    '<option value="__nova">+ Nova trilha…</option>';
+  select.value = trilhaId ? String(trilhaId) : '';
+}
+
+// Resolve o valor escolhido no select em um trilha_id: cria a trilha quando o
+// usuário optou por "+ Nova trilha…". Devolve { ok, trilhaId }.
+async function resolverTrilhaSelecionada(select, inputNome) {
+  if (select.value !== '__nova') {
+    return { ok: true, trilhaId: select.value ? Number(select.value) : null };
+  }
+  const nome = (inputNome?.value || '').trim();
+  if (!nome) {
+    toast('Dê um nome à nova trilha.', 'error');
+    return { ok: false };
+  }
+  const { data, error } = await sb.from('trilhas').insert({ nome }).select('id').single();
+  if (error) {
+    toast(error.message, 'error');
+    return { ok: false };
+  }
+  await carregarTrilhas();
+  return { ok: true, trilhaId: data.id };
+}
+
+// Liga um select de trilha ao seu input de "nova trilha" (mostra/esconde).
+function ligarSelectTrilha(selectId, inputId) {
+  const select = document.getElementById(selectId);
+  const input = document.getElementById(inputId);
+  select?.addEventListener('change', () => {
+    input.style.display = select.value === '__nova' ? 'block' : 'none';
+    if (select.value === '__nova') input.focus();
+  });
+}
+ligarSelectTrilha('nova-materia-trilha', 'nova-materia-trilha-nome');
+ligarSelectTrilha('config-materia-trilha', 'config-materia-trilha-nome');
+
 async function carregarMaterias() {
+  await carregarTrilhas();
   const { data, error } = await sb.rpc('resumo_materias');
 
   if (error) {
@@ -49,14 +125,26 @@ function renderMateriaDropdown() {
     return;
   }
 
-  lista.innerHTML = Estado.materias
-    .map((m) => {
-      const pendentes = Number(m.a_aprender || 0) + Number(m.a_revisar || 0);
-      return `
-      <button type="button" class="materia-item ${m.id === Estado.materiaId ? 'ativo' : ''}" data-id="${m.id}">
-        <span>${esc(m.nome)}</span>
-        ${pendentes > 0 ? `<span class="badge badge-amber">${pendentes}</span>` : ''}
-      </button>`;
+  // Agrupado por trilha: com muitas matérias, achar a certa fica difícil numa
+  // lista plana. O cabeçalho do grupo some quando só existe "Sem trilha".
+  const grupos = agruparPorTrilha(Estado.materias);
+  const semTrilhaApenas = grupos.length === 1 && grupos[0].id === null;
+
+  lista.innerHTML = grupos
+    .map((g) => {
+      const itens = g.materias
+        .map((m) => {
+          const pendentes = Number(m.a_aprender || 0) + Number(m.a_revisar || 0);
+          return `
+          <button type="button" class="materia-item ${m.id === Estado.materiaId ? 'ativo' : ''}" data-id="${m.id}">
+            <span>${esc(m.nome)}</span>
+            ${pendentes > 0 ? `<span class="badge badge-amber">${pendentes}</span>` : ''}
+          </button>`;
+        })
+        .join('');
+      return semTrilhaApenas
+        ? itens
+        : `<div class="materia-grupo">${esc(g.nome)}</div>${itens}`;
     })
     .join('');
 
@@ -89,6 +177,12 @@ document.getElementById('nova-materia-btn').addEventListener('click', () => {
   fecharDropdownMaterias();
   document.getElementById('nova-materia-nome').value = '';
   document.getElementById('nova-materia-tipo').value = 'normal'; // reset
+  // Sugere a trilha da matéria atual — criar várias matérias do mesmo curso
+  // seguidas é o caso comum.
+  const atual = Estado.materias.find((m) => m.id === Estado.materiaId);
+  preencherSelectTrilha(document.getElementById('nova-materia-trilha'), atual?.trilha_id);
+  document.getElementById('nova-materia-trilha-nome').value = '';
+  document.getElementById('nova-materia-trilha-nome').style.display = 'none';
   openModal('modal-nova-materia');
 });
 
@@ -99,9 +193,16 @@ document.getElementById('confirmar-nova-materia-btn').addEventListener('click', 
   const tipoSel = document.getElementById('nova-materia-tipo').value;
   const tipo = tipoSel === 'matematica' ? 'matematica' : 'normal';
 
+  // Cria a trilha antes, se o usuário escolheu "+ Nova trilha…".
+  const escolha = await resolverTrilhaSelecionada(
+    document.getElementById('nova-materia-trilha'),
+    document.getElementById('nova-materia-trilha-nome'),
+  );
+  if (!escolha.ok) return;
+
   const { data: materia, error } = await sb
     .from('materias')
-    .insert({ nome, tipo })
+    .insert({ nome, tipo, trilha_id: escolha.trilhaId })
     .select('id, nome')
     .single();
 
@@ -171,8 +272,89 @@ async function carregarDashboard() {
     return;
   }
 
-  container.innerHTML = Estado.materias
-    .map((m) => {
+  // Agrupado por trilha. O cabeçalho ocupa a linha inteira do grid (mesmo truque
+  // do empty-state) e leva um menu para renomear/excluir a trilha.
+  const grupos = agruparPorTrilha(Estado.materias);
+  const semTrilhaApenas = grupos.length === 1 && grupos[0].id === null;
+
+  container.innerHTML = grupos
+    .map((g) => {
+      const cabecalho = semTrilhaApenas
+        ? ''
+        : `<div class="trilha-cabecalho" style="grid-column:1/-1" data-trilha="${g.id ?? ''}">
+             <span class="trilha-nome">${esc(g.nome)}</span>
+             <span class="trilha-contagem">${g.materias.length} matéria(s)</span>
+             ${g.id
+               ? renderMenuItemHTML([
+                   { acao: 'renomear-trilha', rotulo: 'Renomear trilha', icone: ICONE_EDITAR },
+                   { acao: 'excluir-trilha', rotulo: 'Excluir trilha', icone: ICONE_LIXEIRA, perigo: true },
+                 ])
+               : ''}
+           </div>`;
+      return cabecalho + g.materias.map((m) => cardMateriaHTML(m)).join('');
+    })
+    .join('');
+
+  // menus dos cabeçalhos de trilha
+  container.querySelectorAll('.trilha-cabecalho').forEach((cab) => {
+    const trilhaId = Number(cab.dataset.trilha);
+    if (!trilhaId) return;
+    const grupo = grupos.find((g) => g.id === trilhaId);
+    wireMenuItem(cab, (acao) => {
+      if (acao === 'renomear-trilha') pedirRenomearTrilha(grupo);
+      else if (acao === 'excluir-trilha') pedirExcluirTrilha(grupo);
+    });
+  });
+
+  wireCardsMateria(container);
+}
+
+// --- renomear / excluir trilha (pelo menu no cabeçalho do grupo) ---
+let trilhaEmEdicao = null;
+
+function pedirRenomearTrilha(grupo) {
+  trilhaEmEdicao = grupo;
+  document.getElementById('modal-trilha-nome').value = grupo.nome;
+  openModal('modal-trilha');
+}
+
+document.getElementById('modal-trilha-confirm')?.addEventListener('click', async () => {
+  if (!trilhaEmEdicao) return;
+  const nome = document.getElementById('modal-trilha-nome').value.trim();
+  if (!nome) { toast('Dê um nome à trilha.', 'error'); return; }
+
+  const { error } = await sb.from('trilhas').update({ nome }).eq('id', trilhaEmEdicao.id);
+  if (error) {
+    toast(error.code === '23505' ? 'Você já tem uma trilha com esse nome.' : error.message, 'error');
+    return;
+  }
+  closeModal('modal-trilha');
+  trilhaEmEdicao = null;
+  await carregarDashboard();
+  toast('Trilha renomeada.');
+});
+
+function pedirExcluirTrilha(grupo) {
+  trilhaEmEdicao = grupo;
+  document.getElementById('modal-delete-trilha-nome').textContent = grupo.nome;
+  openModal('modal-delete-trilha');
+}
+
+document.getElementById('modal-delete-trilha-confirm')?.addEventListener('click', async () => {
+  if (!trilhaEmEdicao) return;
+  // As matérias NÃO são apagadas: a FK é ON DELETE SET NULL, então elas só
+  // passam para o grupo "Sem trilha".
+  const { error } = await sb.from('trilhas').delete().eq('id', trilhaEmEdicao.id);
+  if (error) { toast(error.message, 'error'); return; }
+
+  closeModal('modal-delete-trilha');
+  trilhaEmEdicao = null;
+  await carregarDashboard();
+  toast('Trilha excluída — as matérias continuam na sua conta.');
+});
+
+// Card de uma matéria no Início (extraído para o agrupamento por trilha).
+function cardMateriaHTML(m) {
       const pendentes = Number(m.a_aprender || 0) + Number(m.a_revisar || 0);
       return `
       <div class="card-materia" data-id="${m.id}" title="Abrir aprendizado de ${esc(m.nome)}">
@@ -194,9 +376,10 @@ async function carregarDashboard() {
           ${pendentes > 0 ? `<span class="badge badge-amber">${pendentes} pendente${pendentes === 1 ? '' : 's'}</span>` : ''}
         </div>
       </div>`;
-    })
-    .join('');
+}
 
+// Liga as ações dos cards de matéria (abrir, adicionar, configurar, remover).
+function wireCardsMateria(container) {
   container.querySelectorAll('.card-materia').forEach((card) => {
     card.addEventListener('click', () => {
       definirMateriaAtual(Number(card.dataset.id));

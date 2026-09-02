@@ -4,6 +4,7 @@ const sb = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
 const Estado = {
   materiaId: localStorage.getItem('materiaId') ? Number(localStorage.getItem('materiaId')) : null,
   materias: [],
+  trilhas: [], // agrupam matérias do mesmo contexto (curso/certificação/concurso)
 };
 
 function definirMateriaAtual(id) {

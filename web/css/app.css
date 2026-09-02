@@ -300,6 +300,18 @@ textarea { resize: vertical; }
   font: inherit; font-size: .88rem; font-weight: 500; color: var(--texto); cursor: pointer;
 }
 .materia-item:hover { background: var(--superficie-2); }
+/* Cabeçalho de trilha dentro do seletor de matérias */
+.materia-grupo {
+  padding: 9px 12px 4px; font-size: .7rem; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--texto-3, var(--texto-2));
+}
+/* Cabeçalho de trilha no Início (ocupa a linha toda do grid de matérias) */
+.trilha-cabecalho {
+  display: flex; align-items: center; gap: 10px;
+  margin: 6px 0 2px; padding-bottom: 8px; border-bottom: 1px solid var(--borda);
+}
+.trilha-cabecalho .trilha-nome { font-family: 'Sora', sans-serif; font-weight: 600; font-size: 1.02rem; }
+.trilha-cabecalho .trilha-contagem { flex: 1; font-size: .82rem; color: var(--texto-2); }
 .materia-item.ativo { background: var(--brand-light); color: var(--brand-ink); font-weight: 700; }
 .materia-item.materia-nova { color: var(--brand-ink); font-weight: 600; }
 .materia-dropdown-sep { height: 1px; background: var(--borda); margin: 6px 6px; }
