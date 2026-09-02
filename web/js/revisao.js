@@ -59,6 +59,19 @@ function topicosFracos(stats, quantos = 3) {
     }));
 }
 
+// Desempate ESTÁVEL entre itens de mesma urgência.
+// Por que existe: as perguntas chegam do banco em ordem de criação e são criadas
+// em lotes por tipo (uma ingestão de perguntas, outra de flashcards). Quando a
+// ordenação empata — todos novos (proxima_revisao_em null), ou mesma pontuação
+// no Foco — o `sort` preserva essa ordem e a fila sai em blocos: primeiro todas
+// as perguntas, depois todos os flashcards. Um hash do id embaralha os empates
+// misturando tipos e tópicos. É DETERMINÍSTICO (mesma ordem a cada carregamento,
+// sobrevive a reload e ao "Voltar") e a mistura ainda é melhor para aprender
+// (prática intercalada bate prática em blocos).
+function desempateEstavel(pergunta) {
+  return geradorAleatorio(Number(pergunta.id) * 2654435761)();
+}
+
 // Pontuação de prioridade de um item. Pesos, do mais para o menos importante:
 //   3× tópico que se erra mais  (o critério pedido)
 //   2× erro do próprio item
@@ -253,17 +266,27 @@ async function carregarRevisao() {
     // senão um tópico problemático some da conta justo quando está em dia.
     const statsTopico = estatisticasPorTopico(perguntas);
     focoTopicosFracos = topicosFracos(statsTopico);
+    // Pontuações muito próximas são, na prática, igualmente urgentes: comparar
+    // por FAIXAS de 0,5 (em vez do valor exato) faz itens de urgência parecida
+    // se misturarem — senão uma diferença mínima na 2ª casa decimal bastaria
+    // para sair tudo em blocos de perguntas e depois de flashcards.
+    const faixa = (p) => Math.round(p.prioridade * 2) / 2;
     revisaoFila = candidatos
       .map((p) => ({ ...p, prioridade: pontuarPrioridade(p, statsTopico, agora) }))
-      .sort((a, b) => b.prioridade - a.prioridade)
+      .sort((a, b) => (faixa(b) - faixa(a)) || (desempateEstavel(a) - desempateEstavel(b)))
       .slice(0, FOCO_LIMITE);
   } else {
     focoTopicosFracos = null;
     revisaoFila = candidatos.sort((a, b) => {
+      // novos ("a aprender") primeiro; depois o que venceu há mais tempo.
       if (a.novo !== b.novo) return a.novo ? -1 : 1;
-      if (a.proxima_revisao_em === null) return -1;
-      if (b.proxima_revisao_em === null) return 1;
-      return new Date(a.proxima_revisao_em) - new Date(b.proxima_revisao_em);
+      // null = nunca respondido, vai na frente (vira 0). Antes isto era um
+      // `return -1` fixo quando o primeiro era null — comparador inconsistente
+      // que, com TODOS os novos em null, não desempatava nada e deixava a fila
+      // na ordem de criação (blocos por tipo).
+      const va = a.proxima_revisao_em ? new Date(a.proxima_revisao_em).getTime() : 0;
+      const vb = b.proxima_revisao_em ? new Date(b.proxima_revisao_em).getTime() : 0;
+      return (va - vb) || (desempateEstavel(a) - desempateEstavel(b));
     });
   }
 

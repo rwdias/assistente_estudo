@@ -100,6 +100,13 @@ fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
   INTEIRA (não só dos vencidos). A faixa `#revisao-foco-info` explica a escolha
   e o item ganha badge "tópico difícil" (`topicosFracos` só considera tópico com
   ≥ 3 respostas — histórico ralo não vira "fraco").
+- **A fila mistura perguntas e flashcards** de propósito. Elas chegam do banco
+  por `created_at` e são criadas em lotes por tipo, então qualquer EMPATE na
+  ordenação (todos novos = `proxima_revisao_em` null; ou mesma pontuação no
+  Foco) fazia a fila sair em blocos ("todas as perguntas, depois todos os
+  flashcards"). `desempateEstavel` (hash do id) embaralha os empates de forma
+  determinística — mesma ordem a cada carregamento — e no Foco a comparação é
+  por FAIXAS de 0,5 para que urgências semelhantes também se misturem.
 - Item nunca respondido = **"a aprender"** (novo); respondido e vencido =
   **"a revisar"**. Errou na sessão → volta ao fim da fila como
   **"reaprendendo"** até acertar (espelho do Anki; lógica em `web/js/revisao.js`).
