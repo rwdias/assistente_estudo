@@ -397,6 +397,53 @@ const ICONE_OCULTAR =
 const ICONE_OLHO =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
   '<path d="M2 12s3-8 10-8 10 8 10 8-3 8-10 8-10-8-10-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+// setas em ciclo: "gerar versões" / "tem N versões"
+const ICONE_VARIANTE_MENU =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+  '<path d="M4 4v6h6"/><path d="M20 20v-6h-6"/>' +
+  '<path d="M20 9a8 8 0 0 0-14-3L4 8"/><path d="M4 15a8 8 0 0 0 14 3l2-2"/></svg>';
+
+// Uma única chamada de IA devolve várias versões, que ficam GRAVADAS em
+// pergunta_variantes e passam a se revezar com o original sem custo nenhum.
+const VARIANTES_POR_CHAMADA = 3;
+
+// Gera e GRAVA versões reformuladas de uma pergunta. Vive aqui (e não na tela de
+// estudo) porque a ação é usada em dois lugares: na lista de Perguntas — onde o
+// item está sempre visível — e durante o estudo. Esse era o problema original: a
+// ação só existia na fila de revisão, e a pergunta qualificava justamente quando
+// o SM-2 a mandava para semanas no futuro, então o botão quase nunca aparecia.
+// Devolve as variantes gravadas; lança Error com mensagem amigável se falhar.
+async function gerarVariantesPara(pergunta, modelo) {
+  const { data, error } = await sb.functions.invoke('reformular', {
+    body: {
+      modelo,
+      quantidade: VARIANTES_POR_CHAMADA,
+      pergunta: {
+        enunciado: pergunta.enunciado,
+        dificuldade: pergunta.dificuldade,
+        opcoes: (pergunta.opcoes || []).map((o) => ({ texto: o.texto, correta: o.correta })),
+        topico: pergunta.topico ?? null,
+      },
+    },
+  });
+
+  if (error) throw new Error(await mensagemErroFuncao(error));
+
+  const variantes = (data?.variantes || []).map((v) => ({
+    pergunta_id: pergunta.id,
+    enunciado: v.enunciado,
+    opcoes: v.opcoes.map((o) => ({ texto: o.texto, correta: Boolean(o.correta) })),
+  }));
+  if (variantes.length === 0) throw new Error('A IA não devolveu versões válidas.');
+
+  const { data: inseridas, error: erroInsert } = await sb
+    .from('pergunta_variantes')
+    .insert(variantes)
+    .select('id, enunciado, opcoes, descartada');
+  if (erroInsert) throw new Error(erroInsert.message);
+
+  return inseridas || [];
+}
 
 // Marca/desmarca um item como oculto da revisão (update direto — RLS cobre;
 // não é atômico-crítico como trocar alternativas, então dispensa RPC).

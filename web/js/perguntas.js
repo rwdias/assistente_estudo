@@ -318,6 +318,16 @@ async function carregarPerguntas() {
           <div class="pergunta-enunciado" style="flex:1">${fmt(p.enunciado)}</div>
           ${renderMenuItemHTML([
             { acao: 'editar', rotulo: 'Editar', icone: ICONE_EDITAR },
+            // Só perguntas têm variante (flashcard é recall aberto, não tem
+            // alternativas para reformular). Disponível sempre — o badge abaixo
+            // é que sugere QUANDO vale a pena.
+            ...(p.tipo === 'pergunta'
+              ? [{
+                  acao: 'variar',
+                  rotulo: p.variantes?.length ? 'Gerar mais versões' : 'Gerar versões',
+                  icone: ICONE_VARIANTE_MENU,
+                }]
+              : []),
             p.oculta
               ? { acao: 'reexibir', rotulo: 'Reexibir na revisão', icone: ICONE_OLHO }
               : { acao: 'ocultar', rotulo: 'Ocultar da revisão', icone: ICONE_OCULTAR },
@@ -332,6 +342,12 @@ async function carregarPerguntas() {
           <span>${p.vezes_acertada}/${p.vezes_respondida} acertos</span>
           ${p.madura ? '<span class="badge badge-green">dominada</span>' : ''}
           ${p.oculta ? '<span class="badge badge-neutro">oculta da revisão</span>' : ''}
+          ${p.variantes?.length
+            ? `<span class="badge badge-green">${ICONE_VARIANTE_MENU}${p.variantes.length} versão(ões)</span>`
+            : p.pode_variar
+              // Sugestão: já dominada e sem versões — gerar evita decorar o formato.
+              ? `<span class="badge badge-amber">${ICONE_VARIANTE_MENU}pronta para variar</span>`
+              : ''}
         </div>
         ${p.tipo === 'flashcard'
           ? `<div class="verso-lista">${fmt(p.verso)}</div>`
@@ -362,12 +378,47 @@ async function carregarPerguntas() {
           toast(acao === 'ocultar' ? 'Ocultada da revisão.' : 'Reexibida na revisão.');
           carregarPerguntas();
         }
+      } else if (acao === 'variar') {
+        pedirVariantes(porId.get(id));
       }
     });
   });
 }
 
 // (a exclusão com confirmação vive em core.js: pedirExclusaoPergunta)
+
+// --- gerar versões (variantes) a partir da lista ---
+// A ação também existe na tela de estudo, mas lá só aparece quando a pergunta
+// cai na fila — e ela qualifica justamente quando o SM-2 a manda para semanas
+// à frente. Aqui a pergunta está sempre à mão.
+let perguntaParaVariar = null;
+
+function pedirVariantes(pergunta) {
+  if (!pergunta) return;
+  perguntaParaVariar = pergunta;
+  openModal('modal-variantes');
+}
+
+document.getElementById('modal-variantes-confirm')?.addEventListener('click', async () => {
+  if (!perguntaParaVariar) return;
+  const modelo = document.getElementById('modal-variantes-modelo').value;
+  const btn = document.getElementById('modal-variantes-confirm');
+
+  btn.disabled = true;
+  btn.textContent = `Consultando ${modelo}...`;
+  try {
+    const gravadas = await gerarVariantesPara(perguntaParaVariar, modelo);
+    closeModal('modal-variantes');
+    toast(`${gravadas.length} versão(ões) gravada(s) — vão se revezar com o original.`);
+    perguntaParaVariar = null;
+    await carregarPerguntas();
+  } catch (erro) {
+    toast(erro.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Gerar versões';
+  }
+});
 
 // --- edição de pergunta/flashcard ---
 // `itemEmEdicao` guarda o item aberto e `aoSalvarEdicao` o que recarregar

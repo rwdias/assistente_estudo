@@ -116,11 +116,18 @@ fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
   mesma tentativa (sobrevive a reload e ao "Voltar") e diferente na próxima.
   Alternativas que citam posição ("todas as anteriores", "apenas I e II")
   são detectadas por `RE_OPCAO_POSICIONAL` e mantêm a ordem original.
-- **Variantes** (só perguntas): `acertos_seguidos ≥ 3` OU madura, e sem
-  variante ainda → badge + botão "Gerar versões". 1 chamada de IA grava 3
-  variantes (`reformular` com `quantidade`), que depois se revezam com o
-  original de graça: `vezes_respondida % (1 + nº de variantes)`. O SM-2
-  continua na pergunta-pai — variante é só apresentação, não entra na fila
+- **Variantes** (só perguntas — flashcard não tem alternativas p/ reformular).
+  A ação "Gerar versões" fica no **menu de engrenagem da lista de Perguntas**
+  (modal `#modal-variantes` para escolher o provedor) e está SEMPRE disponível;
+  `pode_variar` (`acertos_seguidos ≥ 3` OU madura, e sem variante) virou só
+  **sugestão**: badge "pronta para variar" na lista e o card de aviso na tela de
+  estudo. Isso é deliberado — antes a ação só existia na fila de revisão e a
+  pergunta qualificava justo quando o SM-2 a mandava para semanas à frente, então
+  o botão quase nunca aparecia (30 qualificadas, 0 geradas na conta do dono).
+  A geração vive em `gerarVariantesPara` (core.js), usada pelos dois lugares.
+  1 chamada de IA grava 3 variantes (`reformular` com `quantidade`), que depois
+  se revezam com o original de graça: `vezes_respondida % (1 + nº de variantes)`.
+  O SM-2 continua na pergunta-pai — variante é só apresentação, não entra na fila
   como item novo. Botão "Descartar esta versão" (soft-delete) para quando a
   IA errar a mão.
 - Simulado usa apenas `tipo='pergunta'`; flashcards vivem no Aprendizado.

@@ -661,6 +661,25 @@
 </div>
 
 <!-- MODAL confirmação de exclusão -->
+<!-- Gerar versões reformuladas de uma pergunta, a partir da lista de Perguntas.
+     A ação também existe na tela de estudo, mas lá só aparece quando a pergunta
+     cai na fila — por isso ela precisa estar acessível aqui. -->
+<div class="modal-overlay" id="modal-variantes">
+  <div class="modal">
+    <h3>Gerar versões</h3>
+    <p>A IA cria 3 versões diferentes desta pergunta, com o mesmo conceito. Elas
+       se revezam com o original nas revisões — assim você não decora o formato.</p>
+    <label>Provedor</label>
+    <select id="modal-variantes-modelo">
+      <option>ChatGPT</option><option>Claude</option><option>Grok</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" data-fechar-modal="modal-variantes">Cancelar</button>
+      <button class="btn btn-primary" id="modal-variantes-confirm">Gerar versões</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-delete">
   <div class="modal">
     <h3>Remover pergunta</h3>

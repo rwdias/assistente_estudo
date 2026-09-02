@@ -680,11 +680,8 @@ function renderPerguntaRevisao(pergunta) {
   });
 }
 
-// Uma única chamada de IA devolve várias versões, que ficam GRAVADAS em
-// pergunta_variantes e passam a se revezar com o original sem custo nenhum.
-// (O fluxo antigo reformulava 1 vez, só na memória, e sumia no reload.)
-const VARIANTES_POR_CHAMADA = 3;
-
+// (a geração em si vive em core.js — gerarVariantesPara — porque a lista de
+// Perguntas usa a mesma ação.)
 async function gerarVariantesAtual() {
   const pergunta = revisaoFila[revisaoIndice];
   const modelo = document.getElementById('revisao-variar-modelo').value;
@@ -693,51 +690,20 @@ async function gerarVariantesAtual() {
   btn.disabled = true;
   btn.textContent = `Consultando ${modelo}...`;
 
-  const { data, error } = await sb.functions.invoke('reformular', {
-    body: {
-      modelo,
-      quantidade: VARIANTES_POR_CHAMADA,
-      pergunta: {
-        enunciado: pergunta.enunciado,
-        dificuldade: pergunta.dificuldade,
-        opcoes: pergunta.opcoes.map((o) => ({ texto: o.texto, correta: o.correta })),
-        topico: pergunta.topico ?? null,
-      },
-    },
-  });
-
-  btn.disabled = false;
-  btn.textContent = 'Gerar versões';
-
-  if (error) {
-    toast(await mensagemErroFuncao(error), 'error');
+  let gravadas;
+  try {
+    gravadas = await gerarVariantesPara(pergunta, modelo);
+  } catch (erro) {
+    toast(erro.message, 'error');
     return;
-  }
-
-  const variantes = (data?.variantes || []).map((v) => ({
-    pergunta_id: pergunta.id,
-    enunciado: v.enunciado,
-    opcoes: v.opcoes.map((o) => ({ texto: o.texto, correta: Boolean(o.correta) })),
-  }));
-
-  if (variantes.length === 0) {
-    toast('A IA não devolveu versões válidas.', 'error');
-    return;
-  }
-
-  const { data: inseridas, error: erroInsert } = await sb
-    .from('pergunta_variantes')
-    .insert(variantes)
-    .select('id, enunciado, opcoes, descartada');
-  if (erroInsert) {
-    toast(erroInsert.message, 'error');
-    return;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Gerar versões';
   }
 
   // Atualiza só o item atual: remontar a fila jogaria o usuário de volta ao
   // início da sessão. A rotação só muda na PRÓXIMA revisão (depende de
   // vezes_respondida), então a tela continua mostrando esta mesma versão.
-  const gravadas = inseridas || [];
   const item = revisaoFila[revisaoIndice];
   item.variantes = gravadas;
   item.pode_variar = false;
