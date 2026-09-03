@@ -77,6 +77,31 @@ def test_erro_zera_intervalo_e_reduz_ef(materia):
     assert res["qualidade"] == 2
 
 
+def test_revisao_vence_no_comeco_do_dia(materia):
+    """A revisão fica disponível desde a MEIA-NOITE do dia em que vence (0026).
+    Antes ela herdava a hora do estudo: quem estudava às 15h só via o item
+    voltar às 15h do dia seguinte, o que impedia estudar de manhã."""
+    pid = materia.criar_pergunta()
+    _responder(materia, pid, True)
+    prox = datetime.fromisoformat(
+        materia.revisao(pid)["proxima_revisao_em"].replace("Z", "+00:00")
+    ).astimezone(SP)
+    assert (prox.hour, prox.minute) == (0, 0), f"venceu às {prox:%H:%M}, não à meia-noite"
+    assert prox.date() > datetime.now(SP).date(), "deveria vencer num dia futuro"
+
+
+def test_lapso_de_erro_continua_em_tempo_corrido(materia):
+    """O +10min do erro NÃO é truncado para meia-noite — o item precisa voltar
+    ainda na mesma sessão, não no dia seguinte."""
+    pid = materia.criar_flashcard()
+    _responder(materia, pid, False, qualidade=2)
+    prox = datetime.fromisoformat(
+        materia.revisao(pid)["proxima_revisao_em"].replace("Z", "+00:00")
+    )
+    minutos = (prox - datetime.now(prox.tzinfo)).total_seconds() / 60
+    assert 5 < minutos < 15, f"lapso caiu em {minutos:.0f} min (esperado ~10)"
+
+
 def test_ef_tem_piso_1_3(materia):
     pid = materia.criar_pergunta()
     for _ in range(8):                                # muitos erros seguidos

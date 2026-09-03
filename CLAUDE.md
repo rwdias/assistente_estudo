@@ -90,6 +90,14 @@ fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
   matéria depois de fds/feriado (nada vence em dia não-útil). O **número** do
   intervalo (1, 6, round(i×EF)) NÃO muda — só a data derivada dele; o lapso
   de +10min segue em tempo corrido. SM-2 provado idêntico à 0017 em 200 casos.
+- **A revisão vence à MEIA-NOITE** do dia alvo (0026), não na hora em que se
+  estudou: `adiciona_dias_uteis` devolve o início do dia em America/Sao_Paulo.
+  Antes ela preservava a hora local (`d + local::time`), então quem estudava às
+  15h só via o item voltar às 15h — estudar de manhã era impossível. O lapso de
+  erro (+10min) NÃO passa por essa função, de propósito (senão o item voltaria
+  só no dia seguinte, em vez da mesma sessão). Armadilha de SQL: use
+  `(d + time '00:00') at time zone ...` — escrever `d at time zone ...` casta o
+  `date` para timestamptz e converte duas vezes, devolvendo a hora errada.
 - O prazo mostrado em cima de cada botão vem de `preverIntervalos` (core.js),
   espelho do **número** do intervalo do banco (há teste numa matriz intervalo
   × EF × qualidade). Atenção: o rótulo mostra o intervalo em dias ÚTEIS de
