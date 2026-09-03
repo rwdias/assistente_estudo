@@ -220,6 +220,10 @@
         <span>Flashcards via IA</span>
       </a>
       <!-- Listas de exercícios: só aparece em matéria matemática (toggle via JS). -->
+      <a class="sb-item" data-panel="materiais">
+        <svg class="sb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span>Materiais</span>
+      </a>
       <a class="sb-item" data-panel="listas" id="sb-listas" style="display:none">
         <svg class="sb-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
         <span>Listas de exercícios</span>
@@ -526,6 +530,30 @@
       </div>
 
       <!-- LISTAS de exercícios (matéria matemática) -->
+      <!-- MATERIAIS: arquivos da matéria (livros, PDFs, slides). Cada matéria
+           tem sua pasta no bucket PRIVADO `materiais`; o acesso é por URL
+           assinada de validade curta, gerada só na hora de abrir. -->
+      <div class="panel" id="panel-materiais">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Enviar arquivos</div>
+            <p class="card-sub">Livros, PDFs, listas, slides — o que você usa para estudar esta matéria.
+               Até 50 MB por arquivo. São privados: só você tem acesso.</p>
+          </div>
+          <div class="card-body">
+            <input type="file" id="materiais-input" multiple />
+            <button type="button" id="materiais-enviar-btn" class="btn btn-primary" style="margin-top:10px">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Enviar
+            </button>
+            <span class="card-sub" id="materiais-status" style="margin-left:10px"></span>
+          </div>
+        </div>
+
+        <h2 class="secao-titulo" style="margin-top:24px">Arquivos desta matéria</h2>
+        <div id="materiais-lista"></div>
+      </div>
+
       <div class="panel" id="panel-listas">
         <!-- Home: criar lista + minhas listas. Ao estudar, some e mostra #lista-estudo. -->
         <div id="listas-home">
@@ -752,6 +780,7 @@
 <script src="js/revisao.js"></script>
 <script src="js/ia.js"></script>
 <script src="js/listas.js"></script>
+<script src="js/materiais.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -72,6 +72,20 @@ pela curadoria com service key; sem política de escrita); URLs em
 o arquivo). Render: `renderImagensPergunta` em core.js, que descarta URLs
 fora do Storage do projeto; CSP `img-src` inclui o host do Supabase.
 
+### Materiais da matéria (arquivos)
+Bucket **PRIVADO** `materiais` (0027), separado do bucket público `provas`:
+guarda livros/PDFs/slides do usuário, que não podem ficar acessíveis por URL
+pública. Caminho `{usuario_id}/{materia_id}/{arquivo}` — o uid como PRIMEIRO
+segmento é o que sustenta a política (`storage.foldername(name)[1] =
+auth.uid()`), então ninguém alcança a pasta de outro; o `materia_id` no segundo
+segmento é a "pasta por matéria". Acesso só por **URL assinada** de 5 min
+(`createSignedUrl`), gerada ao clicar em Abrir. Limite de 50 MB/arquivo
+(`file_size_limit` no bucket, espelhado no cliente). UI: painel "Materiais"
+(`web/js/materiais.js`), com upload múltiplo, listar, abrir e excluir. Nome do
+arquivo é sanitizado (sem acento/espaço) e `upsert:false` — sobrescrever em
+silêncio faria perder a versão anterior. Não há tabela de metadados: a listagem
+vem do próprio Storage (evita sincronia para manter).
+
 ### SM-2 / Aprendizado (conceitos centrais)
 - Acerto = q5, erro = q2; EF piso 1.3; progressão 1 → 6 → round(i×EF) dias;
   erro zera intervalo e reagenda +10min. Implementação canônica: função SQL

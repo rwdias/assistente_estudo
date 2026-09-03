@@ -300,6 +300,20 @@ textarea { resize: vertical; }
   font: inherit; font-size: .88rem; font-weight: 500; color: var(--texto); cursor: pointer;
 }
 .materia-item:hover { background: var(--superficie-2); }
+/* Seletor de arquivos dos Materiais: o input nativo não aceita estilo no botão
+   interno, então estilizamos a caixa e o ::file-selector-button. */
+#materiais-input {
+  width: 100%; padding: 10px 12px; font: inherit; font-size: .92rem;
+  color: var(--texto); background: var(--superficie-2);
+  border: 1px dashed var(--borda-forte, var(--borda)); border-radius: 10px;
+}
+#materiais-input::file-selector-button {
+  margin-right: 12px; padding: 7px 14px; font: inherit; font-size: .86rem; font-weight: 600;
+  color: var(--brand-ink); background: var(--brand-light);
+  border: 0; border-radius: 8px; cursor: pointer;
+}
+#materiais-input::file-selector-button:hover { filter: brightness(.96); }
+
 /* Cabeçalho de trilha dentro do seletor de matérias */
 .materia-grupo {
   padding: 9px 12px 4px; font-size: .7rem; font-weight: 700;
