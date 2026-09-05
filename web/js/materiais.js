@@ -75,7 +75,7 @@ async function carregarMateriais() {
   // um arquivo sem metadados (upload antigo, PDF ilegível) continua aparecendo.
   const { data: metas } = await sb
     .from('materiais')
-    .select('caminho, titulo, autores, ano, editora, edicao, descricao')
+    .select('caminho, titulo, autores, ano, editora, edicao, paginas, descricao')
     .eq('materia_id', Estado.materiaId);
   const porCaminho = new Map((metas || []).map((m) => [m.caminho, m]));
 
@@ -87,11 +87,14 @@ async function carregarMateriais() {
       const temTitulo = Boolean(meta?.titulo);
       // Com metadados, o título vira o destaque e o nome do arquivo desce para
       // a linha de apoio — é assim que se reconhece um livro numa estante.
+      // Ordem da ficha: AUTOR · ANO · PÁGINAS primeiro (é o que identifica a
+      // obra de relance); edição/editora vêm depois, como detalhe.
       const ficha = [
         (meta?.autores || []).join(', '),
-        meta?.editora,
-        meta?.edicao,
         meta?.ano,
+        meta?.paginas ? `${meta.paginas} páginas` : null,
+        meta?.edicao,
+        meta?.editora,
       ].filter(Boolean).map((x) => `<span>${esc(String(x))}</span>`).join('');
 
       return `
@@ -173,6 +176,7 @@ async function lerMetadados(caminho, nome, avisar = false) {
     isbn: m.isbn ?? null,
     idioma: m.idioma ?? null,
     descricao: m.descricao ?? null,
+    paginas: m.paginas ?? null, // vem do parser do PDF, não da IA
     origem: 'ia',
   }, { onConflict: 'usuario_id,caminho' });
 

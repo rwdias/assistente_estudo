@@ -86,8 +86,12 @@ Deno.serve(async (req) => {
 
   // 2) extrai o texto das primeiras páginas (é onde fica a ficha catalográfica)
   let trecho = "";
+  let paginas: number | null = null;
   try {
     const pdf = await getDocumentProxy(bytes);
+    // Total de páginas vem do PARSER, não da IA: é um número que o pdf.js sabe
+    // com certeza, e perguntar isso ao modelo seria convidar alucinação.
+    paginas = pdf.numPages ?? null;
     // Página a página, e SÓ as primeiras. O atalho `extractText(pdf)` percorre o
     // documento inteiro — num livro de 300 páginas isso estoura o limite de
     // CPU/memória do worker (WORKER_RESOURCE_LIMIT), e o que interessa aqui
@@ -138,7 +142,8 @@ Deno.serve(async (req) => {
       METADADOS_MATERIAL_SCHEMA,
       "metadados_material",
     );
-    return respostaJson(req, { metadados: dados });
+    // `paginas` é acrescentado pelo servidor, fora do que a IA devolveu.
+    return respostaJson(req, { metadados: { ...(dados as object), paginas } });
   } catch (erro) {
     if (erro instanceof ErroProvedorIA) {
       return respostaJson(req, { erro: erro.message }, 502);
