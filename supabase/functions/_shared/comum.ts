@@ -71,6 +71,25 @@ export function restComoUsuario(
   });
 }
 
+// Como `usuarioAutenticado`, mas devolve o ID do usuário — necessário quando a
+// função precisa saber DE QUEM é a requisição (ex.: conferir se o caminho de um
+// arquivo no Storage pertence a quem está chamando). null = não autenticado.
+export async function usuarioIdDoRequest(req: Request): Promise<string | null> {
+  const auth = req.headers.get("Authorization") ?? "";
+  if (!auth.startsWith("Bearer ")) return null;
+
+  const url = Deno.env.get("SUPABASE_URL")!;
+  const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+  const resposta = await fetch(`${url}/auth/v1/user`, {
+    headers: { apikey: anon, Authorization: auth },
+  });
+  if (!resposta.ok) return null;
+
+  const usuario = await resposta.json();
+  return usuario?.id ?? null;
+}
+
 export async function consumirQuota(req: Request): Promise<boolean> {
   const limite = parseInt(Deno.env.get("IA_QUOTA_DIARIA") ?? "20", 10);
   const url = Deno.env.get("SUPABASE_URL")!;
@@ -359,6 +378,54 @@ export function promptExtracao(
     "nenhuma explicação, use null. Não invente: só preencha com o que estiver " +
     "no texto.\n\n" +
     `Assunto geral das perguntas: ${assunto}.\n` +
+    "Responda apenas com o JSON pedido, sem texto adicional."
+  );
+}
+
+// Metadados bibliográficos lidos das primeiras páginas de um material (livro,
+// apostila, slides). Todos os campos são obrigatórios E nullable: campo
+// "opcional" confunde o modelo, enquanto `null` explícito significa
+// "não encontrei" sem ambiguidade — e evita que ele INVENTE um autor.
+export const METADADOS_MATERIAL_SCHEMA = {
+  type: "object",
+  properties: {
+    titulo: { type: ["string", "null"] },
+    autores: { type: "array", items: { type: "string" } },
+    ano: { type: ["integer", "null"] },
+    editora: { type: ["string", "null"] },
+    edicao: { type: ["string", "null"] },
+    isbn: { type: ["string", "null"] },
+    idioma: { type: ["string", "null"] },
+    descricao: { type: ["string", "null"] },
+  },
+  required: ["titulo", "autores", "ano", "editora", "edicao", "isbn", "idioma", "descricao"],
+  additionalProperties: false,
+};
+
+// O texto vem das PRIMEIRAS páginas (capa, folha de rosto, página de créditos),
+// que é onde a ficha catalográfica mora. A regra central é não inventar: sem
+// evidência no texto, o campo volta null — metadado errado é pior que ausente,
+// porque o usuário confia nele para achar o material depois.
+export function promptMetadadosMaterial(nomeArquivo: string): string {
+  return (
+    "Você extrai metadados bibliográficos das primeiras páginas de um material " +
+    "de estudo (livro, apostila, slides, artigo). O texto abaixo veio da capa, " +
+    "folha de rosto e página de créditos.\n\n" +
+    "Preencha:\n" +
+    '- "titulo": o título da obra, sem subtítulo repetido nem nome de capítulo. ' +
+    "Se houver subtítulo relevante, junte com \" - \".\n" +
+    '- "autores": lista com os nomes dos autores, na forma "Nome Sobrenome" ' +
+    "(sem \"et al.\", sem organizador/tradutor — só quem assina a obra). Lista " +
+    "vazia se não houver.\n" +
+    '- "ano": ano de publicação/edição (número). null se não achar.\n' +
+    '- "editora", "edicao" (ex.: "3ª ed."), "isbn", "idioma" (ex.: "pt-BR", "en").\n' +
+    '- "descricao": 1 ou 2 frases sobre o assunto da obra, com base no que o ' +
+    "texto mostra.\n\n" +
+    "REGRA MAIS IMPORTANTE: NÃO INVENTE. Use null (ou lista vazia) para tudo que " +
+    "não estiver explícito no texto. Não deduza autor a partir do nome do arquivo, " +
+    "não chute editora, não complete ISBN. Um metadado errado é pior que ausente.\n" +
+    "Se o texto for ilegível ou não parecer o começo de uma obra, devolva tudo null.\n\n" +
+    `Nome do arquivo (pista fraca — só use se o texto confirmar): ${nomeArquivo}\n` +
     "Responda apenas com o JSON pedido, sem texto adicional."
   );
 }

@@ -547,6 +547,14 @@
               Enviar
             </button>
             <span class="card-sub" id="materiais-status" style="margin-left:10px"></span>
+
+            <!-- Baixar de um link: o download roda na Edge Function (o navegador
+                 seria barrado por CORS na maioria dos sites). -->
+            <label style="margin-top:18px">Ou cole o link de um PDF</label>
+            <div class="opcao-row">
+              <input type="url" id="materiais-url" placeholder="https://exemplo.edu/livro.pdf" />
+              <button type="button" id="materiais-baixar-btn" class="btn btn-secondary btn-sm">Baixar</button>
+            </div>
           </div>
         </div>
 

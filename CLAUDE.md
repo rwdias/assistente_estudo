@@ -84,7 +84,27 @@ segmento é a "pasta por matéria". Acesso só por **URL assinada** de 5 min
 (`web/js/materiais.js`), com upload múltiplo, listar, abrir e excluir. Nome do
 arquivo é sanitizado (sem acento/espaço) e `upsert:false` — sobrescrever em
 silêncio faria perder a versão anterior. Não há tabela de metadados: a listagem
-vem do próprio Storage (evita sincronia para manter).
+vem do próprio Storage, e a tabela `materiais` (0028) só ENRIQUECE a lista —
+arquivo sem ficha continua aparecendo.
+
+**Metadados por IA**: ao subir um PDF (ou baixar por link), a Edge Function
+`metadados_material` lê as PRIMEIRAS páginas e extrai título/autores/editora/
+ano/edição/ISBN (`METADADOS_MATERIAL_SCHEMA`), gravados em `materiais`. Três
+decisões que importam: (1) o PDF é baixado com o **JWT do usuário**, não com
+service key — quem autoriza é a política do Storage, então não há como virar
+IDOR; (2) extrai página a página só as 4 primeiras (`getPage`/`getTextContent`
+do unpdf) — o atalho `extractText(pdf)` percorre o livro inteiro e estoura
+`WORKER_RESOURCE_LIMIT` num PDF de 2,7 MB; (3) o prompt proíbe inventar: sem
+evidência no texto, o campo volta `null` (metadado errado é pior que ausente).
+PDF digitalizado (sem texto) é detectado ANTES de gastar quota.
+
+**Baixar por link**: `baixar_material` busca a URL no servidor (o navegador
+seria barrado por CORS). É a função com maior superfície de risco do projeto —
+**SSRF** — e por isso: só `https`; hostname que seja IP privado/loopback/
+link-local (inclusive 169.254.169.254, metadata da cloud) é recusado;
+redirecionamento é seguido À MÃO revalidando cada salto (seguir automático
+deixaria um host público redirecionar para IP interno); teto de tamanho na
+leitura, não só no Content-Length; e o upload usa o JWT do usuário.
 
 ### SM-2 / Aprendizado (conceitos centrais)
 - Acerto = q5, erro = q2; EF piso 1.3; progressão 1 → 6 → round(i×EF) dias;

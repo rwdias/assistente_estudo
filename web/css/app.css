@@ -300,6 +300,10 @@ textarea { resize: vertical; }
   font: inherit; font-size: .88rem; font-weight: 500; color: var(--texto); cursor: pointer;
 }
 .materia-item:hover { background: var(--superficie-2); }
+/* Nome do arquivo quando o material já tem título identificado: vira linha de
+   apoio, discreta, porque o destaque passa a ser o título da obra. */
+.material-arquivo { font-family: ui-monospace, monospace; font-size: .78rem; opacity: .75; }
+
 /* Seletor de arquivos dos Materiais: o input nativo não aceita estilo no botão
    interno, então estilizamos a caixa e o ::file-selector-button. */
 #materiais-input {

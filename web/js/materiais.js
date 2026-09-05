@@ -70,25 +70,50 @@ async function carregarMateriais() {
     return;
   }
 
+  // Metadados (título/autores) vivem na tabela `materiais`; o arquivo, no
+  // bucket. A lista é montada pelo STORAGE e só enriquecida pela tabela — assim
+  // um arquivo sem metadados (upload antigo, PDF ilegível) continua aparecendo.
+  const { data: metas } = await sb
+    .from('materiais')
+    .select('caminho, titulo, autores, ano, editora, edicao, descricao')
+    .eq('materia_id', Estado.materiaId);
+  const porCaminho = new Map((metas || []).map((m) => [m.caminho, m]));
+
   const ICONE_ABRIR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
 
   alvo.innerHTML = arquivos
-    .map((f) => `
+    .map((f) => {
+      const meta = porCaminho.get(`${pasta}/${f.name}`);
+      const temTitulo = Boolean(meta?.titulo);
+      // Com metadados, o título vira o destaque e o nome do arquivo desce para
+      // a linha de apoio — é assim que se reconhece um livro numa estante.
+      const ficha = [
+        (meta?.autores || []).join(', '),
+        meta?.editora,
+        meta?.edicao,
+        meta?.ano,
+      ].filter(Boolean).map((x) => `<span>${esc(String(x))}</span>`).join('');
+
+      return `
       <div class="pergunta-card material-item" data-nome="${esc(f.name)}">
-        <div style="display:flex; align-items:center; gap:12px">
+        <div style="display:flex; align-items:flex-start; gap:12px">
           <div style="flex:1; min-width:0">
-            <div class="pergunta-enunciado" style="word-break:break-word">${esc(f.name)}</div>
+            <div class="pergunta-enunciado" style="word-break:break-word">${esc(temTitulo ? meta.titulo : f.name)}</div>
             <div class="pergunta-meta">
+              ${ficha}
               <span>${esc(formatarTamanho(f.metadata?.size))}</span>
               ${f.created_at ? `<span>${new Date(f.created_at).toLocaleDateString('pt-BR')}</span>` : ''}
             </div>
+            ${temTitulo ? `<div class="pergunta-meta"><span class="material-arquivo">${esc(f.name)}</span></div>` : ''}
           </div>
           <button type="button" class="btn btn-secondary btn-sm material-abrir">${ICONE_ABRIR} Abrir</button>
           ${renderMenuItemHTML([
+            { acao: 'metadados', rotulo: temTitulo ? 'Reler dados do PDF' : 'Ler dados do PDF', icone: ICONE_VARIANTE_MENU },
             { acao: 'excluir', rotulo: 'Excluir arquivo', icone: ICONE_LIXEIRA, perigo: true },
           ])}
         </div>
-      </div>`)
+      </div>`;
+    })
     .join('');
 
   alvo.querySelectorAll('.material-item').forEach((item) => {
@@ -96,8 +121,61 @@ async function carregarMateriais() {
     item.querySelector('.material-abrir').addEventListener('click', () => abrirMaterial(pasta, nome));
     wireMenuItem(item, (acao) => {
       if (acao === 'excluir') excluirMaterial(pasta, nome);
+      else if (acao === 'metadados') lerMetadados(`${pasta}/${nome}`, nome, true);
     });
   });
+}
+
+// Lê título/autores/editora das primeiras páginas do PDF (Edge Function) e grava
+// na tabela. `avisar` controla o toast: no upload em lote o processo é silencioso
+// (só o resultado final importa); pelo menu, o usuário espera retorno.
+async function lerMetadados(caminho, nome, avisar = false) {
+  if (!/\.pdf$/i.test(nome)) {
+    if (avisar) toast('Só PDF tem metadados legíveis.', 'error');
+    return false;
+  }
+  if (avisar) toast('Lendo as primeiras páginas...');
+
+  const { data, error } = await sb.functions.invoke('metadados_material', {
+    body: { caminho, modelo: 'ChatGPT' },
+  });
+  if (error) {
+    if (avisar) toast(await mensagemErroFuncao(error), 'error');
+    return false;
+  }
+
+  const m = data?.metadados || {};
+  // Sem título não vale gravar: seria uma linha vazia atrapalhando a lista.
+  if (!m.titulo) {
+    if (avisar) toast('Não encontrei os dados nas primeiras páginas.', 'error');
+    return false;
+  }
+
+  const { error: erroGravar } = await sb.from('materiais').upsert({
+    // usuario_id vai explícito porque faz parte da chave do ON CONFLICT —
+    // deixar para o default do banco funcionaria no insert, mas o upsert precisa
+    // do valor para casar a linha existente. Vem do próprio caminho.
+    usuario_id: caminho.split('/')[0],
+    materia_id: Estado.materiaId,
+    caminho,
+    nome_arquivo: nome,
+    titulo: m.titulo,
+    autores: Array.isArray(m.autores) ? m.autores : [],
+    ano: m.ano ?? null,
+    editora: m.editora ?? null,
+    edicao: m.edicao ?? null,
+    isbn: m.isbn ?? null,
+    idioma: m.idioma ?? null,
+    descricao: m.descricao ?? null,
+    origem: 'ia',
+  }, { onConflict: 'usuario_id,caminho' });
+
+  if (erroGravar) {
+    if (avisar) toast(erroGravar.message, 'error');
+    return false;
+  }
+  if (avisar) toast(`Identificado: ${m.titulo}`);
+  return true;
 }
 
 // Abre o arquivo numa aba nova. O bucket é privado, então a URL é assinada na
@@ -111,11 +189,50 @@ async function abrirMaterial(pasta, nome) {
 }
 
 async function excluirMaterial(pasta, nome) {
-  const { error } = await sb.storage.from(MATERIAIS_BUCKET).remove([`${pasta}/${nome}`]);
+  const caminho = `${pasta}/${nome}`;
+  const { error } = await sb.storage.from(MATERIAIS_BUCKET).remove([caminho]);
   if (error) { toast(error.message, 'error'); return; }
+  // A linha de metadados não some sozinha (Storage e Postgres são mundos
+  // separados) — apagar aqui evita ficha órfã apontando para arquivo inexistente.
+  await sb.from('materiais').delete().eq('caminho', caminho);
   toast('Arquivo excluído.');
   await carregarMateriais();
 }
+
+// Baixar de um link: quem busca é a Edge Function `baixar_material` (o navegador
+// seria barrado por CORS na maioria dos sites, e o servidor ainda valida o
+// destino contra SSRF). Depois lê os metadados como num upload normal.
+document.getElementById('materiais-baixar-btn')?.addEventListener('click', async () => {
+  const campo = document.getElementById('materiais-url');
+  const status = document.getElementById('materiais-status');
+  const url = campo.value.trim();
+  if (!url) { toast('Cole um link primeiro.', 'error'); return; }
+  if (!Estado.materiaId) { toast('Crie ou selecione uma matéria primeiro.', 'error'); return; }
+
+  const btn = document.getElementById('materiais-baixar-btn');
+  btn.disabled = true;
+  status.textContent = 'Baixando do link...';
+
+  const { data, error } = await sb.functions.invoke('baixar_material', {
+    body: { url, materia_id: Estado.materiaId },
+  });
+
+  if (error) {
+    btn.disabled = false;
+    status.textContent = '';
+    toast(await mensagemErroFuncao(error), 'error');
+    return;
+  }
+
+  status.textContent = 'Lendo os dados do PDF...';
+  await lerMetadados(data.caminho, data.nome);
+
+  btn.disabled = false;
+  status.textContent = '';
+  campo.value = '';
+  toast(`"${data.nome}" adicionado.`);
+  await carregarMateriais();
+});
 
 document.getElementById('materiais-enviar-btn')?.addEventListener('click', async () => {
   const input = document.getElementById('materiais-input');
@@ -148,6 +265,14 @@ document.getElementById('materiais-enviar-btn')?.addEventListener('click', async
       continue;
     }
     enviados += 1;
+
+    // Logo após subir, tenta identificar o material pelas primeiras páginas.
+    // Silencioso: falhar aqui (PDF digitalizado, quota, arquivo não-PDF) não
+    // pode estragar o upload, que já deu certo.
+    if (/\.pdf$/i.test(caminho)) {
+      status.textContent = `Lendo os dados de ${i + 1} de ${arquivos.length}...`;
+      await lerMetadados(caminho, caminho.split('/').pop());
+    }
   }
 
   btn.disabled = false;
