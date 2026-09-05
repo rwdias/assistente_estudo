@@ -106,6 +106,22 @@ redirecionamento é seguido À MÃO revalidando cada salto (seguir automático
 deixaria um host público redirecionar para IP interno); teto de tamanho na
 leitura, não só no Content-Length; e o upload usa o JWT do usuário.
 
+### Leitor de PDF + flashcards do trecho
+`web/js/leitor.js`: o material abre DENTRO do app (pdf.js vendorizado em
+`web/js/vendor/pdf.min.js` + worker, carregados SOB DEMANDA — 1,4 MB que só
+quem abre um material paga). Cada página vira canvas + **camada de texto**
+transparente; é essa camada que torna o texto selecionável. Um `<iframe>` com o
+visualizador do navegador não serviria: seria cross-origin e a seleção do
+usuário ficaria inacessível — que é justamente o ponto.
+Selecionar ≥ 40 caracteres revela o botão "Criar flashcards", que manda o trecho
+para o `extrair` (tipo flashcard, mesmo caminho do painel de IA) e abre um
+preview editável; salvar usa `inserirPergunta`, então os cards já entram na fila
+de estudo. Armadilhas: (1) `--scale-factor` PRECISA ser setado no container da
+camada de texto, senão os spans saem desalinhados do desenho e a seleção pega
+outro trecho; (2) camadas — header 50 · sidebar 100 · menus 300 · leitor 900 ·
+ação 950 · **modais 1000** · toast 1100: com z-index menor que o leitor, a
+camada de texto do PDF engolia os cliques do modal.
+
 ### SM-2 / Aprendizado (conceitos centrais)
 - Acerto = q5, erro = q2; EF piso 1.3; progressão 1 → 6 → round(i×EF) dias;
   erro zera intervalo e reagenda +10min. Implementação canônica: função SQL

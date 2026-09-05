@@ -118,7 +118,13 @@ async function carregarMateriais() {
 
   alvo.querySelectorAll('.material-item').forEach((item) => {
     const nome = item.dataset.nome;
-    item.querySelector('.material-abrir').addEventListener('click', () => abrirMaterial(pasta, nome));
+    const meta = porCaminho.get(`${pasta}/${nome}`);
+    item.querySelector('.material-abrir').addEventListener('click', () => {
+      // PDF abre no leitor embutido (dá para selecionar texto e virar flashcard);
+      // outros formatos, que o leitor não renderiza, vão para uma aba nova.
+      if (/\.pdf$/i.test(nome)) abrirLeitor(`${pasta}/${nome}`, nome, meta?.titulo);
+      else abrirMaterial(pasta, nome);
+    });
     wireMenuItem(item, (acao) => {
       if (acao === 'excluir') excluirMaterial(pasta, nome);
       else if (acao === 'metadados') lerMetadados(`${pasta}/${nome}`, nome, true);
@@ -246,6 +252,7 @@ document.getElementById('materiais-enviar-btn')?.addEventListener('click', async
   const btn = document.getElementById('materiais-enviar-btn');
   btn.disabled = true;
   let enviados = 0;
+  let semDados = 0; // PDFs que subiram mas não tiveram os dados identificados
 
   for (const [i, arquivo] of arquivos.entries()) {
     status.textContent = `Enviando ${i + 1} de ${arquivos.length}...`;
@@ -267,11 +274,12 @@ document.getElementById('materiais-enviar-btn')?.addEventListener('click', async
     enviados += 1;
 
     // Logo após subir, tenta identificar o material pelas primeiras páginas.
-    // Silencioso: falhar aqui (PDF digitalizado, quota, arquivo não-PDF) não
-    // pode estragar o upload, que já deu certo.
+    // A falha aqui (PDF digitalizado, quota, erro do provedor) NÃO desfaz o
+    // upload — mas também não pode passar batida, senão o usuário fica achando
+    // que a leitura simplesmente não existe. Conta e avisa no fim.
     if (/\.pdf$/i.test(caminho)) {
       status.textContent = `Lendo os dados de ${i + 1} de ${arquivos.length}...`;
-      await lerMetadados(caminho, caminho.split('/').pop());
+      if (!(await lerMetadados(caminho, caminho.split('/').pop()))) semDados += 1;
     }
   }
 
@@ -279,5 +287,11 @@ document.getElementById('materiais-enviar-btn')?.addEventListener('click', async
   status.textContent = '';
   input.value = '';
   if (enviados > 0) toast(`${enviados} arquivo(s) enviado(s).`);
+  if (semDados > 0) {
+    toast(
+      `${semDados} PDF(s) sem dados identificados — use "Ler dados do PDF" no menu.`,
+      'error',
+    );
+  }
   await carregarMateriais();
 });

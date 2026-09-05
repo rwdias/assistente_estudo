@@ -300,6 +300,57 @@ textarea { resize: vertical; }
   font: inherit; font-size: .88rem; font-weight: 500; color: var(--texto); cursor: pointer;
 }
 .materia-item:hover { background: var(--superficie-2); }
+/* ============ LEITOR DE PDF ============ */
+.leitor-overlay {
+  position: fixed; inset: 0; z-index: 900;
+  display: flex; flex-direction: column;
+  background: var(--fundo);
+}
+.leitor-barra {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 16px; border-bottom: 1px solid var(--borda); background: var(--superficie);
+}
+.leitor-titulo {
+  flex: 1; min-width: 140px; font-family: 'Sora', sans-serif; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.leitor-nav { display: flex; align-items: center; gap: 6px; }
+.leitor-nav #leitor-pagina { font-size: .85rem; color: var(--texto-2); min-width: 62px; text-align: center; }
+.leitor-dica {
+  margin: 0; padding: 7px 16px; font-size: .82rem;
+  color: var(--brand-ink); background: var(--brand-light);
+}
+.leitor-paginas { flex: 1; overflow: auto; padding: 20px; display: flex; justify-content: center; }
+.leitor-pagina { position: relative; box-shadow: var(--shadow-md); background: #fff; }
+.leitor-pagina canvas { display: block; }
+
+/* Camada de texto do pdf.js: spans transparentes sobre o canvas. É o que torna
+   o texto selecionável — sem ela o PDF seria só uma imagem. */
+.leitor-texto {
+  position: absolute; inset: 0; overflow: hidden; line-height: 1;
+  opacity: 1; color: transparent;
+}
+.leitor-texto span, .leitor-texto br {
+  position: absolute; white-space: pre; cursor: text;
+  transform-origin: 0% 0%; color: transparent;
+}
+.leitor-texto ::selection { background: rgba(14, 140, 130, .35); }
+.leitor-texto .endOfContent { display: none; }
+
+/* Botão que aparece junto do trecho selecionado */
+.leitor-acao {
+  position: fixed; z-index: 950; display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 15px; font: inherit; font-size: .86rem; font-weight: 600;
+  color: #fff; background: var(--brand); border: 0; border-radius: 999px;
+  box-shadow: var(--shadow-md); cursor: pointer;
+}
+.leitor-acao svg { width: 15px; height: 15px; }
+.leitor-acao:hover { filter: brightness(1.06); }
+
+/* Modal mais largo para revisar os cards gerados do trecho */
+.modal-largo { max-width: 680px; width: 92vw; }
+.modal-largo #modal-trecho-lista { max-height: 55vh; overflow-y: auto; }
+
 /* Nome do arquivo quando o material já tem título identificado: vira linha de
    apoio, discreta, porque o destaque passa a ser o título da obra. */
 .material-arquivo { font-family: ui-monospace, monospace; font-size: .78rem; opacity: .75; }
@@ -666,9 +717,14 @@ math { font-size: 1.08em; }
 }
 
 /* ============ MODAL / TOAST ============ */
+/* Camadas (do fundo para a frente): header 50 · sidebar 100 · menus 300 ·
+   leitor de PDF 900 · ação do leitor 950 · MODAIS 1000 · toast 1100.
+   Os modais precisam ficar acima do leitor: o modal de flashcards é aberto
+   COM o leitor no ar, e com z-index menor a camada de texto do PDF engolia
+   os cliques dos botões. */
 .modal-overlay {
   display: none; position: fixed; inset: 0; background: rgba(7,20,18,.55);
-  z-index: 500; align-items: center; justify-content: center;
+  z-index: 1000; align-items: center; justify-content: center;
   backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
 }
 .modal-overlay.open { display: flex; }
@@ -716,7 +772,8 @@ math { font-size: 1.08em; }
 .item-menu-lista button.perigo { color: var(--erro); }
 .item-menu-lista button.perigo:hover { background: var(--erro-bg); }
 
-#toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 900; display: flex; flex-direction: column; gap: 10px; }
+/* acima dos modais: um aviso de erro precisa ser visto mesmo com modal aberto */
+#toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 1100; display: flex; flex-direction: column; gap: 10px; }
 /* fundo fixo escuro nos dois temas — texto branco sempre legível */
 .toast {
   background: #0c2f2b; color: #ffffff; padding: 13px 18px; border-radius: 12px;
