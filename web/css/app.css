@@ -320,8 +320,15 @@ textarea { resize: vertical; }
   margin: 0; padding: 7px 16px; font-size: .82rem;
   color: var(--brand-ink); background: var(--brand-light);
 }
-.leitor-paginas { flex: 1; overflow: auto; padding: 20px; display: flex; justify-content: center; }
-.leitor-pagina { position: relative; box-shadow: var(--shadow-md); background: #fff; }
+/* align-items:flex-start impede que páginas de alturas diferentes (comum em
+   PDFs) sejam esticadas; gap pequeno faz as duas lerem como um livro aberto. */
+.leitor-paginas {
+  flex: 1; overflow: auto; padding: 20px;
+  display: flex; justify-content: center; align-items: flex-start; gap: 2px;
+}
+.leitor-pagina { position: relative; box-shadow: var(--shadow-md); background: #fff; flex: none; }
+/* Botão de modo ligado (2 páginas) */
+#leitor-duplo.ativo { border-color: var(--brand); color: var(--brand-ink); }
 .leitor-pagina canvas { display: block; }
 
 /* Camada de texto do pdf.js: spans transparentes sobre o canvas. É o que torna

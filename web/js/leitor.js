@@ -16,6 +16,9 @@ const LEITOR_WORKER = 'js/vendor/pdf.worker.min.js';
 let leitorDoc = null;        // PDFDocumentProxy aberto
 let leitorPagina = 1;
 let leitorEscala = 1.3;
+// Modo "livro": duas páginas lado a lado. Fica salvo porque é preferência de
+// leitura — quem gosta de ler em spread quer isso em todo material que abrir.
+let leitorDuplo = localStorage.getItem('leitorDuplo') === '1';
 let leitorInfo = null;       // { caminho, nome, titulo }
 let leitorTrecho = '';       // texto selecionado no momento
 let leitorPendentes = [];    // flashcards gerados, aguardando salvar
@@ -44,6 +47,7 @@ async function abrirLeitor(caminho, nome, titulo) {
 
   leitorInfo = { caminho, nome, titulo: titulo || nome };
   document.getElementById('leitor-titulo').textContent = leitorInfo.titulo;
+  aplicarRotuloDuplo(); // reflete a preferência salva já na abertura
   document.getElementById('leitor-paginas').innerHTML = '<p style="padding:20px">Abrindo...</p>';
   document.getElementById('leitor').style.display = 'flex';
 
@@ -65,13 +69,29 @@ async function abrirLeitor(caminho, nome, titulo) {
   }
 }
 
+// Desenha o que está visível agora: uma página, ou o par (n, n+1) no modo livro.
 async function renderizarPaginaLeitor() {
   if (!leitorDoc) return;
   const container = document.getElementById('leitor-paginas');
-  const pagina = await leitorDoc.getPage(leitorPagina);
+  container.innerHTML = '';
+
+  // No modo duplo a leitura acontece em pares fixos (1-2, 3-4, …), como num
+  // livro encadernado: ancorar no ímpar evita o par "deslizar" a cada avanço e
+  // mostrar sempre combinações diferentes das mesmas páginas.
+  const inicio = leitorDuplo ? leitorPagina - ((leitorPagina - 1) % 2) : leitorPagina;
+  const numeros = [inicio];
+  if (leitorDuplo && inicio + 1 <= leitorDoc.numPages) numeros.push(inicio + 1);
+
+  for (const n of numeros) await desenharPagina(n, container);
+
+  const rotulo = numeros.length > 1 ? `${numeros[0]}–${numeros[1]}` : `${numeros[0]}`;
+  document.getElementById('leitor-pagina').textContent = `${rotulo} / ${leitorDoc.numPages}`;
+}
+
+async function desenharPagina(numero, container) {
+  const pagina = await leitorDoc.getPage(numero);
   const viewport = pagina.getViewport({ scale: leitorEscala });
 
-  container.innerHTML = '';
   const moldura = document.createElement('div');
   moldura.className = 'leitor-pagina';
   moldura.style.width = `${viewport.width}px`;
@@ -112,9 +132,6 @@ async function renderizarPaginaLeitor() {
     viewport,
     textDivs: [],
   });
-
-  document.getElementById('leitor-pagina').textContent =
-    `${leitorPagina} / ${leitorDoc.numPages}`;
 }
 
 function fecharLeitor() {
@@ -128,11 +145,34 @@ function fecharLeitor() {
 
 function irParaPagina(delta) {
   if (!leitorDoc) return;
-  const alvo = leitorPagina + delta;
+  // No modo livro o avanço é de duas em duas: virar uma folha mostra o próximo
+  // par, não a página seguinte (que já está à vista).
+  const passo = leitorDuplo ? 2 : 1;
+  const alvo = leitorPagina + delta * passo;
   if (alvo < 1 || alvo > leitorDoc.numPages) return;
   leitorPagina = alvo;
   renderizarPaginaLeitor();
 }
+
+// Alterna entre uma página e o spread de duas.
+function alternarPaginaDupla() {
+  leitorDuplo = !leitorDuplo;
+  localStorage.setItem('leitorDuplo', leitorDuplo ? '1' : '0');
+  aplicarRotuloDuplo();
+  if (leitorDoc) renderizarPaginaLeitor();
+}
+
+// O rótulo mostra o que o clique VAI fazer, não o estado atual — botão de
+// alternância que anuncia o estado confunde ("2 páginas" ligado = ...está em 2?).
+function aplicarRotuloDuplo() {
+  const rotulo = document.getElementById('leitor-duplo-rotulo');
+  const botao = document.getElementById('leitor-duplo');
+  if (!rotulo || !botao) return;
+  rotulo.textContent = leitorDuplo ? '1 página' : '2 páginas';
+  botao.title = leitorDuplo ? 'Ver uma página' : 'Ver duas páginas';
+  botao.classList.toggle('ativo', leitorDuplo);
+}
+document.getElementById('leitor-duplo')?.addEventListener('click', alternarPaginaDupla);
 
 document.getElementById('leitor-fechar')?.addEventListener('click', fecharLeitor);
 document.getElementById('leitor-anterior')?.addEventListener('click', () => irParaPagina(-1));
