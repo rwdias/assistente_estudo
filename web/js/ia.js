@@ -15,6 +15,7 @@ const CONTEXTO_PADRAO_EXATAS = `Matéria de EXATAS (matemática, física, quími
 - Quando ajudar a fixar, inclua uma condição de uso ("vale só quando…"), um caso particular ou uma pegadinha comum.
 - Use a notação e os símbolos padrão da área.`;
 
+
 // Porta de validar_pergunta_json: >=2 opções, pelo menos 1 correta
 // (questões de múltipla resposta têm mais de uma), todos os textos
 // preenchidos.
@@ -162,8 +163,8 @@ document.getElementById('ia-extrair-btn').addEventListener('click', async () => 
   if (tipoIa === 'flashcard') {
     extracaoPendente = (data.flashcards ?? []).map((f) => ({
       tipo: 'flashcard',
-      enunciado: f.frente,
-      verso: f.verso,
+      enunciado: corpo.matematica ? normalizarLatex(f.frente) : f.frente,
+      verso: corpo.matematica ? normalizarLatex(f.verso) : f.verso,
       dificuldade: f.dificuldade,
       topico: f.topico,
     }));
@@ -306,6 +307,19 @@ async function salvarExtracao() {
   if (selecionadas.length === 0) {
     toast('Nenhum item selecionado.', 'error');
     return;
+  }
+
+  if (materiaEhMatematica()) {
+    try {
+      for (const item of selecionadas) {
+        item.enunciado = prepararTextoMatematico(item.enunciado);
+        if (item.verso != null) item.verso = prepararTextoMatematico(item.verso);
+        item.opcoes = item.opcoes.map((o) => ({ ...o, texto: prepararTextoMatematico(o.texto) }));
+      }
+    } catch (erro) {
+      toast(erro.message, 'error');
+      return; // preserva todo o preview para revisão, sem salvar parte do lote
+    }
   }
 
   let existentes;

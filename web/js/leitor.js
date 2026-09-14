@@ -273,7 +273,10 @@ document.getElementById('leitor-criar-btn')?.addEventListener('click', async () 
   botao.innerHTML = original;
   if (error) { toast(await mensagemErroFuncao(error), 'error'); return; }
 
-  leitorPendentes = (data?.flashcards || []).filter((f) => f.frente && f.verso);
+  leitorPendentes = (data?.flashcards || []).filter((f) => f.frente && f.verso)
+    .map((f) => materiaEhMatematica()
+      ? { ...f, frente: normalizarLatex(f.frente), verso: normalizarLatex(f.verso) }
+      : f);
   if (leitorPendentes.length === 0) {
     toast('Não consegui gerar flashcards desse trecho.', 'error');
     return;
@@ -326,6 +329,12 @@ document.getElementById('modal-trecho-salvar')?.addEventListener('click', async 
   const btn = document.getElementById('modal-trecho-salvar');
   btn.disabled = true;
   try {
+    if (materiaEhMatematica()) {
+      for (const card of cards) {
+        card.enunciado = prepararTextoMatematico(card.enunciado);
+        card.verso = prepararTextoMatematico(card.verso);
+      }
+    }
     for (const card of cards) {
       await inserirPergunta(Estado.materiaId, card);
     }

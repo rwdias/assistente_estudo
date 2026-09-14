@@ -190,6 +190,14 @@ function resetarFormPergunta() {
 // Insere pergunta OU flashcard + linha de revisão (SM-2). Flashcards não
 // têm opções: a frente fica em `enunciado` e a resposta em `verso`.
 async function inserirPergunta(materiaId, dados) {
+  if (materiaEhMatematica(materiaId)) {
+    dados = {
+      ...dados,
+      enunciado: prepararTextoMatematico(dados.enunciado),
+      verso: dados.verso == null ? null : prepararTextoMatematico(dados.verso),
+      opcoes: dados.opcoes?.map((o) => ({ ...o, texto: prepararTextoMatematico(o.texto) })),
+    };
+  }
   const subdivisaoId = await garantirSubdivisao(materiaId, dados.topico || 'Geral');
 
   const { data: pergunta, error: erroPergunta } = await sb
@@ -521,8 +529,8 @@ document.getElementById('editar-salvar-btn').addEventListener('click', async () 
   if (!itemEmEdicao) return;
 
   const ehFlashcard = itemEmEdicao.tipo === 'flashcard';
-  const enunciado = document.getElementById('editar-enunciado').value.trim();
-  const verso = document.getElementById('editar-verso').value.trim();
+  let enunciado = document.getElementById('editar-enunciado').value.trim();
+  let verso = document.getElementById('editar-verso').value.trim();
 
   if (!enunciado) {
     toast(ehFlashcard ? 'A frente não pode ficar vazia.' : 'O enunciado não pode ficar vazio.', 'error');
@@ -548,6 +556,17 @@ document.getElementById('editar-salvar-btn').addEventListener('click', async () 
     }
     if (!opcoes.some((o) => o.correta)) {
       toast('Marque pelo menos uma alternativa como correta.', 'error');
+      return;
+    }
+  }
+
+  if (materiaEhMatematica()) {
+    try {
+      enunciado = prepararTextoMatematico(enunciado);
+      verso = prepararTextoMatematico(verso);
+      opcoes = opcoes.map((o) => ({ ...o, texto: prepararTextoMatematico(o.texto) }));
+    } catch (erro) {
+      toast(erro.message, 'error');
       return;
     }
   }

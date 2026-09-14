@@ -485,7 +485,8 @@ export function promptFlashcards(
       "- Use COMANDOS LaTeX, não Unicode: $\\neg$ $\\land$ $\\lor$ $\\to$ " +
       "$\\leftrightarrow$ raiz $\\sqrt{\\;}$ fração $\\frac{a}{b}$ potência x^{n} " +
       "vezes $\\cdot$ diferente $\\neq$ $\\leq$ $\\geq$ somatório $\\sum$ integral $\\int$.\n" +
-      "- Toda fórmula vem com o significado de cada símbolo e as unidades quando houver.\n"
+      "- Toda fórmula vem com o significado de cada símbolo e as unidades quando houver.\n" +
+      String.raw`- ESCAPE JSON: cada barra invertida do LaTeX deve ser escrita como duas barras no JSON. Exemplo válido: {"frente":"O que significa $\\neg p$?","verso":"A negação de $p$."}. Preserve os comandos \\neg, \\to, \\frac, \\times, \\text e \\bigwedge; nunca os substitua por caracteres de controle (quebra de linha, tabulação, backspace ou form feed).` + "\n"
     : "";
 
   return (

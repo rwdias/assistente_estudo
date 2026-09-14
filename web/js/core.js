@@ -558,12 +558,70 @@ function renderImagensPergunta(pergunta) {
 // `trust=false` — bloqueia `\href` e afins → sem XSS), e reinserido DEPOIS de
 // todo o pipeline. O placeholder usa caracteres de uso privado (/)
 // que sobrevivem ao escape e não casam com nenhuma regex de Markdown.
+// Uma barra não escapada no JSON da IA transforma \neg em LF + "eg",
+// \to em TAB + "o", \frac em FF + "rac" etc. Recuperamos apenas comandos
+// conhecidos DENTRO de fórmulas; quebras de linha do texto continuam intactas.
+function normalizarLatex(texto) {
+  const comandos = {
+    '\b': ['bigwedge', 'bigvee', 'begin', 'beta', 'binom', 'boldsymbol', 'mathbf', 'bar', 'boxed'],
+    '\f': ['frac', 'forall'],
+    '\n': ['neg', 'neq', 'nabla', 'notin'],
+    '\r': ['right', 'rightarrow', 'rightleftarrows', 'rho', 'rangle'],
+    '\t': ['to', 'theta', 'times', 'text', 'textstyle', 'tfrac', 'tau', 'top'],
+  };
+  const reparar = (formula) => {
+    for (const [controle, nomes] of Object.entries(comandos)) {
+      for (const nome of nomes) {
+        const sufixo = nome.slice(1);
+        formula = formula.replace(new RegExp(controle + sufixo + '(?![a-zA-Z])', 'g'), () => '\\' + nome);
+        // Textareas normalizam CR para LF antes de enviar o texto.
+        if (controle === '\r') {
+          formula = formula.replace(new RegExp('\n' + sufixo + '(?![a-zA-Z])', 'g'), () => '\\' + nome);
+        }
+      }
+    }
+    return formula;
+  };
+  return String(texto ?? '').replace(/\$\$[\s\S]*?\$\$|\$[^$]*?\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]/g, reparar);
+}
+
+function substituirFormulas(texto, renderizar) {
+  return texto.replace(/\$\$([\s\S]*?)\$\$|\$([^$]*?)\$|\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]/g,
+    (_, bloco, inline, parenteses, colchetes) =>
+      renderizar(bloco ?? inline ?? parenteses ?? colchetes, bloco !== undefined || colchetes !== undefined));
+}
+
+// Validação antes de qualquer INSERT: uma fórmula inválida precisa ser
+// corrigida no preview, em vez de virar um cartão quebrado na fila de estudo.
+function prepararTextoMatematico(texto) {
+  const normalizado = normalizarLatex(texto);
+  const resto = substituirFormulas(normalizado, (formula, bloco) => {
+    if (typeof temml === 'undefined') throw new Error('Não consegui validar as fórmulas. Atualize a página e tente novamente.');
+    try {
+      const config = { displayMode: bloco, throwOnError: true, trust: false, errorColor: '#b22222' };
+      const html = temml.renderToString(formula.trim(), config);
+      // Temml 0.10 também desenha comandos desconhecidos na cor de erro,
+      // mesmo com throwOnError. Compara outra cor para não barrar cor legítima.
+      if (html.includes('#b22222') && html !== temml.renderToString(formula.trim(), { ...config, errorColor: '#b22223' })) {
+        throw new Error('Comando não suportado.');
+      }
+    } catch (_) {
+      throw new Error('Fórmula LaTeX inválida: ' + formula.trim() + '. Corrija o texto antes de salvar.');
+    }
+    return '';
+  });
+  if (/(^|[^\\])\$|\\[()[\]]|[\u0000-\u0008\u000b\u000c\u000e-\u001f]/.test(resto)) {
+    throw new Error('Há uma fórmula incompleta ou um caractere inválido. Confira os delimitadores $...$ antes de salvar.');
+  }
+  return normalizado;
+}
+
 function extrairMath(texto, saida) {
   // sem Temml carregado (ou fora do modo math) o chamador nem chega aqui.
   const guarda = (latex, bloco) => {
     let mathml;
     try {
-      mathml = temml.renderToString(latex, { displayMode: bloco, throwOnError: false });
+      mathml = temml.renderToString(latex, { displayMode: bloco, throwOnError: false, trust: false });
     } catch (_) {
       // fórmula impossível de converter: mostra o LaTeX cru, escapado (inerte).
       mathml = esc((bloco ? '$$' : '$') + latex + (bloco ? '$$' : '$'));
@@ -572,9 +630,7 @@ function extrairMath(texto, saida) {
     saida.push(bloco ? `<span class="math-bloco">${mathml}</span>` : mathml);
     return token;
   };
-  return texto
-    .replace(/\$\$([\s\S]+?)\$\$/g, (_, m) => guarda(m.trim(), true))   // bloco $$...$$
-    .replace(/\$([^$\n]+?)\$/g, (_, m) => guarda(m.trim(), false));     // inline $...$
+  return substituirFormulas(normalizarLatex(texto), (m, bloco) => guarda(m.trim(), bloco));
 }
 
 function restaurarMath(html, saida) {
