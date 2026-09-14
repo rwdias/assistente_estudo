@@ -23,6 +23,32 @@ let leitorInfo = null;       // { caminho, nome, titulo }
 let leitorTrecho = '';       // texto selecionado no momento
 let leitorPendentes = [];    // flashcards gerados, aguardando salvar
 
+// O caminho inclui usuário e matéria, separando materiais e contas diferentes.
+function chaveProgressoLeitor(caminho) {
+  return `leitorPagina:${caminho}`;
+}
+
+function recuperarPaginaLeitor(caminho, totalPaginas) {
+  try {
+    const pagina = Number(localStorage.getItem(chaveProgressoLeitor(caminho)));
+    return Number.isSafeInteger(pagina) && pagina > 0
+      ? Math.min(pagina, totalPaginas)
+      : 1;
+  } catch {
+    // Armazenamento bloqueado não deve impedir a leitura.
+    return 1;
+  }
+}
+
+function salvarPaginaLeitor() {
+  if (!leitorDoc || !leitorInfo) return;
+  try {
+    localStorage.setItem(chaveProgressoLeitor(leitorInfo.caminho), String(leitorPagina));
+  } catch {
+    // Mantém o leitor funcionando se o armazenamento estiver indisponível.
+  }
+}
+
 // Carrega o pdf.js uma única vez. Injeta um <script> local — a CSP permite
 // 'self', mas não permitiria um CDN para o worker, por isso tudo é vendorizado.
 function carregarPdfJs() {
@@ -61,7 +87,7 @@ async function abrirLeitor(caminho, nome, titulo) {
     if (error) throw new Error(error.message);
 
     leitorDoc = await pdfjsLib.getDocument({ url: data.signedUrl }).promise;
-    leitorPagina = 1;
+    leitorPagina = recuperarPaginaLeitor(caminho, leitorDoc.numPages);
     await renderizarPaginaLeitor();
   } catch (erro) {
     document.getElementById('leitor-paginas').innerHTML =
@@ -72,6 +98,7 @@ async function abrirLeitor(caminho, nome, titulo) {
 // Desenha o que está visível agora: uma página, ou o par (n, n+1) no modo livro.
 async function renderizarPaginaLeitor() {
   if (!leitorDoc) return;
+  salvarPaginaLeitor();
   const container = document.getElementById('leitor-paginas');
   container.innerHTML = '';
 
