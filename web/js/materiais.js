@@ -110,6 +110,7 @@ async function carregarMateriais() {
             ${temTitulo ? `<div class="pergunta-meta"><span class="material-arquivo">${esc(f.name)}</span></div>` : ''}
           </div>
           <button type="button" class="btn btn-secondary btn-sm material-abrir">${ICONE_ABRIR} Abrir</button>
+          <button type="button" class="btn btn-secondary btn-sm material-baixar" title="Baixar arquivo para o dispositivo">Baixar</button>
           ${renderMenuItemHTML([
             { acao: 'metadados', rotulo: temTitulo ? 'Reler dados do PDF' : 'Ler dados do PDF', icone: ICONE_VARIANTE_MENU },
             { acao: 'excluir', rotulo: 'Excluir arquivo', icone: ICONE_LIXEIRA, perigo: true },
@@ -128,6 +129,8 @@ async function carregarMateriais() {
       if (/\.pdf$/i.test(nome)) abrirLeitor(`${pasta}/${nome}`, nome, meta?.titulo);
       else abrirMaterial(pasta, nome);
     });
+    const baixar = item.querySelector('.material-baixar');
+    baixar.addEventListener('click', () => baixarArquivoMaterial(pasta, nome, baixar));
     wireMenuItem(item, (acao) => {
       if (acao === 'excluir') excluirMaterial(pasta, nome);
       else if (acao === 'metadados') lerMetadados(`${pasta}/${nome}`, nome, true);
@@ -196,6 +199,36 @@ async function abrirMaterial(pasta, nome) {
     .createSignedUrl(`${pasta}/${nome}`, MATERIAIS_URL_SEGUNDOS);
   if (error) { toast(error.message, 'error'); return; }
   window.open(data.signedUrl, '_blank', 'noopener');
+}
+
+// Busca autenticada no bucket privado e download local. O Blob permite salvar
+// inclusive PDFs (sem abrir outra aba) e preservar o nome original do arquivo.
+async function baixarArquivoMaterial(pasta, nome, botao) {
+  if (botao.disabled) return;
+  botao.disabled = true;
+  botao.textContent = 'Baixando…';
+  let url;
+  let link;
+  try {
+    const { data, error } = await sb.storage.from(MATERIAIS_BUCKET).download(`${pasta}/${nome}`);
+    if (error) throw error;
+    if (!data) throw new Error('O arquivo não está disponível para download.');
+    url = URL.createObjectURL(data);
+    link = document.createElement('a');
+    link.href = url;
+    link.download = nome;
+    link.hidden = true;
+    document.body.appendChild(link);
+    link.click();
+  } catch (erro) {
+    toast(`Não foi possível baixar o arquivo: ${erro.message || 'tente novamente.'}`, 'error');
+  } finally {
+    link?.remove();
+    // Dá tempo ao navegador de iniciar a gravação antes de liberar o Blob.
+    if (url) setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    botao.disabled = false;
+    botao.textContent = 'Baixar';
+  }
 }
 
 async function excluirMaterial(pasta, nome) {
