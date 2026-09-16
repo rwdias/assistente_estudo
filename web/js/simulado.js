@@ -1,5 +1,6 @@
 let simuladoQuestions = [];
 let simuladoAcertos = 0;
+let resultadoBacenSimulado = null;
 let fonteSimulado = 'materia'; // 'materia' | 'banco'
 let provasBanco = null; // cache do catálogo p/ filtros
 
@@ -11,6 +12,9 @@ document.querySelectorAll('#toggle-fonte-simulado button').forEach((btn) => {
     document.querySelectorAll('#toggle-fonte-simulado button').forEach((b) => b.classList.remove('ativo'));
     btn.classList.add('ativo');
     fonteSimulado = btn.dataset.fonte;
+    const bacenInfo = document.getElementById('simulado-bacen-info');
+    bacenInfo.style.display = fonteSimulado === 'bacen' ? 'block' : 'none';
+    bacenInfo.innerHTML = fonteSimulado === 'bacen' ? resumoBacenHTML() : '';
     document.getElementById('simulado-filtros-banco').style.display =
       fonteSimulado === 'banco' ? 'block' : 'none';
     if (fonteSimulado === 'banco') await carregarFiltrosBanco();
@@ -121,6 +125,7 @@ function embaralharLista(lista) {
 }
 
 async function iniciarSimulado() {
+  resultadoBacenSimulado = null;
   const quantidade = Number(document.getElementById('simulado-quantidade').value) || 5;
   const embaralhar = document.getElementById('simulado-embaralhar').checked;
 
@@ -134,7 +139,7 @@ async function iniciarSimulado() {
       return;
     }
     try {
-      perguntas = await buscarPerguntasDaMateria(Estado.materiaId);
+      perguntas = fonteSimulado === 'bacen' ? await buscarItensBacen() : await buscarPerguntasDaMateria(Estado.materiaId);
     } catch (erro) {
       toast(erro.message, 'error');
       return;
@@ -144,8 +149,16 @@ async function iniciarSimulado() {
     perguntas = perguntas.filter((p) => p.tipo === 'pergunta' && !p.oculta);
   }
 
-  if (embaralhar) embaralharLista(perguntas);
-  simuladoQuestions = perguntas.slice(0, quantidade);
+  if (fonteSimulado === 'bacen') {
+    const resultado = selecionarBacen(perguntas, quantidade);
+    resultadoBacenSimulado = resultado;
+    simuladoQuestions = resultado.itens;
+    document.getElementById('simulado-bacen-info').innerHTML = resumoBacenHTML(resultado);
+    if (resultado.grupos.some((g) => !g.itens.length)) toast('Há matérias sem questões. A sessão usa os conteúdos disponíveis.');
+  } else {
+    if (embaralhar) embaralharLista(perguntas);
+    simuladoQuestions = perguntas.slice(0, quantidade);
+  }
 
   if (simuladoQuestions.length === 0) {
     toast('Nenhuma pergunta encontrada com esses filtros.', 'error');
@@ -212,6 +225,7 @@ function renderSimulado() {
         <div class="stat-rotulo">acertos</div>
       </div>
     </div>
+    ${resultadoBacenSimulado ? `<div class="card" style="padding:16px">${resumoBacenHTML(resultadoBacenSimulado)}</div>` : ''}
     ${simuladoQuestions.map((p, i) => renderPerguntaQuizHTML(p, `sim-${i}`)).join('')}
     <button type="button" class="btn btn-secondary" id="novo-simulado-btn">Novo simulado</button>
   `;

@@ -16,12 +16,12 @@ document.querySelectorAll('#tipo-toggle-manual button').forEach((btn) => {
 });
 
 // --- tópicos nos selects dos formulários ---
-async function carregarTopicosNosSelects() {
-  if (!Estado.materiaId) return;
+async function carregarTopicosNosSelects(materiaId = Estado.materiaId, somenteEdicao = false) {
+  if (!materiaId) return;
 
   let topicos;
   try {
-    topicos = await listarTopicos(Estado.materiaId);
+    topicos = await listarTopicos(materiaId);
   } catch (_) {
     return;
   }
@@ -33,8 +33,10 @@ async function carregarTopicosNosSelects() {
       .map((t) => `<option value="${esc(t.nome)}">${esc(t.nome)}</option>`)
       .join('');
 
-  document.getElementById('pergunta-topico').innerHTML = opcoes;
-  document.getElementById('fc-topico').innerHTML = opcoes;
+  if (!somenteEdicao) {
+    document.getElementById('pergunta-topico').innerHTML = opcoes;
+    document.getElementById('fc-topico').innerHTML = opcoes;
+  }
   document.getElementById('editar-topico').innerHTML = opcoes;
 }
 
@@ -485,7 +487,7 @@ async function abrirEdicaoItem(item, aoSalvar) {
 
   // O select de tópicos só era preenchido ao abrir o painel Perguntas; quem
   // edita direto do estudo precisa dele populado, senão salvaria sem tópico.
-  await carregarTopicosNosSelects();
+  await carregarTopicosNosSelects(item.materia_id ?? Estado.materiaId, true);
 
   const ehFlashcard = item.tipo === 'flashcard';
   document.getElementById('editar-titulo').textContent =
@@ -560,7 +562,7 @@ document.getElementById('editar-salvar-btn').addEventListener('click', async () 
     }
   }
 
-  if (materiaEhMatematica()) {
+  if (materiaEhMatematica(itemEmEdicao.materia_id ?? Estado.materiaId)) {
     try {
       enunciado = prepararTextoMatematico(enunciado);
       verso = prepararTextoMatematico(verso);
@@ -577,7 +579,7 @@ document.getElementById('editar-salvar-btn').addEventListener('click', async () 
   let subdivisaoId;
   try {
     subdivisaoId = await garantirSubdivisao(
-      Estado.materiaId,
+      itemEmEdicao.materia_id ?? Estado.materiaId,
       document.getElementById('editar-topico').value || 'Geral',
     );
   } catch (erro) {

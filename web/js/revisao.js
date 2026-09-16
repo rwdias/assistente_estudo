@@ -4,6 +4,8 @@ let revisaoAcertos = 0;
 let revisaoErros = 0;
 let filtroRevisao = 'tudo'; // 'tudo' | 'pergunta' | 'flashcard' | 'foco'
 let revisaoReaprendendoIds = new Set();
+let resultadoBacenRevisao = null;
+let carregamentoRevisao = 0;
 
 // ===========================================================================
 // Modo FOCO — sessão curta e priorizada.
@@ -145,7 +147,10 @@ let revisaoHistorico = [];
 
 function chaveSessaoRevisao() {
   const hoje = new Date().toISOString().slice(0, 10);
-  return `revisaoSessao:${Estado.materiaId || 'sem-materia'}:${hoje}`;
+  const escopo = filtroRevisao === 'bacen'
+    ? `bacen:${materiasBacen().map((m) => m.id).sort((a, b) => a - b).join(',')}`
+    : Estado.materiaId || 'sem-materia';
+  return `revisaoSessao:${escopo}:${hoje}`;
 }
 
 function carregarSessaoRevisao() {
@@ -213,7 +218,7 @@ document.querySelectorAll('#tipo-toggle-revisao button').forEach((btn) => {
 
 (function restaurarFiltroRevisao() {
   const salvo = localStorage.getItem('filtroRevisao');
-  if (!['tudo', 'pergunta', 'flashcard', 'foco'].includes(salvo)) return;
+  if (!['tudo', 'pergunta', 'flashcard', 'foco', 'bacen'].includes(salvo)) return;
   filtroRevisao = salvo;
   document.querySelectorAll('#tipo-toggle-revisao button').forEach((b) =>
     b.classList.toggle('ativo', b.dataset.filtro === filtroRevisao)
@@ -221,6 +226,7 @@ document.querySelectorAll('#tipo-toggle-revisao button').forEach((btn) => {
 })();
 
 async function carregarRevisao() {
+  const carregamento = ++carregamentoRevisao;
   const resumo = document.getElementById('revisao-resumo');
   const atual = document.getElementById('revisao-atual');
 
@@ -234,8 +240,11 @@ async function carregarRevisao() {
 
   let perguntas;
   try {
-    perguntas = await buscarPerguntasDaMateria(Estado.materiaId);
+    perguntas = filtroRevisao === 'bacen' ? await buscarItensBacen() : await buscarPerguntasDaMateria(Estado.materiaId);
+    if (carregamento !== carregamentoRevisao) return;
   } catch (erro) {
+    if (carregamento !== carregamentoRevisao) return;
+    atual.innerHTML = `<p>${esc(erro.message)}</p>`;
     toast(erro.message, 'error');
     return;
   }
@@ -254,13 +263,18 @@ async function carregarRevisao() {
     // (têm UI própria de resposta+conferência) — não entram na fila comum ainda.
     .filter((p) => p.tipo !== 'exercicio')
     .filter((p) => !p.oculta) // itens ocultos não entram na revisão
-    .filter((p) => filtroRevisao === 'tudo' || filtroRevisao === 'foco' || p.tipo === filtroRevisao)
+    .filter((p) => ['tudo', 'foco', 'bacen'].includes(filtroRevisao) || p.tipo === filtroRevisao)
     .filter((p) => p.proxima_revisao_em === null || new Date(p.proxima_revisao_em) <= agora)
     // aplicarVariante escolhe qual versão (original ou reformulada) entra nesta
     // rodada; fica fixada no item da fila, então o "Voltar" restaura a mesma.
     .map((p) => ({ ...aplicarVariante(p), novo: p.vezes_respondida === 0 }));
 
-  if (filtroRevisao === 'foco') {
+  resultadoBacenRevisao = null;
+  if (filtroRevisao === 'bacen') {
+    focoTopicosFracos = null;
+    resultadoBacenRevisao = selecionarBacen(candidatos, 120);
+    revisaoFila = resultadoBacenRevisao.itens;
+  } else if (filtroRevisao === 'foco') {
     // Sessão priorizada e FINITA: ordena por prioridade e corta em FOCO_LIMITE.
     // As estatísticas de tópico usam a matéria inteira (não só os vencidos),
     // senão um tópico problemático some da conta justo quando está em dia.
@@ -301,7 +315,7 @@ async function carregarRevisao() {
       revisaoReaprendendoIds.delete(id);
       return;
     }
-    if (filtroRevisao !== 'tudo' && pergunta.tipo !== filtroRevisao) return;
+    if (!['tudo', 'foco', 'bacen'].includes(filtroRevisao) && pergunta.tipo !== filtroRevisao) return;
     revisaoFila.push({ ...aplicarVariante(pergunta), novo: false, reaprendendo: true });
   });
 
@@ -343,6 +357,13 @@ function renderResumoRevisao() {
 function renderFocoInfo() {
   const alvo = document.getElementById('revisao-foco-info');
   if (!alvo) return;
+
+  if (filtroRevisao === 'bacen') {
+    alvo.style.display = 'block';
+    alvo.innerHTML = resumoBacenHTML(resultadoBacenRevisao) +
+      '<p>Até 120 perguntas e flashcards novos ou com revisão vencida. Itens errados voltam na sessão para reforço, além da distribuição inicial.</p>';
+    return;
+  }
 
   if (filtroRevisao !== 'foco') {
     alvo.style.display = 'none';
@@ -552,7 +573,7 @@ function renderFlashcardRevisao(card) {
   const previsao = preverIntervalos(card.intervalo_dias, card.fator_facilidade);
   // Em matéria matemática, frente/verso renderizam LaTeX; em normal, mat=false
   // deixa o comportamento idêntico ao de sempre.
-  const mat = materiaEhMatematica();
+  const mat = materiaEhMatematica(card.materia_id ?? Estado.materiaId);
 
   const botao = (qualidade, rotulo, classe, atalho) => `
     <div class="fc-opcao">
@@ -565,6 +586,7 @@ function renderFlashcardRevisao(card) {
 
   container.innerHTML = `
     <div class="question-card">
+      ${renderOrigemQuiz(card)}
       <span class="fc-rotulo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="14" height="13" rx="2"/><path d="M7.5 7V6a2 2 0 0 1 2-2H19a2 2 0 0 1 2 2v9.5a2 2 0 0 1-2 2h-1"/></svg>
         Flashcard

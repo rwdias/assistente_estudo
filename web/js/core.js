@@ -107,6 +107,7 @@ function normalizarPergunta(linha) {
 
   return {
     id: linha.id,
+    materia_id: linha.subdivisoes?.materia_id,
     tipo,
     topico: linha.subdivisoes?.nome && linha.subdivisoes.nome !== 'Geral'
       ? linha.subdivisoes.nome
@@ -743,7 +744,7 @@ function renderOrigemQuiz(pergunta) {
   if (pergunta?.origem_nome) {
     return `<div class="question-origem">${esc(pergunta.origem_nome)}</div>`;
   }
-  const materia = Estado.materias.find((m) => m.id === Estado.materiaId);
+  const materia = Estado.materias.find((m) => m.id === (pergunta.materia_id ?? Estado.materiaId));
   return materia ? `<div class="question-origem">${esc(materia.nome)}</div>` : '';
 }
 
@@ -772,7 +773,7 @@ function renderPerguntaQuizHTML(pergunta, chave) {
   // Em matéria matemática, enunciado e alternativas renderizam LaTeX. Em
   // matéria normal, mat=false → comportamento byte-a-byte idêntico ao de sempre
   // (enunciado via formatarTexto sem math; alternativas via esc puro).
-  const mat = materiaEhMatematica();
+  const mat = materiaEhMatematica(pergunta.materia_id ?? Estado.materiaId);
   return `
     <div class="question-card" data-chave="${chave}" ${multipla ? 'data-multipla="1"' : ''}>
       ${renderOrigemQuiz(pergunta)}
