@@ -91,9 +91,9 @@ function selecionarBacen(itens, limite = 120, random = Math.random) {
 
 function resumoBacenHTML(resultado) {
   const falta = resultado?.grupos.filter((g) => g.itens.length === 0).map((g) => g.nome) || [];
-  return `<p><b>BACEN misturado — referência: edital 2024.</b> Sorteio proporcional, sem repetir itens na seleção.
+  return `<p><b>BACEN misturado — referência: edital 2024.</b> Reúne as matérias das trilhas do BACEN. Sorteio proporcional, sem repetir itens na seleção.
     A quantidade se ajusta ao conteúdo disponível; a discursiva é estudada separadamente.</p>
-    ${falta.length ? `<p>Sem itens disponíveis nesta sessão: ${falta.map(esc).join('; ')}. As vagas foram redistribuídas.</p>` : ''}
+    ${falta.length ? `<p>Sem itens disponíveis nesta sessão: ${falta.map(esc).join('; ')}. ${resultado.itens.length ? 'As vagas foram redistribuídas.' : 'Adicione questões e flashcards às matérias do BACEN, ou volte quando houver revisões vencidas.'}</p>` : ''}
     <details><summary>Ver pesos e distribuição</summary>
     <ul>${BACEN_GRUPOS.map((g, i) => `<li>${esc(g.nome)}: ${g.peso}/120 (${(g.peso / 1.2).toFixed(1)}%)${resultado ? ` — ${resultado.grupos[i].selecionados} selecionados` : ''}</li>`).join('')}</ul>
     <p>Dados: 14 + 4. Software: 24 entre Engenharia e Desenvolvimento. Infraestrutura e Segurança: 17 + 7 entre Redes/Segurança e Sistemas Operacionais. Dentro de cada grupo, as matérias se alternam igualmente enquanto houver itens.</p>
