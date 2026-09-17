@@ -145,6 +145,17 @@ async function iniciarCronometro(uid) {
 }
 
 async function sincronizarTempo() {
+  if (!tempoUsuario || !navigator.locks) return;
+  const uid = tempoUsuario;
+  // Uma única aba envia a fila compartilhada. O RPC continua idempotente.
+  await navigator.locks.request(`tempo-sync:${uid}`, { ifAvailable: true }, async lock => {
+    if (!lock || tempoUsuario !== uid) return;
+    await alterarTempo();
+    await enviarTempoPendente();
+  });
+}
+
+async function enviarTempoPendente() {
   if (!tempoUsuario || tempoSincronizando) return;
   tempoSincronizando = true;
   tempoUltimaSync = Date.now();
@@ -176,7 +187,8 @@ async function sincronizarTempo() {
 async function mudarMateriaTempo(id) {
   tempoMateria = id;
   await alterarTempo((s, agora) => {
-    if (s.rodando && s.fase === 'estudo' && s.segmento?.materia_id !== id) {
+    if (document.visibilityState === 'visible' && document.hasFocus() &&
+        s.rodando && s.fase === 'estudo' && s.segmento?.materia_id !== id) {
       if (id) iniciarSegmentoTempo(s, agora, id);
       else { s.rodando = false; s.segmento = null; }
     }
@@ -212,13 +224,17 @@ function renderTempo() {
 
 document.getElementById('tempo-iniciar').addEventListener('click', async () => {
   if (!tempoMateria) return;
+  const iniciar = !tempoEstado?.rodando;
   // O navegador exige um gesto do usuário para habilitar o aviso sonoro.
   ativarSomTempo();
   await alterarTempo((s, agora) => {
     if (s.preset === 'livre' && s.decorrido >= TEMPO_LIMITE_LIVRE) return;
+    // A intenção vem do botão visto pelo usuário: dois cliques em Iniciar
+    // em abas desatualizadas não devem iniciar e depois pausar a sessão.
+    if (s.rodando === iniciar) return;
     s.aviso = '';
     s.conclusao = null;
-    s.rodando = !s.rodando;
+    s.rodando = iniciar;
     if (s.rodando) iniciarSegmentoTempo(s, agora, tempoMateria);
     else s.segmento = null;
   });
@@ -249,6 +265,14 @@ document.getElementById('tempo-preset').addEventListener('change', async e => {
     s.restante = TEMPO_PRESETS[preset][0] * 60_000;
     s.aviso = '';
   });
+});
+window.addEventListener('storage', e => {
+  if (!tempoUsuario || e.key !== `tempo-estudo:${tempoUsuario}`) return;
+  // Apenas lê: escrever aqui provocaria um ciclo de eventos entre abas.
+  try {
+    tempoEstado = e.newValue ? JSON.parse(e.newValue) : novoEstadoTempo();
+    renderTempo();
+  } catch (_) {}
 });
 window.addEventListener('online', () => sincronizarTempo());
 document.addEventListener('visibilitychange', () => { alterarTempo(); });
