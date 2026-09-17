@@ -527,8 +527,8 @@
             <p class="card-sub">Markdown usado pela IA ao gerar flashcards desta matéria — cole trechos do edital, vocabulário e estilo desejados.</p>
           </div>
           <div class="card-body">
-            <p id="ia-perfil-bacen" class="card-sub" hidden>BACEN: seleção de conteúdo relevante, sem cartões repetidos no lote. No PDF, normalmente 1–4 por página selecionada, no máximo 5. Texto colado sem paginação: até 5 por envio. Pode não gerar cartões. Referência: edital BCB 2024; acrescente abaixo um edital mais específico, se desejar.</p>
-            <textarea id="ia-contexto" rows="6" placeholder="Ex.: Edital: 2.1 Conceitos de aprendizado supervisionado... Escreva os cards no vocabulário da banca CESPE..."></textarea>
+            <p id="ia-perfil-bacen" class="card-sub" hidden>Este é o prompt desta matéria do BACEN. Você pode alterar as regras, a quantidade e o recorte do edital abaixo. Clique em Salvar contexto para usar suas alterações também nos materiais em PDF.</p>
+            <textarea id="ia-contexto" rows="16" maxlength="10000" placeholder="Ex.: Edital: 2.1 Conceitos de aprendizado supervisionado... Escreva os cards no vocabulário da banca CESPE..."></textarea>
             <div class="form-acoes">
               <button type="button" id="salvar-contexto-btn" class="btn btn-secondary btn-sm">Salvar contexto</button>
               <span class="card-sub" id="contexto-status"></span>

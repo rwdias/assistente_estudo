@@ -3,10 +3,10 @@ const assert=require('node:assert/strict');
 
 test('perfil BACEN substitui cobertura exaustiva, preserva JSON, tópicos e LaTeX',async()=>{
  const {promptFlashcards}=await import('../../supabase/functions/_shared/comum.ts');
- const {recorteBacen,limiteBacen}=await import('../../supabase/functions/_shared/bacen.ts');
+ const {recorteBacen,limiteBacen,contextoPadraoBacen}=await import('../../supabase/functions/_shared/bacen.ts');
  const recorte=recorteBacen('Noções de Lógica e Estatística','BACEN — Analista TI — Conhecimentos gerais');
- const prompt=promptFlashcards('Lógica','Média',limiteBacen(2),'Meu edital específico',['Probabilidade'],true,recorte);
- assert.match(prompt,/máximo absoluto de 10/);
+ const prompt=promptFlashcards('Lógica','Média',limiteBacen(2),contextoPadraoBacen('Noções de Lógica e Estatística','BACEN — Analista TI — Conhecimentos gerais')+'\nMeu edital específico',['Probabilidade'],true,recorte);
+ assert.match(prompt,/Limite técnico deste envio: 10/);
  assert.match(prompt,/"flashcards":\[\]/);
  assert.match(prompt,/Meu edital específico/);
  assert.match(prompt,/Probabilidade/);
@@ -43,12 +43,36 @@ test('extrair resolve perfil e contexto com JWT, limita lote e aceita zero sem e
   assert.equal(resp.status,200);assert.deepEqual(await resp.json(),{flashcards:[]});
   assert.equal(consulta.headers.Authorization,'Bearer JWT_DO_USUARIO');
   assert.match(pedidoIA.messages[0].content,/Contexto salvo da matéria/);
-  assert.match(pedidoIA.messages[0].content,/ITIL v4/);
+  assert.doesNotMatch(pedidoIA.messages[0].content,/ITIL v4/);
   resultado=Array.from({length:12},(_,i)=>({frente:'Pergunta '+i,verso:'Resposta',dificuldade:'Média',topico:null}));
   resp=await handler(req({paginas_selecionadas:2,contexto:'Contexto editado no painel'}));
-  assert.equal((await resp.json()).flashcards.length,10);
+  assert.equal((await resp.json()).flashcards.length,12);
   assert.match(pedidoIA.messages[0].content,/Contexto editado no painel/);
   assert.doesNotMatch(pedidoIA.messages[0].content,/Contexto salvo da matéria/);
+  // Consulta do campo não consome quota e retorna exatamente a edição salva.
+  const quotaAntes=quotas;
+  resp=await handler(req({acao:'contexto_flashcards'}));
+  assert.deepEqual(await resp.json(),{contexto:'Contexto salvo da matéria',padrao:false});
+  assert.equal(quotas,quotaAntes);
+  materia.contexto_ia=null;
+  resp=await handler(req({acao:'contexto_flashcards'}));
+  const padrao=await resp.json();
+  assert.equal(padrao.padrao,true);
+  assert.match(padrao.contexto,/Matéria: Governança de TI/);
+  assert.match(padrao.contexto,/ITIL v4/);
+  assert.equal(quotas,quotaAntes);
+  resp=await handler(req({paginas_selecionadas:2}));
+  assert.equal((await resp.json()).flashcards.length,10);
+  assert.ok(pedidoIA.messages[0].content.includes(padrao.contexto.trim()));
+  // Uma edição pode mudar estilo, quantidade e recorte, sem regras ocultas.
+  materia.contexto_ia='Gere até 8 cartões com exemplos de Scrum.';
+  resp=await handler(req({}));
+  assert.equal((await resp.json()).flashcards.length,12); // apenas teto técnico; modelo é simulado
+  assert.match(pedidoIA.messages[0].content,/Gere até 8 cartões com exemplos de Scrum/);
+  assert.doesNotMatch(pedidoIA.messages[0].content,/Ignore introduções|excepcionalmente 5|ITIL v4/);
+  materia.contexto_ia='';
+  resp=await handler(req({acao:'contexto_flashcards'}));
+  assert.deepEqual(await resp.json(),{contexto:'',padrao:false});
   materia.trilhas.nome='Faculdade';
   resp=await handler(req({}));
   assert.equal((await resp.json()).flashcards.length,12);

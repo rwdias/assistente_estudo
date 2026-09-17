@@ -1,5 +1,3 @@
-import { regrasBacen } from "./bacen.ts";
-
 // Código compartilhado das Edge Functions do Study Rats.
 //
 // Segurança:
@@ -474,7 +472,7 @@ export function promptFlashcards(
 ): string {
   const blocoContexto = contexto.trim()
     ? (recorteBacen
-      ? "\n\nCONTEXTO ADICIONAL DA MATÉRIA (vocabulário e recorte; preserve as regras seletivas BACEN):\n"
+      ? "\n\nPROMPT EDITÁVEL DA MATÉRIA (siga estas instruções de conteúdo, estilo e quantidade):\n"
       : "\n\nCONTEXTO DA MATÉRIA (siga rigorosamente o estilo, o vocabulário e o recorte de conteúdo descritos abaixo — ex.: edital da prova):\n") +
       "-----\n" + contexto.trim() + "\n-----\n"
     : "";
@@ -496,7 +494,7 @@ export function promptFlashcards(
   return (
     "Você cria flashcards de estudo (estilo Anki) a partir de um material colado " +
     "pelo usuário (anotações, apostila, SLIDES, edital, etc.).\n\n" +
-    (recorteBacen ? regrasBacen(recorteBacen, maxFlashcards) :
+    (recorteBacen ? "Use o prompt editável da matéria abaixo como orientação de geração.\n" :
     "COBERTURA EXAUSTIVA — a regra MAIS IMPORTANTE: percorra o material do INÍCIO " +
     "ao FIM e crie flashcards para CADA conceito, definição, fórmula, teorema, " +
     "propriedade, classificação, termo e exemplo que aparecer — inclusive os " +
@@ -505,7 +503,7 @@ export function promptFlashcards(
     "ou não algo, INCLUA — é melhor cards demais do que faltar conteúdo. Slides " +
     "costumam ter muitos itens curtos: cada tópico/bullet com informação nova vira " +
     "pelo menos um card.\n\n") +
-    (recorteBacen ? "" : `Gere QUANTOS flashcards forem necessários para cobrir tudo (até ${maxFlashcards}). `) +
+    (recorteBacen ? `Limite técnico deste envio: ${maxFlashcards} cartões.\n` : `Gere QUANTOS flashcards forem necessários para cobrir tudo (até ${maxFlashcards}). `) +
     "Cada card:\n" +
     (recorteBacen ? '- "frente": pergunta específica e autossuficiente que force recall ativo de UM ' :
     '- "frente": pergunta curta, termo ou lacuna que force recall ativo de UM ') +
@@ -518,7 +516,7 @@ export function promptFlashcards(
     blocoMath +
     blocoContexto +
     `\nAssunto geral: ${assunto}.\n` +
-    (recorteBacen ? "Revise a fidelidade, a utilidade e a ausência de redundância antes de responder.\n" :
+    (recorteBacen ? "Revise a fidelidade ao material e ao prompt da matéria antes de responder.\n" :
     "Se o material tiver mais conteúdo do que cabe no limite, prefira COBRIR mais conceitos com cards mais enxutos a aprofundar poucos.\n") +
     "Responda apenas com o JSON pedido, sem texto adicional."
   );

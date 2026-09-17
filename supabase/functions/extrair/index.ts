@@ -1,4 +1,4 @@
-import { recorteBacen, limiteBacen } from "../_shared/bacen.ts";
+import { recorteBacen, limiteBacen, contextoPadraoBacen } from "../_shared/bacen.ts";
 // Edge Function: extrai perguntas de múltipla escolha de um texto colado.
 // Entrada:  { modelo, texto, assunto, dificuldade_padrao? }
 // Saída:    { perguntas: [{ enunciado, dificuldade, opcoes, topico }] }
@@ -44,6 +44,30 @@ Deno.serve(async (req) => {
     corpo = await req.json();
   } catch {
     return respostaJson(req, { erro: "Corpo inválido." }, 400);
+  }
+
+  // Consulta de contexto: sem chamada ao modelo e sem consumo de quota.
+  // A mesma fonte abastece a caixa editável e a geração pelo leitor.
+  let materia: { nome: string; tipo: string; contexto_ia: string | null;
+    trilhas: { nome: string } | null } | null = null;
+  if (corpo.acao === "contexto_flashcards" || (corpo.tipo === "flashcard" && corpo.materia_id != null)) {
+    const id = Number(corpo.materia_id);
+    if (!Number.isSafeInteger(id) || id <= 0)
+      return respostaJson(req, { erro: "Matéria inválida." }, 400);
+    try {
+      const resposta = await restComoUsuario(req,
+        `materias?id=eq.${id}&select=nome,tipo,contexto_ia,trilhas(nome)`);
+      if (!resposta.ok) throw new Error("Consulta indisponível");
+      [materia] = await resposta.json();
+    } catch {
+      return respostaJson(req, { erro: "Não foi possível carregar o contexto da matéria." }, 502);
+    }
+    if (!materia) return respostaJson(req, { erro: "Matéria não encontrada." }, 404);
+    if (corpo.acao === "contexto_flashcards") {
+      const padrao = contextoPadraoBacen(materia.nome, materia.trilhas?.nome || "");
+      return respostaJson(req, { contexto: materia.contexto_ia ?? padrao ?? "",
+        padrao: materia.contexto_ia == null && padrao != null });
+    }
   }
 
   const modelo = String(corpo.modelo ?? "");
@@ -93,24 +117,14 @@ Deno.serve(async (req) => {
     return respostaJson(req, { erro: "Dificuldade inválida." }, 400);
   }
 
-  // Resolve a matéria com o JWT do chamador: o perfil não depende do nome
-  // digitado no front e o leitor usa o contexto salvo na mesma matéria.
-  let recorte: string | null = null;
-  if (tipo === "flashcard" && corpo.materia_id != null) {
-    const id = Number(corpo.materia_id);
-    if (!Number.isSafeInteger(id) || id <= 0)
-      return respostaJson(req, { erro: "Matéria inválida." }, 400);
-    const resposta = await restComoUsuario(req,
-      `materias?id=eq.${id}&select=nome,tipo,contexto_ia,trilhas(nome)`);
-    if (!resposta.ok) return respostaJson(req, { erro: "Não foi possível carregar o contexto da matéria." }, 502);
-    const [materia] = await resposta.json();
-    if (!materia) return respostaJson(req, { erro: "Matéria não encontrada." }, 404);
+  const recorte = materia ? recorteBacen(materia.nome, materia.trilhas?.nome || "") : null;
+  const contextoPadrao = materia ? contextoPadraoBacen(materia.nome, materia.trilhas?.nome || "") : null;
+  if (materia) {
     assunto = materia.nome;
     matematica = materia.tipo === "matematica";
-    if (corpo.contexto == null) contexto = materia.contexto_ia || "";
+    if (corpo.contexto == null) contexto = materia.contexto_ia ?? contextoPadrao ?? "";
     if (contexto.length > MAX_CONTEXTO)
       return respostaJson(req, { erro: "Contexto da matéria grande demais." }, 400);
-    recorte = recorteBacen(materia.nome, materia.trilhas?.nome || "");
   }
 
   if (!(await consumirQuota(req))) {
@@ -138,7 +152,10 @@ Deno.serve(async (req) => {
 
     if (tipo === "flashcard") {
       // BACEN usa seleção enxuta; as demais matérias preservam sua cobertura.
-      const limite = recorte ? limiteBacen(corpo.paginas_selecionadas) : MAX_PERGUNTAS;
+      // Só o padrão aplica o teto seletivo fixo. Edições do usuário podem
+      // alterar a quantidade, dentro do teto técnico geral de 100.
+      const limite = recorte && contexto.trim() === contextoPadrao?.trim()
+        ? limiteBacen(corpo.paginas_selecionadas) : MAX_PERGUNTAS;
       const system = promptFlashcards(
         assunto, dificuldadePadrao, limite, contexto, topicosExistentes, matematica, recorte,
       );

@@ -65,57 +65,83 @@ document.querySelectorAll('#tipo-toggle-ia button').forEach((btn) => {
 
 // Chamado pelo goPanel ao abrir o painel de IA: carrega o contexto salvo
 // da matéria atual.
+let contextoMateriaCarregada = null;
+let contextoCarregamento = 0;
+
 async function aoAbrirIa() {
+  const pedido = ++contextoCarregamento;
+  const materiaId = Estado.materiaId;
   const campo = document.getElementById('ia-contexto');
-  document.getElementById('ia-perfil-bacen').hidden = !ehMateriaBacen(Estado.materiaId);
+  const status = document.getElementById('contexto-status');
+  const salvar = document.getElementById('salvar-contexto-btn');
+  const bacen = ehMateriaBacen(materiaId);
+  document.getElementById('ia-perfil-bacen').hidden = !bacen;
+  contextoMateriaCarregada = null;
   campo.value = '';
-  document.getElementById('contexto-status').textContent = '';
+  campo.disabled = true;
+  salvar.disabled = true;
+  status.textContent = materiaId ? 'Carregando contexto…' : '';
+  if (!materiaId) return;
 
-  if (!Estado.materiaId) return;
-
-  const { data, error } = await sb
-    .from('materias')
-    .select('contexto_ia')
-    .eq('id', Estado.materiaId)
-    .single();
-
-  if (!error && data?.contexto_ia) {
-    campo.value = data.contexto_ia;
-  } else if (materiaEhMatematica()) {
-    // Matéria de exatas ainda sem contexto salvo: pré-preenche o padrão em vez
-    // de deixar vazio. É só uma sugestão editável — some se o usuário apagar, e
-    // vira o contexto da matéria quando ele clicar em "Salvar contexto".
-    campo.value = CONTEXTO_PADRAO_EXATAS;
-    document.getElementById('contexto-status').textContent =
-      'Contexto padrão de exatas — edite se quiser e clique em Salvar.';
+  let contexto, padrao = false;
+  try {
+    if (bacen) {
+      const { data, error } = await sb.functions.invoke('extrair', {
+        body: { acao: 'contexto_flashcards', materia_id: materiaId },
+      });
+      if (error) throw new Error(await mensagemErroFuncao(error));
+      contexto = data.contexto;
+      padrao = data.padrao;
+    } else {
+      const { data, error } = await sb.from('materias').select('contexto_ia').eq('id', materiaId).single();
+      if (error) throw new Error(error.message);
+      contexto = data.contexto_ia ?? (materiaEhMatematica(materiaId) ? CONTEXTO_PADRAO_EXATAS : '');
+      padrao = data.contexto_ia == null && materiaEhMatematica(materiaId);
+    }
+    if (pedido !== contextoCarregamento || Estado.materiaId !== materiaId) return;
+    campo.value = contexto;
+    contextoMateriaCarregada = materiaId;
+    campo.disabled = false;
+    salvar.disabled = false;
+    status.textContent = padrao
+      ? 'Prompt padrão — edite e salve para personalizar esta matéria.'
+      : 'Contexto carregado. Alterações salvas também serão usadas nos PDFs.';
+  } catch (erro) {
+    if (pedido !== contextoCarregamento || Estado.materiaId !== materiaId) return;
+    status.textContent = 'Não foi possível carregar o contexto. Reabra este painel para tentar novamente.';
+    toast(erro.message, 'error');
   }
 }
 
 document.getElementById('salvar-contexto-btn').addEventListener('click', async () => {
-  if (!Estado.materiaId) {
-    toast('Crie ou selecione uma matéria primeiro.', 'error');
+  const materiaId = contextoMateriaCarregada;
+  if (!materiaId || materiaId !== Estado.materiaId) {
+    toast('Aguarde o contexto da matéria carregar antes de salvar.', 'error');
     return;
   }
-
-  const contexto = document.getElementById('ia-contexto').value.trim() || null;
-
-  const { error } = await sb
-    .from('materias')
-    .update({ contexto_ia: contexto })
-    .eq('id', Estado.materiaId);
-
-  if (error) {
-    toast(error.message, 'error');
+  const contexto = document.getElementById('ia-contexto').value.trim();
+  if (contexto.length > 10000) {
+    toast('O contexto deve ter no máximo 10.000 caracteres.', 'error');
     return;
   }
-
-  document.getElementById('contexto-status').textContent = 'Contexto salvo.';
+  const btn = document.getElementById('salvar-contexto-btn');
+  btn.disabled = true;
+  const { error } = await sb.from('materias').update({ contexto_ia: contexto }).eq('id', materiaId);
+  if (materiaId !== contextoMateriaCarregada || materiaId !== Estado.materiaId) return;
+  btn.disabled = false;
+  if (error) { toast(error.message, 'error'); return; }
+  document.getElementById('contexto-status').textContent = 'Contexto salvo. Será usado também nos PDFs desta matéria.';
   toast('Contexto da matéria salvo.');
 });
 
 // --- extração ---
 
 document.getElementById('ia-extrair-btn').addEventListener('click', async () => {
+  if (tipoIa === 'flashcard' && contextoMateriaCarregada !== Estado.materiaId) {
+    toast('Aguarde o contexto da matéria carregar antes de gerar flashcards.', 'error');
+    return;
+  }
+
   if (!Estado.materiaId) {
     toast('Crie ou selecione uma matéria primeiro.', 'error');
     return;
