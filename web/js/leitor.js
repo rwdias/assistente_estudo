@@ -23,6 +23,8 @@ let leitorEscala = 1.3;
 let leitorDuplo = localStorage.getItem('leitorDuplo') === '1';
 let leitorInfo = null;       // { caminho, nome, titulo }
 let leitorTrecho = '';       // texto selecionado no momento
+let leitorSelecaoPaginas = 1;
+let leitorOrigemGeracao = null;
 let leitorPendentes = [];    // flashcards gerados, aguardando salvar
 
 // O caminho inclui usuário e matéria, separando materiais e contas diferentes.
@@ -125,7 +127,7 @@ async function abrirLeitor(caminho, nome, titulo) {
   cancelarRenderizacaoLeitor();
   leitorDoc?.destroy?.();
   leitorDoc = null;
-  leitorInfo = { caminho, nome, titulo: titulo || nome };
+  leitorInfo = { caminho, nome, titulo: titulo || nome, materiaId: Number(caminho.split('/')[1]) || Estado.materiaId };
   document.getElementById('leitor-titulo').textContent = leitorInfo.titulo;
   aplicarRotuloDuplo(); // reflete a preferência salva já na abertura
   document.getElementById('leitor-paginas').innerHTML = '<p style="padding:20px">Abrindo...</p>';
@@ -200,6 +202,7 @@ async function desenharPagina(numero, container, doc, escala, versao) {
 
   const moldura = document.createElement('div');
   moldura.className = 'leitor-pagina';
+  moldura.dataset.pagina = String(numero);
   moldura.style.width = `${viewport.width}px`;
   moldura.style.height = `${viewport.height}px`;
 
@@ -336,12 +339,15 @@ document.addEventListener('mouseup', () => {
   const selecao = window.getSelection();
   const texto = (selecao?.toString() || '').trim();
   // Trecho curto demais não dá flashcard decente — evita disparo acidental.
-  if (texto.length < 40) {
+  const paginas = document.getElementById('leitor-paginas');
+  if (texto.length < 40 || !paginas.contains(selecao?.anchorNode) || !paginas.contains(selecao?.focusNode)) {
     botao.style.display = 'none';
     leitorTrecho = '';
     return;
   }
 
+  leitorSelecaoPaginas = [...paginas.querySelectorAll('.leitor-pagina')]
+    .filter(p => selecao.getRangeAt(0).intersectsNode(p)).length || 1;
   leitorTrecho = texto;
   const area = selecao.getRangeAt(0).getBoundingClientRect();
   botao.style.display = 'inline-flex';
@@ -358,30 +364,37 @@ document.getElementById('leitor-criar-btn')?.addEventListener('click', async () 
   botao.disabled = true;
   botao.textContent = 'Gerando...';
 
-  const materia = Estado.materias.find((m) => m.id === Estado.materiaId);
+  const origem = { materiaId: leitorInfo.materiaId, titulo: leitorInfo.titulo,
+    pagina: leitorPagina, abertura: leitorAbertura };
+  const texto = leitorTrecho;
+  const paginasSelecionadas = leitorSelecaoPaginas;
+  const materia = Estado.materias.find((m) => m.id === origem.materiaId);
   const { data, error } = await sb.functions.invoke('extrair', {
     body: {
       modelo: 'ChatGPT',
-      texto: leitorTrecho,
+      texto,
+      materia_id: origem.materiaId,
+      paginas_selecionadas: paginasSelecionadas,
       tipo: 'flashcard',
       assunto: materia?.nome ?? 'Estudo',
       dificuldade_padrao: 'Média',
-      matematica: materiaEhMatematica(),
-      contexto: '',
-      topicos_existentes: await topicosDaMateria(Estado.materiaId),
+      matematica: materiaEhMatematica(origem.materiaId),
+      topicos_existentes: await topicosDaMateria(origem.materiaId),
     },
   });
 
   botao.disabled = false;
   botao.innerHTML = original;
+  if (origem.abertura !== leitorAbertura) return;
   if (error) { toast(await mensagemErroFuncao(error), 'error'); return; }
+  leitorOrigemGeracao = origem;
 
   leitorPendentes = (data?.flashcards || []).filter((f) => f.frente && f.verso)
-    .map((f) => materiaEhMatematica()
+    .map((f) => materiaEhMatematica(origem.materiaId)
       ? { ...f, frente: normalizarLatex(f.frente), verso: normalizarLatex(f.verso) }
       : f);
   if (leitorPendentes.length === 0) {
-    toast('Não consegui gerar flashcards desse trecho.', 'error');
+    toast('Nenhum flashcard relevante foi identificado neste trecho.');
     return;
   }
 
@@ -391,9 +404,9 @@ document.getElementById('leitor-criar-btn')?.addEventListener('click', async () 
 });
 
 function renderPreviewTrecho() {
-  const mat = materiaEhMatematica();
+  const mat = materiaEhMatematica(leitorOrigemGeracao?.materiaId);
   document.getElementById('modal-trecho-origem').textContent =
-    `${leitorPendentes.length} card(s) de "${leitorInfo?.titulo ?? ''}", página ${leitorPagina}.`;
+    `${leitorPendentes.length} card(s) de "${leitorOrigemGeracao?.titulo ?? ''}", página ${leitorOrigemGeracao?.pagina}.`;
 
   document.getElementById('modal-trecho-lista').innerHTML = leitorPendentes
     .map((f, i) => `
@@ -411,6 +424,8 @@ function renderPreviewTrecho() {
 }
 
 document.getElementById('modal-trecho-salvar')?.addEventListener('click', async () => {
+  const materiaId = leitorOrigemGeracao?.materiaId;
+  if (!materiaId) return;
   const cards = [...document.querySelectorAll('#modal-trecho-lista .pergunta-card')]
     .filter((c) => c.querySelector('.trecho-incluir').checked)
     .map((c) => {
@@ -432,14 +447,14 @@ document.getElementById('modal-trecho-salvar')?.addEventListener('click', async 
   const btn = document.getElementById('modal-trecho-salvar');
   btn.disabled = true;
   try {
-    if (materiaEhMatematica()) {
+    if (materiaEhMatematica(materiaId)) {
       for (const card of cards) {
         card.enunciado = prepararTextoMatematico(card.enunciado);
         card.verso = prepararTextoMatematico(card.verso);
       }
     }
     for (const card of cards) {
-      await inserirPergunta(Estado.materiaId, card);
+      await inserirPergunta(materiaId, card);
     }
     closeModal('modal-trecho');
     toast(`${cards.length} flashcard(s) criado(s) — já entram na fila de estudo.`);

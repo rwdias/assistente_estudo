@@ -99,3 +99,10 @@ function resumoBacenHTML(resultado) {
     <p>Dados: 14 + 4. Software: 24 entre Engenharia e Desenvolvimento. Infraestrutura e Segurança: 17 + 7 entre Redes/Segurança e Sistemas Operacionais. Dentro de cada grupo, as matérias se alternam igualmente enquanto houver itens.</p>
     <a href="${BACEN_EDITAL}" target="_blank" rel="noopener noreferrer">Consultar edital, seção 7.1</a></details>`;
 }
+
+
+// Inclui também a matéria de discursivas; não depende dos filtros do sorteio.
+function ehMateriaBacen(id) {
+  const materia = Estado.materias.find(m => m.id === id);
+  return /^BACEN — Analista TI — /.test(materia?.trilha_nome || '');
+}

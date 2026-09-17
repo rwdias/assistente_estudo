@@ -1,3 +1,5 @@
+import { regrasBacen } from "./bacen.ts";
+
 // Código compartilhado das Edge Functions do Study Rats.
 //
 // Segurança:
@@ -468,10 +470,12 @@ export function promptFlashcards(
   contexto: string,
   topicosExistentes: string[] = [],
   matematica = false,
+  recorteBacen: string | null = null,
 ): string {
   const blocoContexto = contexto.trim()
-    ? "\n\nCONTEXTO DA MATÉRIA (siga rigorosamente o estilo, o vocabulário e o " +
-      "recorte de conteúdo descritos abaixo — ex.: edital da prova):\n" +
+    ? (recorteBacen
+      ? "\n\nCONTEXTO ADICIONAL DA MATÉRIA (vocabulário e recorte; preserve as regras seletivas BACEN):\n"
+      : "\n\nCONTEXTO DA MATÉRIA (siga rigorosamente o estilo, o vocabulário e o recorte de conteúdo descritos abaixo — ex.: edital da prova):\n") +
       "-----\n" + contexto.trim() + "\n-----\n"
     : "";
 
@@ -492,6 +496,7 @@ export function promptFlashcards(
   return (
     "Você cria flashcards de estudo (estilo Anki) a partir de um material colado " +
     "pelo usuário (anotações, apostila, SLIDES, edital, etc.).\n\n" +
+    (recorteBacen ? regrasBacen(recorteBacen, maxFlashcards) :
     "COBERTURA EXAUSTIVA — a regra MAIS IMPORTANTE: percorra o material do INÍCIO " +
     "ao FIM e crie flashcards para CADA conceito, definição, fórmula, teorema, " +
     "propriedade, classificação, termo e exemplo que aparecer — inclusive os " +
@@ -499,10 +504,11 @@ export function promptFlashcards(
     "nem slides. Um mesmo conceito pode virar VÁRIOS cards. Na dúvida entre incluir " +
     "ou não algo, INCLUA — é melhor cards demais do que faltar conteúdo. Slides " +
     "costumam ter muitos itens curtos: cada tópico/bullet com informação nova vira " +
-    "pelo menos um card.\n\n" +
-    `Gere QUANTOS flashcards forem necessários para cobrir tudo (até ${maxFlashcards}). ` +
+    "pelo menos um card.\n\n") +
+    (recorteBacen ? "" : `Gere QUANTOS flashcards forem necessários para cobrir tudo (até ${maxFlashcards}). `) +
     "Cada card:\n" +
-    '- "frente": pergunta curta, termo ou lacuna que force recall ativo de UM ' +
+    (recorteBacen ? '- "frente": pergunta específica e autossuficiente que force recall ativo de UM ' :
+    '- "frente": pergunta curta, termo ou lacuna que force recall ativo de UM ') +
     "conceito (nunca mais de um por card).\n" +
     '- "verso": a resposta direta e concisa — inclua a fórmula/relação quando o ' +
     "conceito tiver uma.\n" +
@@ -512,8 +518,8 @@ export function promptFlashcards(
     blocoMath +
     blocoContexto +
     `\nAssunto geral: ${assunto}.\n` +
-    "Se o material tiver mais conteúdo do que cabe no limite, prefira COBRIR mais " +
-    "conceitos com cards mais enxutos a aprofundar poucos.\n" +
+    (recorteBacen ? "Revise a fidelidade, a utilidade e a ausência de redundância antes de responder.\n" :
+    "Se o material tiver mais conteúdo do que cabe no limite, prefira COBRIR mais conceitos com cards mais enxutos a aprofundar poucos.\n") +
     "Responda apenas com o JSON pedido, sem texto adicional."
   );
 }

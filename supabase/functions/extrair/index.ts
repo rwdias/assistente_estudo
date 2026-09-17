@@ -1,3 +1,4 @@
+import { recorteBacen, limiteBacen } from "../_shared/bacen.ts";
 // Edge Function: extrai perguntas de múltipla escolha de um texto colado.
 // Entrada:  { modelo, texto, assunto, dificuldade_padrao? }
 // Saída:    { perguntas: [{ enunciado, dificuldade, opcoes, topico }] }
@@ -15,6 +16,7 @@ import {
   promptFlashcards,
   promptFlashcardsMath,
   respostaJson,
+  restComoUsuario,
   usuarioAutenticado,
 } from "../_shared/comum.ts";
 
@@ -46,12 +48,12 @@ Deno.serve(async (req) => {
 
   const modelo = String(corpo.modelo ?? "");
   const texto = String(corpo.texto ?? "");
-  const assunto = String(corpo.assunto ?? "");
+  let assunto = String(corpo.assunto ?? "");
   const dificuldadePadrao = String(corpo.dificuldade_padrao ?? "Média");
   const tipo = String(corpo.tipo ?? "pergunta");
-  const contexto = String(corpo.contexto ?? "");
+  let contexto = String(corpo.contexto ?? "");
   // Matéria matemática: flashcards com fórmula em LaTeX + resolução passo a passo.
-  const matematica = corpo.matematica === true;
+  let matematica = corpo.matematica === true;
   // Tópicos que já existem na matéria (subdivisões). O front envia para a IA
   // REUTILIZAR rótulos existentes em vez de inventar sinônimos/variações — é o
   // que conteem a fragmentação da taxonomia. Cap defensivo no tamanho.
@@ -91,6 +93,26 @@ Deno.serve(async (req) => {
     return respostaJson(req, { erro: "Dificuldade inválida." }, 400);
   }
 
+  // Resolve a matéria com o JWT do chamador: o perfil não depende do nome
+  // digitado no front e o leitor usa o contexto salvo na mesma matéria.
+  let recorte: string | null = null;
+  if (tipo === "flashcard" && corpo.materia_id != null) {
+    const id = Number(corpo.materia_id);
+    if (!Number.isSafeInteger(id) || id <= 0)
+      return respostaJson(req, { erro: "Matéria inválida." }, 400);
+    const resposta = await restComoUsuario(req,
+      `materias?id=eq.${id}&select=nome,tipo,contexto_ia,trilhas(nome)`);
+    if (!resposta.ok) return respostaJson(req, { erro: "Não foi possível carregar o contexto da matéria." }, 502);
+    const [materia] = await resposta.json();
+    if (!materia) return respostaJson(req, { erro: "Matéria não encontrada." }, 404);
+    assunto = materia.nome;
+    matematica = materia.tipo === "matematica";
+    if (corpo.contexto == null) contexto = materia.contexto_ia || "";
+    if (contexto.length > MAX_CONTEXTO)
+      return respostaJson(req, { erro: "Contexto da matéria grande demais." }, 400);
+    recorte = recorteBacen(materia.nome, materia.trilhas?.nome || "");
+  }
+
   if (!(await consumirQuota(req))) {
     return respostaJson(
       req,
@@ -115,12 +137,10 @@ Deno.serve(async (req) => {
     }
 
     if (tipo === "flashcard") {
-      // Flashcards de CONCEITO (anotações/slides/apostila) — sempre pelo
-      // promptFlashcards, que cobre o material de forma exaustiva. Em matéria de
-      // exatas, `matematica=true` liga as regras de LaTeX. (O promptFlashcardsMath,
-      // orientado a EXERCÍCIOS numerados, fica só para a ingestão de LISTAS.)
+      // BACEN usa seleção enxuta; as demais matérias preservam sua cobertura.
+      const limite = recorte ? limiteBacen(corpo.paginas_selecionadas) : MAX_PERGUNTAS;
       const system = promptFlashcards(
-        assunto, dificuldadePadrao, MAX_PERGUNTAS, contexto, topicosExistentes, matematica,
+        assunto, dificuldadePadrao, limite, contexto, topicosExistentes, matematica, recorte,
       );
       const dados = (await chamarProvedor(
         modelo,
@@ -130,7 +150,7 @@ Deno.serve(async (req) => {
         "extracao_flashcards",
       )) as { flashcards: unknown[] };
 
-      return respostaJson(req, { flashcards: dados.flashcards.slice(0, MAX_PERGUNTAS) });
+      return respostaJson(req, { flashcards: dados.flashcards.slice(0, limite) });
     }
 
     const system = promptExtracao(assunto, dificuldadePadrao, MAX_PERGUNTAS, topicosExistentes);

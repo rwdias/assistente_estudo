@@ -67,6 +67,7 @@ document.querySelectorAll('#tipo-toggle-ia button').forEach((btn) => {
 // da matéria atual.
 async function aoAbrirIa() {
   const campo = document.getElementById('ia-contexto');
+  document.getElementById('ia-perfil-bacen').hidden = !ehMateriaBacen(Estado.materiaId);
   campo.value = '';
   document.getElementById('contexto-status').textContent = '';
 
@@ -142,6 +143,7 @@ document.getElementById('ia-extrair-btn').addEventListener('click', async () => 
     dificuldade_padrao: 'Média',
   };
   if (tipoIa === 'flashcard') {
+    corpo.materia_id = Estado.materiaId;
     corpo.contexto = document.getElementById('ia-contexto').value.trim();
     // matéria matemática: a IA gera flashcards com fórmula em LaTeX + passo a passo.
     corpo.matematica = materiaEhMatematica();
@@ -173,7 +175,9 @@ document.getElementById('ia-extrair-btn').addEventListener('click', async () => 
   }
 
   renderIaPreview();
-  toast(`${extracaoPendente.length} item(ns) extraído(s).`);
+  toast(tipoIa === 'flashcard' && extracaoPendente.length === 0
+    ? 'Nenhum flashcard relevante foi identificado neste trecho.'
+    : `${extracaoPendente.length} item(ns) extraído(s).`);
 });
 
 function renderIaPreview() {
