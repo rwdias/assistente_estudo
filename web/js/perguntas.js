@@ -35,7 +35,9 @@ async function carregarTopicosNosSelects(materiaId = Estado.materiaId, somenteEd
 
   if (!somenteEdicao) {
     document.getElementById('pergunta-topico').innerHTML = opcoes;
-    document.getElementById('fc-topico').innerHTML = opcoes;
+    document.getElementById('fc-topicos-sugestoes').innerHTML = topicos
+      .filter(t => t.nome !== 'Geral')
+      .map(t => `<option value="${esc(t.nome)}"></option>`).join('');
   }
   document.getElementById('editar-topico').innerHTML = opcoes;
 }
@@ -262,13 +264,14 @@ document.getElementById('form-novo-flashcard').addEventListener('submit', async 
       tipo: 'flashcard',
       enunciado: frente,
       verso,
-      topico: document.getElementById('fc-topico').value || null,
+      topico: document.getElementById('fc-topico').value.trim() || null,
       dificuldade: 'Média', // interno — não exposto na UI
       origem: 'manual',
       opcoes: [],
     });
     toast('Flashcard adicionado.');
     document.getElementById('form-novo-flashcard').reset();
+    carregarTopicosNosSelects();
     carregarPerguntas();
   } catch (erro) {
     toast(erro.message, 'error');

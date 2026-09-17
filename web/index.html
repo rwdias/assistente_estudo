@@ -437,8 +437,11 @@
               <textarea id="fc-frente" rows="2" required placeholder="Ex.: O que caracteriza overfitting?"></textarea>
               <label>Verso</label>
               <textarea id="fc-verso" rows="3" required placeholder="A resposta objetiva..."></textarea>
-              <label>Tópico (opcional)</label>
-              <select id="fc-topico"></select>
+              <label for="fc-topico">Tópico (opcional)</label>
+              <input type="text" id="fc-topico" list="fc-topicos-sugestoes" maxlength="150"
+                placeholder="Digite um novo tópico ou escolha um existente" aria-describedby="fc-topico-ajuda" />
+              <datalist id="fc-topicos-sugestoes"></datalist>
+              <small id="fc-topico-ajuda" class="card-sub">Um tópico novo será criado nesta matéria ao adicionar o flashcard.</small>
               <div class="form-acoes">
                 <button type="submit" class="btn btn-primary">Adicionar flashcard</button>
               </div>
