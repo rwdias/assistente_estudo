@@ -263,6 +263,17 @@ textarea { resize: vertical; }
 }
 .topbar-title { font-weight: 700; font-size: 1.06rem; }
 .topbar-sub { font-size: .78rem; color: var(--texto-3); margin-top: 1px; }
+.topbar { flex-wrap: wrap; gap: 12px; }
+.tempo-header { padding: 8px 12px; border: 1px solid var(--borda); border-radius: 12px; max-width: 420px; }
+.tempo-header > div:first-child { display: flex; align-items: center; gap: 10px; }
+#tempo-relogio { font-variant-numeric: tabular-nums; font-size: 1.15rem; }
+#tempo-materia { font-size: .72rem; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tempo-controles { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 5px; }
+.tempo-controles select { width: auto; padding: 5px; font-size: .75rem; }
+#tempo-status { display: block; color: var(--texto-3); font-size: .7rem; margin-top: 4px; }
+#tempo-metricas details { margin-top: 14px; }
+#tempo-metricas summary { cursor: pointer; font-weight: 600; }
+@media (max-width: 850px) { .tempo-header { order: 4; flex: 1 1 100%; max-width: none; } }
 
 /* seletor de matéria no header — dropdown próprio (o popup do <select>
    nativo não aceita estilo) */

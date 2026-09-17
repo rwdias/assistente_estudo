@@ -12,6 +12,7 @@ async function iniciarApp() {
 
   mostrarApp();
   await carregarMaterias();
+  await iniciarCronometro(session.user.id);
   goPanel('dashboard');
   aplicarPerfilUsuario();
 }

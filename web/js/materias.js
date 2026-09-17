@@ -229,6 +229,7 @@ document.getElementById('confirmar-nova-materia-btn').addEventListener('click', 
 async function carregarDashboard() {
   await carregarMaterias();
   carregarCatalogo();
+  carregarMetricasTempo();
 
   const resumo = document.getElementById('dashboard-resumo');
   const container = document.getElementById('dashboard-materias');

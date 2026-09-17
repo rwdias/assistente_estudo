@@ -408,6 +408,7 @@ function renderRevisaoAtual() {
   }
 
   const pergunta = revisaoFila[revisaoIndice];
+  if (pergunta.materia_id && typeof mudarMateriaTempo === 'function') mudarMateriaTempo(pergunta.materia_id);
   // Dominada e ainda sem versões alternativas: oferece gerar (badge + botão).
   const podeVariar = pergunta.pode_variar;
   // Já está sendo exibida uma versão reformulada nesta rodada.

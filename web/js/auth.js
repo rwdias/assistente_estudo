@@ -145,6 +145,7 @@ document.getElementById('google-login-btn').addEventListener('click', entrarComG
 document.getElementById('google-cadastro-btn').addEventListener('click', entrarComGoogle);
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
+  await encerrarCronometroConta();
   await sb.auth.signOut();
   definirMateriaAtual(null);
   mostrarTelaAuth();

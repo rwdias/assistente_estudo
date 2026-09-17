@@ -8,6 +8,7 @@ const Estado = {
 };
 
 function definirMateriaAtual(id) {
+  if (typeof mudarMateriaTempo === 'function') mudarMateriaTempo(id);
   Estado.materiaId = id;
   if (id) localStorage.setItem('materiaId', id);
   else localStorage.removeItem('materiaId');
@@ -306,6 +307,7 @@ function goPanel(id, sbItem) {
   const meta = panelMeta[id] || { titulo: id, sub: '' };
   document.getElementById('topbar-title').textContent = meta.titulo;
   document.getElementById('topbar-sub').textContent = meta.sub;
+  if (id !== 'revisao' && typeof mudarMateriaTempo === 'function') mudarMateriaTempo(Estado.materiaId);
 
   if (id === 'dashboard') carregarDashboard();
   if (id === 'perguntas') aoAbrirPerguntas();
