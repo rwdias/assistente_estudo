@@ -144,6 +144,9 @@ function renderTempo() {
   const s = tempoEstado || novoEstadoTempo();
   const materiaId = s.segmento?.materia_id ?? tempoMateria;
   const materia = Estado.materias.find(m => m.id === materiaId);
+  const header = document.querySelector('.tempo-header');
+  header.classList.toggle('tempo-aviso', Boolean(tempoErro || s.aviso));
+  header.title = tempoErro || s.aviso || materia?.nome || 'Cronômetro de estudo';
   document.getElementById('tempo-relogio').textContent = segundosTexto(s.preset === 'livre' ? s.decorrido : s.restante);
   document.getElementById('tempo-materia').textContent = materia?.nome || 'Selecione uma matéria';
   document.getElementById('tempo-preset').value = s.preset;

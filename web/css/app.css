@@ -263,17 +263,40 @@ textarea { resize: vertical; }
 }
 .topbar-title { font-weight: 700; font-size: 1.06rem; }
 .topbar-sub { font-size: .78rem; color: var(--texto-3); margin-top: 1px; }
-.topbar { flex-wrap: wrap; gap: 12px; }
-.tempo-header { padding: 8px 12px; border: 1px solid var(--borda); border-radius: 12px; max-width: 420px; }
-.tempo-header > div:first-child { display: flex; align-items: center; gap: 10px; }
-#tempo-relogio { font-variant-numeric: tabular-nums; font-size: 1.15rem; }
-#tempo-materia { font-size: .72rem; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.tempo-controles { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 5px; }
-.tempo-controles select { width: auto; padding: 5px; font-size: .75rem; }
-#tempo-status { display: block; color: var(--texto-3); font-size: .7rem; margin-top: 4px; }
+.topbar { gap: 18px; padding: 12px 28px; }
+.topbar > div:first-child { min-width: 0; }
+.tempo-header { display: flex; align-items: center; flex-shrink: 0; gap: 9px; padding-left: 18px; border-left: 1px solid var(--borda); }
+#tempo-relogio { font-variant-numeric: tabular-nums; font-size: .94rem; font-weight: 600; letter-spacing: .03em; }
+.tempo-header > .btn { padding: 6px 11px; min-height: 32px; font-size: .75rem; border-radius: 8px; }
+.tempo-config { position: relative; }
+.tempo-config > summary { display: grid; place-items: center; list-style: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: var(--texto-3); }
+.tempo-config > summary::-webkit-details-marker { display: none; }
+.tempo-config > summary svg { width: 18px; height: 18px; }
+.tempo-config > summary:hover, .tempo-config[open] > summary { background: var(--superficie); color: var(--brand); }
+.tempo-config > summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.tempo-painel { position: absolute; right: 0; top: calc(100% + 16px); width: 270px; max-width: calc(100vw - 40px); padding: 18px; display: flex; flex-direction: column; gap: 10px; background: var(--superficie); color: var(--texto); border: 1px solid var(--borda); border-radius: 14px; box-shadow: var(--shadow-md); z-index: 300; }
+.tempo-label { font-size: .66rem; text-transform: uppercase; letter-spacing: .07em; color: var(--texto-3); font-weight: 700; }
+#tempo-materia { font-size: .82rem; font-weight: 600; overflow-wrap: anywhere; }
+.tempo-painel select { width: 100%; padding: 8px 10px; font-size: .8rem; }
+#tempo-status { color: var(--texto-3); font-size: .75rem; line-height: 1.5; }
+.tempo-header.tempo-aviso .tempo-config > summary { color: var(--brand); outline: 1px solid var(--brand); }
 #tempo-metricas details { margin-top: 14px; }
 #tempo-metricas summary { cursor: pointer; font-weight: 600; }
-@media (max-width: 850px) { .tempo-header { order: 4; flex: 1 1 100%; max-width: none; } }
+@media (max-width: 1150px) {
+  .topbar { gap: 12px; padding: 10px 18px; }
+  .topbar-sub { display: none; }
+  .topbar .materia-dropdown-btn { max-width: 220px; }
+  .tempo-header { padding-left: 12px; }
+}
+@media (max-width: 760px) {
+  .topbar { flex-wrap: wrap; gap: 10px; }
+  .topbar > div:first-child { flex: 1; }
+  .topbar .materia-dropdown { margin-left: 0; }
+  .topbar .materia-dropdown-btn { max-width: 190px; }
+  .tempo-header { padding-left: 0; border-left: 0; }
+  .topbar > .tema-toggle { margin-left: auto; }
+  .tempo-painel { position: fixed; right: 16px; top: auto; margin-top: 12px; }
+}
 
 /* seletor de matéria no header — dropdown próprio (o popup do <select>
    nativo não aceita estilo) */

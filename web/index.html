@@ -269,16 +269,24 @@
       </div>
 
       <section class="tempo-header" aria-label="Cronômetro de estudo">
-        <div><strong id="tempo-relogio" role="timer">00:00:00</strong><span id="tempo-materia">Selecione uma matéria</span></div>
-        <div class="tempo-controles">
-          <select id="tempo-preset" aria-label="Modo do cronômetro">
-            <option value="livre">Tempo livre</option><option value="25">Pomodoro 25/5</option>
-            <option value="50">Pomodoro 50/10</option><option value="90">Pomodoro 90/15</option>
-          </select>
-          <button type="button" class="btn btn-primary btn-sm" id="tempo-iniciar">Iniciar</button>
-          <button type="button" class="btn btn-secondary btn-sm" id="tempo-finalizar">Finalizar</button>
-        </div>
-        <small id="tempo-status" role="status">Pronto para estudar</small>
+        <strong id="tempo-relogio" role="timer">00:00:00</strong>
+        <button type="button" class="btn btn-primary btn-sm" id="tempo-iniciar">Iniciar</button>
+        <details class="tempo-config">
+          <summary aria-label="Opções do cronômetro" title="Opções do cronômetro">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3" fill="var(--superficie)"/><circle cx="15" cy="17" r="3" fill="var(--superficie)"/></svg>
+          </summary>
+          <div class="tempo-painel">
+            <span class="tempo-label">Estudando em</span>
+            <span id="tempo-materia">Selecione uma matéria</span>
+            <label class="tempo-label" for="tempo-preset">Modo de estudo</label>
+            <select id="tempo-preset" aria-label="Modo do cronômetro">
+              <option value="livre">Tempo livre</option><option value="25">Pomodoro 25/5</option>
+              <option value="50">Pomodoro 50/10</option><option value="90">Pomodoro 90/15</option>
+            </select>
+            <small id="tempo-status" role="status">Pronto para estudar</small>
+            <button type="button" class="btn btn-secondary btn-sm" id="tempo-finalizar">Finalizar sessão</button>
+          </div>
+        </details>
       </section>
       <button type="button" class="tema-toggle" title="Alternar tema claro/escuro">
         <svg class="icone-lua" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
