@@ -370,13 +370,24 @@ textarea { resize: vertical; }
 .leitor-texto {
   position: absolute; inset: 0; overflow: hidden; line-height: 1;
   opacity: 1; color: transparent;
+  text-align: initial; text-size-adjust: none; -webkit-text-size-adjust: none;
+  forced-color-adjust: none; transform-origin: 0 0; z-index: 2;
+  font-weight: normal; font-style: normal; letter-spacing: normal;
+  word-spacing: normal;
 }
 .leitor-texto span, .leitor-texto br {
   position: absolute; white-space: pre; cursor: text;
   transform-origin: 0% 0%; color: transparent;
 }
 .leitor-texto ::selection { background: rgba(14, 140, 130, .35); }
-.leitor-texto .endOfContent { display: none; }
+/* Compatibilidade de seleção do PDF.js 3.11 com Chrome. */
+.leitor-texto span.markedContent { top: 0; height: 0; }
+.leitor-texto br::selection { background: transparent; }
+.leitor-texto .endOfContent {
+  display: block; position: absolute; inset: 100% 0 0;
+  z-index: -1; cursor: default; user-select: none;
+}
+.leitor-texto .endOfContent.active { top: 0; }
 
 /* Botão que aparece junto do trecho selecionado */
 .leitor-acao {

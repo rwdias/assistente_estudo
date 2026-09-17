@@ -13,6 +13,8 @@
 const LEITOR_VENDOR = 'js/vendor/pdf.min.js';
 const LEITOR_WORKER = 'js/vendor/pdf.worker.min.js';
 
+let leitorRenderizacao = 0;
+const leitorTarefas = new Set();
 let leitorDoc = null;        // PDFDocumentProxy aberto
 let leitorPagina = 1;
 let leitorEscala = 1.3;
@@ -120,6 +122,7 @@ async function abrirLeitor(caminho, nome, titulo) {
   }
 
   const abertura = ++leitorAbertura;
+  cancelarRenderizacaoLeitor();
   leitorDoc?.destroy?.();
   leitorDoc = null;
   leitorInfo = { caminho, nome, titulo: titulo || nome };
@@ -152,27 +155,48 @@ async function abrirLeitor(caminho, nome, titulo) {
 }
 
 // Desenha o que está visível agora: uma página, ou o par (n, n+1) no modo livro.
-async function renderizarPaginaLeitor() {
-  if (!leitorDoc) return;
-  const container = document.getElementById('leitor-paginas');
-  container.innerHTML = '';
-
-  // No modo duplo a leitura acontece em pares fixos (1-2, 3-4, …), como num
-  // livro encadernado: ancorar no ímpar evita o par "deslizar" a cada avanço e
-  // mostrar sempre combinações diferentes das mesmas páginas.
-  const inicio = leitorDuplo ? leitorPagina - ((leitorPagina - 1) % 2) : leitorPagina;
-  const numeros = [inicio];
-  if (leitorDuplo && inicio + 1 <= leitorDoc.numPages) numeros.push(inicio + 1);
-
-  for (const n of numeros) await desenharPagina(n, container);
-
-  const rotulo = numeros.length > 1 ? `${numeros[0]}–${numeros[1]}` : `${numeros[0]}`;
-  document.getElementById('leitor-pagina').textContent = `${rotulo} / ${leitorDoc.numPages}`;
+function cancelarRenderizacaoLeitor() {
+  ++leitorRenderizacao;
+  for (const tarefa of leitorTarefas) tarefa.cancel();
+  leitorTarefas.clear();
 }
 
-async function desenharPagina(numero, container) {
-  const pagina = await leitorDoc.getPage(numero);
-  const viewport = pagina.getViewport({ scale: leitorEscala });
+async function aguardarTarefaLeitor(tarefa) {
+  leitorTarefas.add(tarefa);
+  try { await tarefa.promise; } finally { leitorTarefas.delete(tarefa); }
+}
+
+async function renderizarPaginaLeitor() {
+  if (!leitorDoc) return;
+  cancelarRenderizacaoLeitor();
+  const versao = leitorRenderizacao;
+  const doc = leitorDoc;
+  const escala = leitorEscala;
+  const container = document.getElementById('leitor-paginas');
+  window.getSelection()?.removeAllRanges();
+  leitorTrecho = '';
+  document.getElementById('leitor-criar-btn').style.display = 'none';
+  container.innerHTML = '';
+  const inicio = leitorDuplo ? leitorPagina - ((leitorPagina - 1) % 2) : leitorPagina;
+  const numeros = [inicio];
+  if (leitorDuplo && inicio + 1 <= doc.numPages) numeros.push(inicio + 1);
+  try {
+    for (const n of numeros) {
+      await desenharPagina(n, container, doc, escala, versao);
+      if (versao !== leitorRenderizacao) return;
+    }
+    const rotulo = numeros.length > 1 ? `${numeros[0]}–${numeros[1]}` : `${numeros[0]}`;
+    document.getElementById('leitor-pagina').textContent = `${rotulo} / ${doc.numPages}`;
+  } catch (erro) {
+    if (versao !== leitorRenderizacao) return;
+    toast('Não foi possível desenhar a página. Tente abri-la novamente.', 'error');
+  }
+}
+
+async function desenharPagina(numero, container, doc, escala, versao) {
+  const pagina = await doc.getPage(numero);
+  if (versao !== leitorRenderizacao) return;
+  const viewport = pagina.getViewport({ scale: escala });
 
   const moldura = document.createElement('div');
   moldura.className = 'leitor-pagina';
@@ -189,6 +213,7 @@ async function desenharPagina(numero, container) {
 
   const camadaTexto = document.createElement('div');
   camadaTexto.className = 'leitor-texto';
+  camadaTexto.hidden = true;
   camadaTexto.style.width = `${viewport.width}px`;
   camadaTexto.style.height = `${viewport.height}px`;
   // O pdf.js posiciona os spans em unidades multiplicadas por esta variável.
@@ -199,25 +224,46 @@ async function desenharPagina(numero, container) {
   moldura.append(canvas, camadaTexto);
   container.appendChild(moldura);
 
-  await pagina.render({
+  await aguardarTarefaLeitor(pagina.render({
     canvasContext: canvas.getContext('2d'),
     viewport,
     transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null,
-  }).promise;
+  }));
+  if (versao !== leitorRenderizacao) return;
 
   // Camada de texto: spans invisíveis posicionados sobre o desenho. É o que
   // permite selecionar com o mouse (o canvas sozinho é só pixels).
   const conteudo = await pagina.getTextContent();
-  window.pdfjsLib.renderTextLayer({
+  if (versao !== leitorRenderizacao) return;
+  await aguardarTarefaLeitor(window.pdfjsLib.renderTextLayer({
     textContentSource: conteudo,
     container: camadaTexto,
     viewport,
     textDivs: [],
+  }));
+  if (versao !== leitorRenderizacao) return;
+  // Sentinela de seleção usada pelo visualizador do PDF.js: evita que o
+  // Chrome estenda a seleção até o fim da página ao arrastar entre linhas.
+  const fim = document.createElement('div');
+  fim.className = 'endOfContent';
+  camadaTexto.append(fim);
+  camadaTexto.addEventListener('mousedown', e => {
+    if (e.target !== camadaTexto) {
+      const area = camadaTexto.getBoundingClientRect();
+      fim.style.top = `${Math.max(0, Math.min(100, (e.clientY - area.top) / area.height * 100))}%`;
+    }
+    fim.classList.add('active');
   });
+  camadaTexto.addEventListener('mouseup', () => {
+    fim.style.top = '';
+    fim.classList.remove('active');
+  });
+  camadaTexto.hidden = false;
 }
 
 function fecharLeitor() {
   ++leitorAbertura;
+  cancelarRenderizacaoLeitor();
   document.getElementById('leitor').style.display = 'none';
   document.getElementById('leitor-criar-btn').style.display = 'none';
   document.getElementById('leitor-paginas').innerHTML = '';
