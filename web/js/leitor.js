@@ -28,26 +28,74 @@ function chaveProgressoLeitor(caminho) {
   return `leitorPagina:${caminho}`;
 }
 
-function recuperarPaginaLeitor(caminho, totalPaginas) {
+let leitorAbertura = 0;
+const leitorProgressoMemoria = new Map();
+
+function progressoLocalLeitor(caminho) {
+  if (leitorProgressoMemoria.has(caminho)) return leitorProgressoMemoria.get(caminho);
   try {
-    const pagina = Number(localStorage.getItem(chaveProgressoLeitor(caminho)));
-    return Number.isSafeInteger(pagina) && pagina > 0
-      ? Math.min(pagina, totalPaginas)
-      : 1;
+    const salvo = JSON.parse(localStorage.getItem(chaveProgressoLeitor(caminho)));
+    const registro = typeof salvo === 'number' ? { pagina: salvo, atualizado_em: null } : salvo;
+    return Number.isSafeInteger(registro?.pagina) && registro.pagina > 0 ? registro : null;
+  } catch { return null; }
+}
+
+function guardarProgressoLocalLeitor(caminho, registro) {
+  leitorProgressoMemoria.set(caminho, registro);
+  try { localStorage.setItem(chaveProgressoLeitor(caminho), JSON.stringify(registro)); } catch {}
+}
+
+async function enviarProgressoLeitor(caminho, registro) {
+  try {
+    const { error } = await sb.rpc('salvar_progresso_leitura', {
+      p_caminho: caminho, p_pagina: registro.pagina, p_atualizado_em: registro.atualizado_em,
+    });
+    if (error) throw error;
+    const atual = progressoLocalLeitor(caminho);
+    if (atual?.atualizado_em === registro.atualizado_em)
+      guardarProgressoLocalLeitor(caminho, { ...atual, pendente: false });
+    return true;
   } catch {
-    // Armazenamento bloqueado não deve impedir a leitura.
-    return 1;
+    toast('A página ficou salva neste navegador. Não foi possível sincronizar com sua conta agora.', 'error');
+    return false;
   }
+}
+
+async function recuperarPaginaLeitor(caminho, totalPaginas) {
+  const local = progressoLocalLeitor(caminho);
+  let registro = local;
+  try {
+    const { data, error } = await sb.from('progresso_leitura')
+      .select('pagina,atualizado_em').eq('caminho', caminho).maybeSingle();
+    if (error) throw error;
+    if (data && (!local?.pendente || Date.parse(data.atualizado_em) >= Date.parse(local.atualizado_em))) {
+      registro = data;
+      guardarProgressoLocalLeitor(caminho, data);
+    } else if (local) {
+      registro = { ...local, atualizado_em: local.atualizado_em || new Date().toISOString(), pendente: true };
+      guardarProgressoLocalLeitor(caminho, registro);
+      void enviarProgressoLeitor(caminho, registro);
+    }
+  } catch {
+    toast('Não foi possível consultar a página salva na conta. Usando a posição deste navegador.', 'error');
+  }
+  return Math.min(registro?.pagina || 1, totalPaginas);
 }
 
 function salvarPaginaLeitor() {
   if (!leitorDoc || !leitorInfo) return;
-  try {
-    localStorage.setItem(chaveProgressoLeitor(leitorInfo.caminho), String(leitorPagina));
-  } catch {
-    // Mantém o leitor funcionando se o armazenamento estiver indisponível.
-  }
+  const caminho = leitorInfo.caminho;
+  const anterior = progressoLocalLeitor(caminho);
+  const registro = { pagina: leitorPagina, pendente: true,
+    atualizado_em: new Date(Math.max(Date.now(), Date.parse(anterior?.atualizado_em || '') + 1 || 0)).toISOString() };
+  guardarProgressoLocalLeitor(caminho, registro);
+  void enviarProgressoLeitor(caminho, registro);
 }
+
+window.addEventListener('online', () => {
+  for (const [caminho, registro] of leitorProgressoMemoria)
+    if (registro.pendente) void enviarProgressoLeitor(caminho, registro);
+});
 
 // Carrega o pdf.js uma única vez. Injeta um <script> local — a CSP permite
 // 'self', mas não permitiria um CDN para o worker, por isso tudo é vendorizado.
@@ -71,6 +119,9 @@ async function abrirLeitor(caminho, nome, titulo) {
     return;
   }
 
+  const abertura = ++leitorAbertura;
+  leitorDoc?.destroy?.();
+  leitorDoc = null;
   leitorInfo = { caminho, nome, titulo: titulo || nome };
   document.getElementById('leitor-titulo').textContent = leitorInfo.titulo;
   aplicarRotuloDuplo(); // reflete a preferência salva já na abertura
@@ -86,10 +137,15 @@ async function abrirLeitor(caminho, nome, titulo) {
       .createSignedUrl(caminho, 3600);
     if (error) throw new Error(error.message);
 
-    leitorDoc = await pdfjsLib.getDocument({ url: data.signedUrl }).promise;
-    leitorPagina = recuperarPaginaLeitor(caminho, leitorDoc.numPages);
+    const doc = await pdfjsLib.getDocument({ url: data.signedUrl }).promise;
+    if (abertura !== leitorAbertura) { doc.destroy(); return; }
+    const pagina = await recuperarPaginaLeitor(caminho, doc.numPages);
+    if (abertura !== leitorAbertura) { doc.destroy(); return; }
+    leitorDoc = doc;
+    leitorPagina = pagina;
     await renderizarPaginaLeitor();
   } catch (erro) {
+    if (abertura !== leitorAbertura) return;
     document.getElementById('leitor-paginas').innerHTML =
       `<p style="padding:20px">${esc(erro.message)}</p>`;
   }
@@ -98,7 +154,6 @@ async function abrirLeitor(caminho, nome, titulo) {
 // Desenha o que está visível agora: uma página, ou o par (n, n+1) no modo livro.
 async function renderizarPaginaLeitor() {
   if (!leitorDoc) return;
-  salvarPaginaLeitor();
   const container = document.getElementById('leitor-paginas');
   container.innerHTML = '';
 
@@ -162,6 +217,7 @@ async function desenharPagina(numero, container) {
 }
 
 function fecharLeitor() {
+  ++leitorAbertura;
   document.getElementById('leitor').style.display = 'none';
   document.getElementById('leitor-criar-btn').style.display = 'none';
   document.getElementById('leitor-paginas').innerHTML = '';
@@ -178,6 +234,7 @@ function irParaPagina(delta) {
   const alvo = leitorPagina + delta * passo;
   if (alvo < 1 || alvo > leitorDoc.numPages) return;
   leitorPagina = alvo;
+  salvarPaginaLeitor();
   renderizarPaginaLeitor();
 }
 
