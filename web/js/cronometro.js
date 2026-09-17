@@ -5,7 +5,48 @@ let tempoSincronizando = false;
 let tempoUltimaSync = 0;
 let tempoErro = '';
 let tempoIntervalo = null;
-const TEMPO_PRESETS = { livre: [0, 0], '25': [25, 5], '50': [50, 10], '90': [90, 15] };
+const TEMPO_PRESETS = { livre: [0, 0], '30': [30, 5], '60': [60, 10], '90': [90, 15], '120': [120, 20] };
+const TEMPO_LIMITE_LIVRE = 3 * 60 * 60_000;
+let tempoAudio = null;
+
+async function ativarSomTempo() {
+  try {
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) return false;
+    tempoAudio ||= new Audio();
+    if (tempoAudio.state === 'suspended') await tempoAudio.resume();
+    return tempoAudio.state === 'running';
+  } catch (_) { return false; }
+}
+
+function tocarSomTempo() {
+  if (tempoAudio?.state !== 'running') return false;
+  try {
+    [660, 880, 1100].forEach((frequencia, i) => {
+      const inicio = tempoAudio.currentTime + i * 0.3;
+      const oscilador = tempoAudio.createOscillator();
+      const volume = tempoAudio.createGain();
+      oscilador.frequency.value = frequencia;
+      volume.gain.setValueAtTime(0, inicio);
+      volume.gain.linearRampToValueAtTime(0.18, inicio + 0.02);
+      volume.gain.exponentialRampToValueAtTime(0.001, inicio + 0.45);
+      oscilador.connect(volume);
+      volume.connect(tempoAudio.destination);
+      oscilador.start(inicio);
+      oscilador.stop(inicio + 0.5);
+      oscilador.onended = () => { oscilador.disconnect(); volume.disconnect(); };
+    });
+    return true;
+  } catch (_) { return false; }
+}
+
+function atualizarPresetTempo(s) {
+  const novo = { '25': '30', '50': '60' }[s.preset];
+  if (!novo) return;
+  s.preset = novo;
+  // Mantém o tempo restante de um ciclo já iniciado; os próximos usam o novo preset.
+  if (!s.rodando && !s.decorrido && s.fase === 'estudo') s.restante = TEMPO_PRESETS[novo][0] * 60_000;
+}
 
 function novoEstadoTempo() {
   return { preset: 'livre', fase: 'estudo', rodando: false, restante: 0, decorrido: 0, marco: 0, segmento: null, pendentes: {} };
@@ -23,10 +64,11 @@ function grupoTempo(materia) {
 // plano têm timers reduzidos pelo navegador). Um Pomodoro nunca ultrapassa
 // o foco programado, mesmo depois de fechar/reabrir a página.
 function avancarTempo(s, agora) {
+  atualizarPresetTempo(s);
   if (!s.rodando) return;
   const delta = Math.max(0, agora - s.marco);
   const limitado = s.preset !== 'livre' || s.fase === 'pausa';
-  const gasto = limitado ? Math.min(delta, s.restante) : delta;
+  const gasto = Math.min(delta, limitado ? s.restante : Math.max(0, TEMPO_LIMITE_LIVRE - s.decorrido));
   if (s.fase === 'estudo') {
     s.decorrido += gasto;
     if (s.segmento && gasto > 0) {
@@ -36,9 +78,14 @@ function avancarTempo(s, agora) {
   }
   if (limitado) s.restante = Math.max(0, s.restante - gasto);
   s.marco = agora;
-  if (limitado && s.restante === 0) {
+  if ((!limitado && s.decorrido >= TEMPO_LIMITE_LIVRE) || (limitado && s.restante === 0)) {
     s.rodando = false;
     s.segmento = null;
+    s.conclusao = crypto.randomUUID();
+    if (!limitado) {
+      s.aviso = 'Limite de 3 horas atingido. Tempo salvo. Finalize para iniciar outra sessão.';
+      return;
+    }
     s.fase = s.fase === 'estudo' ? 'pausa' : 'estudo';
     s.restante = TEMPO_PRESETS[s.preset][s.fase === 'pausa' ? 1 : 0] * 60_000;
     s.aviso = s.fase === 'pausa' ? 'Pomodoro concluído. Inicie sua pausa.' : 'Pausa concluída. Pronto para estudar.';
@@ -72,6 +119,11 @@ async function alterarTempo(acao) {
       if (acao) acao(s, agora);
       localStorage.setItem(chave, JSON.stringify(s));
       tempoEstado = s;
+      // Só a primeira aba com áudio habilitado toca cada conclusão.
+      if (s.conclusao && s.somTocado !== s.conclusao && tocarSomTempo()) {
+        s.somTocado = s.conclusao;
+        localStorage.setItem(chave, JSON.stringify(s));
+      }
     } catch (_) {
       tempoErro = 'Não foi possível salvar o cronômetro neste navegador.';
     }
@@ -153,15 +205,19 @@ function renderTempo() {
   document.getElementById('tempo-preset').disabled = s.rodando || s.decorrido > 0;
   const botao = document.getElementById('tempo-iniciar');
   botao.textContent = s.rodando ? 'Pausar' : s.fase === 'pausa' ? 'Iniciar pausa' : 'Iniciar';
-  botao.disabled = !tempoUsuario || !materia;
+  botao.disabled = !tempoUsuario || !materia || (s.preset === 'livre' && s.decorrido >= TEMPO_LIMITE_LIVRE);
   document.getElementById('tempo-status').textContent = tempoErro || s.aviso ||
     (s.fase === 'pausa' ? 'Pausa · não conta como estudo' : s.rodando ? 'Estudando' : 'Pronto para estudar');
 }
 
 document.getElementById('tempo-iniciar').addEventListener('click', async () => {
   if (!tempoMateria) return;
+  // O navegador exige um gesto do usuário para habilitar o aviso sonoro.
+  ativarSomTempo();
   await alterarTempo((s, agora) => {
+    if (s.preset === 'livre' && s.decorrido >= TEMPO_LIMITE_LIVRE) return;
     s.aviso = '';
+    s.conclusao = null;
     s.rodando = !s.rodando;
     if (s.rodando) iniciarSegmentoTempo(s, agora, tempoMateria);
     else s.segmento = null;
@@ -169,12 +225,19 @@ document.getElementById('tempo-iniciar').addEventListener('click', async () => {
   sincronizarTempo();
 });
 document.getElementById('tempo-finalizar').addEventListener('click', async () => {
+  const audioPronto = ativarSomTempo();
+  const tinhaTempo = tempoEstado?.rodando || tempoEstado?.decorrido > 0;
   await alterarTempo(s => {
     const { pendentes, preset } = s;
     Object.assign(s, novoEstadoTempo(), { pendentes, preset, restante: TEMPO_PRESETS[preset][0] * 60_000 });
   });
+  if (tinhaTempo) { await audioPronto; tocarSomTempo(); }
   await sincronizarTempo();
   carregarMetricasTempo();
+});
+document.getElementById('tempo-testar-som').addEventListener('click', async () => {
+  if (await ativarSomTempo()) tocarSomTempo();
+  else toast('Não foi possível ativar o som. Verifique as permissões de áudio do navegador.', 'error');
 });
 document.getElementById('tempo-preset').addEventListener('change', async e => {
   const preset = e.target.value;

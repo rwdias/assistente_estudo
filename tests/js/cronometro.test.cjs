@@ -62,3 +62,50 @@ test('agrega trilhas BACEN e mantém faculdade separada', () => {
   assert.equal(context.grupoTempo({trilha_nome:'BACEN — Analista TI — Conhecimentos gerais'}), 'BACEN — Analista TI');
   assert.equal(context.grupoTempo({trilha_nome:'Estatística UFPR'}), 'Estatística UFPR');
 });
+
+test('livre esquecido por uma noite para e grava exatamente 3 horas', () => {
+  const s = { ...context.novoEstadoTempo(), rodando: true };
+  context.iniciarSegmentoTempo(s, 1000, 86);
+  context.avancarTempo(s, 1000 + 12*3600000);
+  assert.equal(s.decorrido, 3*3600000);
+  assert.equal(s.rodando, false);
+  assert.equal(Object.values(s.pendentes)[0].fim, 1000 + 3*3600000);
+  assert.ok(s.conclusao);
+  const conclusao = s.conclusao;
+  context.avancarTempo(s, 1000 + 15*3600000);
+  assert.equal(s.conclusao, conclusao);
+  assert.equal(s.decorrido, 3*3600000);
+});
+
+test('trocar matéria e pausar não reinicia o limite de 3 horas', () => {
+  const s = { ...context.novoEstadoTempo(), rodando: true };
+  context.iniciarSegmentoTempo(s, 0, 86);
+  context.avancarTempo(s, 2*3600000);
+  s.rodando = false;
+  context.avancarTempo(s, 4*3600000);
+  s.rodando = true;
+  context.iniciarSegmentoTempo(s, 4*3600000, 87);
+  context.avancarTempo(s, 8*3600000);
+  assert.deepEqual(Object.values(s.pendentes).map(p => [p.materia_id,p.fim-p.inicio]), [[86,2*3600000],[87,3600000]]);
+  assert.equal(s.rodando, false);
+});
+
+test('novos presets respeitam duração de foco e pausa', () => {
+  for (const [preset, foco, pausa] of [['30',30,5],['60',60,10],['90',90,15],['120',120,20]]) {
+    const s = { ...context.novoEstadoTempo(), preset, restante:foco*60000, rodando:true };
+    context.iniciarSegmentoTempo(s, 1000, 86);
+    context.avancarTempo(s, 1000+5*3600000);
+    assert.equal(s.decorrido, foco*60000);
+    assert.equal(s.restante, pausa*60000);
+    assert.equal(s.fase, 'pausa');
+    assert.ok(s.conclusao);
+  }
+});
+
+test('preset antigo parado migra para 30/5 e som indisponível não lança erro', () => {
+  const s = { ...context.novoEstadoTempo(), preset:'25', restante:25*60000 };
+  context.avancarTempo(s, 1000);
+  assert.equal(s.preset, '30');
+  assert.equal(s.restante, 30*60000);
+  assert.equal(context.tocarSomTempo(), false);
+});

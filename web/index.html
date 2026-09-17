@@ -280,10 +280,12 @@
             <span id="tempo-materia">Selecione uma matéria</span>
             <label class="tempo-label" for="tempo-preset">Modo de estudo</label>
             <select id="tempo-preset" aria-label="Modo do cronômetro">
-              <option value="livre">Tempo livre</option><option value="25">Pomodoro 25/5</option>
-              <option value="50">Pomodoro 50/10</option><option value="90">Pomodoro 90/15</option>
+              <option value="livre">Tempo livre · máximo 3h</option><option value="30">Pomodoro 30/5</option>
+              <option value="60">Pomodoro 60/10</option><option value="90">Pomodoro 90/15</option>
+              <option value="120">Pomodoro 120/20</option>
             </select>
             <small id="tempo-status" role="status">Pronto para estudar</small>
+            <button type="button" class="btn btn-secondary btn-sm" id="tempo-testar-som">Testar som</button>
             <button type="button" class="btn btn-secondary btn-sm" id="tempo-finalizar">Finalizar sessão</button>
           </div>
         </details>
