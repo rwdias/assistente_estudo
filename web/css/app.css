@@ -1073,3 +1073,69 @@ math { font-size: 1.08em; }
 .enfase-enunciado { font-style: italic; }
 .fonte-enunciado { display: block; font-size: .78rem; color: var(--texto-3); font-style: italic; margin: 4px 0 8px; }
 .question-title .quebra { display: block; height: 10px; }
+
+/* ============ CRONOGRAMA ============ */
+/* Só usa tokens de :root — por isso não precisa de contrapartida nos dois
+   blocos de tema escuro (a regra do topo deste arquivo vale para quem DEFINE
+   token novo, não para quem consome). */
+.cron-topo {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin-bottom: 6px;
+}
+.cron-semana { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.cron-semana .btn { padding: 6px 10px; }
+.cron-semana svg { width: 16px; height: 16px; }
+
+/* A grade é uma tabela de horários: 1ª coluna com a hora, 6 colunas seg–sáb.
+   Em tela estreita ela ROLA na horizontal em vez de virar lista: manter as
+   colunas lado a lado é o que deixa "a semana inteira" legível de relance,
+   que é o ponto da tela. */
+#cron-grade { overflow-x: auto; }
+/* minmax(0,1fr) deixa as 6 colunas dividirem a largura disponível por igual;
+   sem o 0 como mínimo, o conteúdo do bloco empurra a coluna e a semana passa
+   a não caber (sábado ficava cortado). O min-width só entra em telas estreitas,
+   onde a rolagem horizontal é preferível a espremer o nome da matéria. */
+.cron-grade {
+  display: grid; grid-template-columns: 48px repeat(6, minmax(0, 1fr));
+  gap: 6px; min-width: 680px; margin: 10px 0 8px;
+}
+.cron-col-cabecalho {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 6px 4px; border-radius: var(--radius-sm); background: var(--superficie-2);
+}
+.cron-col-cabecalho.cron-hoje { background: var(--brand); color: var(--brand-ink); }
+.cron-dia { font-weight: 700; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+.cron-data { font-size: .72rem; opacity: .75; }
+.cron-hora {
+  display: flex; align-items: center; justify-content: flex-end;
+  padding-right: 6px; font-size: .78rem; color: var(--texto-3); font-variant-numeric: tabular-nums;
+}
+.cron-celula { min-height: 62px; }
+
+.cron-bloco {
+  height: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 8px 9px; border: 1.5px solid var(--borda); border-radius: var(--radius-sm);
+  background: var(--superficie); position: relative;
+}
+.cron-nome {
+  background: none; border: 0; padding: 0; text-align: left; cursor: pointer;
+  font: inherit; font-size: .84rem; font-weight: 600; color: var(--texto);
+  line-height: 1.25; padding-right: 20px;
+  /* Nome de matéria é uma palavra só em muitos casos ("Desenvolvimento") e a
+     coluna é estreita: sem quebra forçada o texto vaza para fora da célula. */
+  width: 100%; overflow-wrap: anywhere;
+}
+.cron-nome:hover { color: var(--brand); text-decoration: underline; }
+/* O check fica no canto e é discreto de propósito: marcar é frequente, mas
+   não é a informação principal da célula — a matéria é. */
+.cron-check {
+  position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; padding: 0;
+  display: grid; place-items: center; cursor: pointer;
+  border: 1.5px solid var(--borda-forte); border-radius: 5px;
+  background: var(--superficie); color: transparent;
+}
+.cron-check:hover { border-color: var(--brand); color: var(--texto-3); }
+.cron-check svg { width: 12px; height: 12px; }
+.cron-feito { opacity: .6; border-color: var(--ok); }
+.cron-feito .cron-check { background: var(--ok); border-color: var(--ok); color: #fff; }
+.cron-feito .cron-nome { text-decoration: line-through; }

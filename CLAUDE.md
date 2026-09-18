@@ -38,7 +38,14 @@ auth.users (Supabase)
 └── trilhas           (agrupam matérias do mesmo contexto: curso,
     │                   certificação, concursos. SÓ organização — o estudo
     │                   segue por matéria. materias.trilha_id é ON DELETE
-    │                   SET NULL: apagar a trilha NÃO apaga as matérias)
+    │                   SET NULL: apagar a trilha NÃO apaga as matérias.
+    │                   `arquivada` = concluída: sai do rodízio do Cronograma
+    │                   e zera as pendências em resumo_materias)
+└── grade_estudo      (rotina fixa: dia_semana + hora + trilha que alimenta
+    │                   o slot. trilha_id é ON DELETE CASCADE — ao contrário
+    │                   de materias: slot sem trilha não significa nada)
+└── blocos_plano      (plano da semana; unique (usuario_id, data, hora_inicio)
+    │                   sustenta a idempotência do gerador)
 └── materias          (usuario_id uuid, nome, trilha_id, contexto_ia md p/ flashcards)
     └── subdivisoes   ("tópicos"; "Geral" é o padrão implícito)
         └── perguntas (tipo 'pergunta'|'flashcard'; frente=enunciado, verso;
@@ -121,6 +128,39 @@ camada de texto, senão os spans saem desalinhados do desenho e a seleção pega
 outro trecho; (2) camadas — header 50 · sidebar 100 · menus 300 · leitor 900 ·
 ação 950 · **modais 1000** · toast 1100: com z-index menor que o leitor, a
 camada de texto do PDF engolia os cliques do modal.
+
+### Cronograma semanal (rodízio por cobertura)
+Painel `web/js/cronograma.js` + migration 0032. Resolve **esquecer uma matéria**
+(não "o que estudar agora", que é a fila SM-2): o bloco genérico da agenda
+("estudar para o concurso") faz o usuário escolher sempre as mesmas matérias.
+Por isso o sinal dominante é **cobertura** (`dias_sem_toque`), não taxa de erro.
+- `grade_estudo` = a rotina FIXA (dia da semana + hora + qual **trilha** alimenta
+  aquele slot). É a capacidade; o plano é o preenchimento dela. Um slot aponta
+  para UMA trilha — por isso trilhas separadas (ex.: BACEN "específicos de TI" e
+  "gerais") precisam de horários próprios, e cada uma roda seu ciclo.
+- `blocos_plano` = o plano materializado. `unique (usuario_id, data, hora_inicio)`
+  é o coração da idempotência: regerar é upsert, e o `where concluido_em is null`
+  no `do update` deixa bloco cumprido intocável.
+- O plano aloca **tempo e intenção, nunca conteúdo** — quais itens caem no bloco
+  quem resolve é a fila, na hora. Intenção derivada do estado: sem itens =
+  `ingestao` (abre Materiais, não o Aprendizado), fila vencida = `revisao`,
+  em dia = `exercicios`.
+- **Rodízio sem laço**: matérias ranqueadas 1..n, slots numerados 1..k em ordem
+  cronológica, slot `pos` recebe rank `((pos-1) % n)+1`. Um ciclo passa por todas
+  antes de repetir — é a regra dura de cobertura. O ranking começa por
+  `vezes_fixas asc` (blocos do passado ou já concluídos), senão regerar no meio
+  da semana reescalaria quem já foi estudado.
+- **Sábado como reposição não é caso especial**: os slots de sábado caem na 2ª
+  volta do ciclo, indo para quem tem mais `dias_sem_toque` — e esse número só
+  baixa quando se estuda DE VERDADE (responder item ou cronômetro), nunca por
+  ter sido escalado. Quem foi escalado e não cumpriu volta sozinho.
+- Conclusão é **manual** (`alternar_conclusao_bloco`), não derivada do cronômetro:
+  quando isto foi desenhado `sessoes_estudo` tinha 3 sessões no total — plano que
+  nunca mostra progresso é abandonado. `origem_conclusao` já distingue
+  `manual`/`cronometro` para a marcação automática futura.
+- `trilhas.arquivada` (curso concluído): zera as pendências em `resumo_materias`
+  e tira a trilha do rodízio. Flag nova que esconde conteúdo **precisa** ser
+  refletida em toda função que agrega — mesmo cuidado que `perguntas.oculta` (0024).
 
 ### SM-2 / Aprendizado (conceitos centrais)
 - Acerto = q5, erro = q2; EF piso 1.3; progressão 1 → 6 → round(i×EF) dias;

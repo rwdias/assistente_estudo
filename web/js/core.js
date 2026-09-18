@@ -288,6 +288,7 @@ async function mensagemErroFuncao(error) {
 const panelMeta = {
   revisao: { titulo: 'Aprendizado', sub: 'Aprenda o que é novo e revise o que está devido — repetição espaçada' },
   dashboard: { titulo: 'Início', sub: 'Visão geral do seu estudo' },
+  cronograma: { titulo: 'Cronograma', sub: 'O plano da semana — rodízio das matérias para nenhuma ficar para trás' },
   simulado: { titulo: 'Simulado', sub: 'Pratique com suas matérias ou monte pelo banco de questões' },
   perguntas: { titulo: 'Perguntas', sub: 'Cadastre e gerencie o banco de questões' },
   ia: { titulo: 'Adicionar via IA', sub: 'Cole questões e deixe a IA estruturar tudo' },
@@ -310,6 +311,7 @@ function goPanel(id, sbItem) {
   if (id !== 'revisao' && typeof mudarMateriaTempo === 'function') mudarMateriaTempo(Estado.materiaId);
 
   if (id === 'dashboard') carregarDashboard();
+  if (id === 'cronograma') aoAbrirCronograma();
   if (id === 'perguntas') aoAbrirPerguntas();
   if (id === 'revisao') carregarRevisao();
   if (id === 'ia') aoAbrirIa();

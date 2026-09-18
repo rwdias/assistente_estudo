@@ -21,6 +21,10 @@ function agruparPorTrilha(materias) {
       grupos.set(chave, {
         id: m.trilha_id ?? null,
         nome: m.trilha_nome || 'Sem trilha',
+        // Trilha arquivada = curso/certificação concluído: continua visível
+        // (o conteúdo ainda pode ser consultado), mas com as pendências
+        // zeradas e fora do rodízio do Cronograma. Vem de resumo_materias (0032).
+        arquivada: !!m.trilha_arquivada,
         materias: [],
       });
     }
@@ -285,9 +289,15 @@ async function carregarDashboard() {
         : `<div class="trilha-cabecalho" style="grid-column:1/-1" data-trilha="${g.id ?? ''}">
              <span class="trilha-nome">${esc(g.nome)}</span>
              <span class="trilha-contagem">${g.materias.length} matéria(s)</span>
+             ${g.arquivada ? '<span class="badge badge-neutro">arquivada</span>' : ''}
              ${g.id
                ? renderMenuItemHTML([
                    { acao: 'renomear-trilha', rotulo: 'Renomear trilha', icone: ICONE_EDITAR },
+                   {
+                     acao: 'arquivar-trilha',
+                     rotulo: g.arquivada ? 'Reativar trilha' : 'Arquivar trilha',
+                     icone: g.arquivada ? ICONE_OLHO : ICONE_OCULTAR,
+                   },
                    { acao: 'excluir-trilha', rotulo: 'Excluir trilha', icone: ICONE_LIXEIRA, perigo: true },
                  ])
                : ''}
@@ -303,11 +313,26 @@ async function carregarDashboard() {
     const grupo = grupos.find((g) => g.id === trilhaId);
     wireMenuItem(cab, (acao) => {
       if (acao === 'renomear-trilha') pedirRenomearTrilha(grupo);
+      else if (acao === 'arquivar-trilha') alternarArquivamentoTrilha(grupo);
       else if (acao === 'excluir-trilha') pedirExcluirTrilha(grupo);
     });
   });
 
   wireCardsMateria(container);
+}
+
+// --- arquivar / reativar trilha ---
+// Arquivar é o meio-termo entre manter e excluir: quando um curso termina ou
+// uma certificação é conquistada, os itens continuam existindo (ainda dá para
+// consultar), mas param de contar como pendência e saem do rodízio do
+// Cronograma. Sem isso, uma trilha concluída com mil itens vencidos domina o
+// dashboard e rouba blocos de estudo do que ainda importa.
+async function alternarArquivamentoTrilha(grupo) {
+  const novo = !grupo.arquivada;
+  const { error } = await sb.from('trilhas').update({ arquivada: novo }).eq('id', grupo.id);
+  if (error) return toast(error.message, 'error');
+  toast(novo ? 'Trilha arquivada.' : 'Trilha reativada.');
+  carregarDashboard();
 }
 
 // --- renomear / excluir trilha (pelo menu no cabeçalho do grupo) ---
